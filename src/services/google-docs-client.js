@@ -49,9 +49,15 @@ async function authedFetch(url, opts = {}) {
     return res;
 }
 
-/** Copia o template pra um novo arquivo (nome + pasta de destino opcional). */
+/**
+ * Copia o template pra um novo arquivo (nome + pasta de destino opcional).
+ * supportsAllDrives=true é obrigatório pra funcionar com Drives Compartilhados
+ * (sem isso, a cópia tenta usar o storage da própria service account, que é
+ * zero — dá "storageQuotaExceeded"). destFolderId precisa ser uma pasta
+ * DENTRO de um Drive Compartilhado, não uma pasta comum compartilhada.
+ */
 export async function copyTemplate(templateDocId, newName, destFolderId) {
-    const res = await authedFetch(`https://www.googleapis.com/drive/v3/files/${templateDocId}/copy`, {
+    const res = await authedFetch(`https://www.googleapis.com/drive/v3/files/${templateDocId}/copy?supportsAllDrives=true`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName, ...(destFolderId ? { parents: [destFolderId] } : {}) }),
@@ -83,7 +89,7 @@ export async function replacePlaceholders(docId, replacements) {
 
 /** Garante compartilhamento (domínio branddi.com, mesmo nível dos docs manuais). */
 export async function shareWithDomain(fileId, domain = 'branddi.com', role = 'writer') {
-    await authedFetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+    await authedFetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'domain', domain, role }),
@@ -92,7 +98,7 @@ export async function shareWithDomain(fileId, domain = 'branddi.com', role = 'wr
 
 /** Exporta o Doc como PDF (bytes) — equivalente a "Arquivo > Fazer download > PDF". */
 export async function exportAsPdf(docId) {
-    const res = await authedFetch(`https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=application/pdf`);
+    const res = await authedFetch(`https://www.googleapis.com/drive/v3/files/${docId}/export?mimeType=application/pdf&supportsAllDrives=true`);
     return Buffer.from(await res.arrayBuffer());
 }
 
