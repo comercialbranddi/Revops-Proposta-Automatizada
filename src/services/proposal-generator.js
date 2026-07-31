@@ -73,8 +73,11 @@ export async function generateProposalForDeal(dealId) {
         const newName = `Proposta_${orgName}_${productCode}_${new Date().toISOString().slice(0, 10)}`;
         const copyId = await copyTemplate(template.docId, newName, PROPOSAL_OUTPUT_FOLDER_ID);
 
+        // "XX de [mês] de [ano]" é substituído como frase única — trocar só
+        // "XX" isoladamente colidiria com "XXX" (marca) e "Até XX SKUs"
+        // (mesmo token, significados diferentes, sem contexto pra distinguir).
         await replacePlaceholders(copyId, {
-            'xx de Janeiro de 2026': formatDateBR(),
+            'XX de [mês] de [ano]': formatDateBR(),
             'XXX': orgName,
             'R$ 9.900/mês': formatBRL(price) || 'R$ 9.900/mês',
         });
