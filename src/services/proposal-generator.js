@@ -5,14 +5,10 @@
  * deal → copia o template do produto → preenche placeholders → escreve o
  * link de volta no campo "Link Proposta" → nota no card.
  *
- * LIMITAÇÃO CONHECIDA (piloto usa o template real, ainda não revisado):
- * o doc usa "XXX" repetido pra coisas diferentes (decisor E marca) —
- * replaceAllText troca TODAS as ocorrências de um texto pelo mesmo valor,
- * então não dá pra diferenciar "Para: XXX" (decisor) de "marca XXX"
- * (empresa) nesta versão do arquivo. Resolvido preenchendo só a marca —
- * fica definitivamente resolvido quando os modelos tiverem placeholders
- * únicos (ex: {{MARCA}} / {{DECISOR}}), que é o trabalho de conteúdo
- * pendente com Sérgio/DT/Miriam.
+ * Modelo usa placeholders únicos por campo ({{MARCA}}, {{DECISOR}}) desde
+ * 31/07/2026 — antes disso "XXX" era usado pros dois, sem distinção
+ * possível via replaceAllText (troca todas as ocorrências pelo mesmo
+ * valor). Resolvido editando o doc "Cópia de Modelos" direto.
  */
 import { pdGet, pdPut, pdPost } from './pipedrive.js';
 import { copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl } from './google-docs-client.js';
@@ -68,17 +64,19 @@ export async function generateProposalForDeal(dealId) {
         }
 
         const orgName = deal.org_name || deal.org_id?.name || 'Cliente';
+        const decisorName = deal.person_name || deal.person_id?.name || orgName;
         const price = deal[PROPOSAL_DEAL_FIELDS.PRODUTO_PRECO] ?? deal.value;
 
         const newName = `Proposta_${orgName}_${productCode}_${new Date().toISOString().slice(0, 10)}`;
         const copyId = await copyTemplate(template.docId, newName, PROPOSAL_OUTPUT_FOLDER_ID);
 
         // "XX de [mês] de [ano]" é substituído como frase única — trocar só
-        // "XX" isoladamente colidiria com "XXX" (marca) e "Até XX SKUs"
-        // (mesmo token, significados diferentes, sem contexto pra distinguir).
+        // "XX" isoladamente colidiria com "Até XX SKUs" (mesmo token,
+        // significado diferente, sem contexto pra distinguir).
         await replacePlaceholders(copyId, {
             'XX de [mês] de [ano]': formatDateBR(),
-            'XXX': orgName,
+            '{{MARCA}}': orgName,
+            '{{DECISOR}}': decisorName,
             'R$ 9.900/mês': formatBRL(price) || 'R$ 9.900/mês',
         });
 
