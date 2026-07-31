@@ -43,7 +43,7 @@ export const ENVIO_PROPOSTA_STAGE_ID = 257;
 // validar o encanamento técnico. Trocar o docId aqui quando os modelos
 // finais existirem — nenhuma outra parte do código referencia o ID direto.
 export const PROPOSAL_TEMPLATES = {
-    BBP: { docId: '1ys7NrOVSeljFx1_d6n2kCZawGvC6TOS75GF00W-cAwo', label: 'Buy Box Protection' },
+    BBP: { docId: '1GS_3YCW0zgfPhCrEp_u8to6l4uJ4hlk2h4D3572bb_E', label: 'Buy Box Protection' },
     // BB, GD, VM: adicionar docId quando os modelos revisados existirem.
 };
 
