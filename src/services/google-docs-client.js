@@ -105,3 +105,10 @@ export async function exportAsPdf(docId) {
 export function getDocUrl(docId) {
     return `https://docs.google.com/document/d/${docId}/edit`;
 }
+
+/** Diagnóstico: lista os Drives Compartilhados que a service account vê de fato. */
+export async function listSharedDrives() {
+    const res = await authedFetch('https://www.googleapis.com/drive/v3/drives?pageSize=50');
+    const body = await res.json();
+    return body.drives || [];
+}

@@ -8,6 +8,7 @@ import {
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
 import { afterResponse } from '../lib/after-response.js';
+import { listSharedDrives } from '../services/google-docs-client.js';
 
 const log = getContextLogger('routes:proposal');
 const router = Router();
@@ -91,6 +92,23 @@ router.get('/debug/google-key', (req, res) => {
         info.parseError = err.message;
     }
     res.json(info);
+});
+
+// Diagnóstico TEMPORÁRIO — lista os Drives Compartilhados que a service
+// account vê de fato (confirma se a permissão pegou e se o ID está certo).
+router.get('/debug/shared-drives', async (req, res) => {
+    if (PROPOSAL_ADMIN_TOKEN) {
+        const token = req.headers['x-admin-token'];
+        if (token !== PROPOSAL_ADMIN_TOKEN) {
+            return res.status(401).json({ error: 'Token inválido' });
+        }
+    }
+    try {
+        const drives = await listSharedDrives();
+        res.json({ count: drives.length, drives: drives.map(d => ({ id: d.id, name: d.name })) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 export default router;
