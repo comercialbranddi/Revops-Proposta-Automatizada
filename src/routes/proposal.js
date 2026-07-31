@@ -7,6 +7,7 @@ import {
     PROPOSAL_ADMIN_TOKEN,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
+import { afterResponse } from '../lib/after-response.js';
 
 const log = getContextLogger('routes:proposal');
 const router = Router();
@@ -14,10 +15,15 @@ const router = Router();
 // Pipedrive webhook (deal.updated + deal.added) — sem auth, é o Pipedrive
 // chamando de fora. Dispara só na ENTRADA na stage "Envio de proposta"
 // (pipe "5. Vendas"), não em qualquer update do card já nela.
-router.post('/webhook/deal', async (req, res) => {
+//
+// afterResponse é OBRIGATÓRIO aqui: no Vercel a função serverless congela
+// assim que res.json() é chamado — sem isso, o trabalho async (Google Docs,
+// Pipedrive) é interrompido no meio, sem erro nenhum no log (bug real do
+// piloto, achado em 31/07/2026 checando os logs da Vercel).
+router.post('/webhook/deal', (req, res) => {
     res.json({ received: true });
 
-    try {
+    afterResponse(async () => {
         const payload = req.body;
         const dealId = payload?.current?.id || payload?.meta?.id;
         const pipelineId = payload?.current?.pipeline_id;
@@ -34,9 +40,7 @@ router.post('/webhook/deal', async (req, res) => {
 
         log.info(`Deal #${dealId} entrou em Envio de proposta — gerando (piloto)`);
         await generateProposalForDeal(dealId);
-    } catch (err) {
-        log.error(`webhook/deal: ${err.message}`);
-    }
+    });
 });
 
 // Gera manualmente, sem depender de mudança de stage — útil pra testar sob
