@@ -1,0 +1,64 @@
+import { Router } from 'express';
+import { generateProposalForDeal } from '../services/proposal-generator.js';
+import {
+    SALES_PIPELINE_ID,
+    ENVIO_PROPOSTA_STAGE_ID,
+    isProposalAutomationEnabledForDeal,
+    PROPOSAL_ADMIN_TOKEN,
+} from '../config/proposal.js';
+import { getContextLogger } from '../lib/logger.js';
+
+const log = getContextLogger('routes:proposal');
+const router = Router();
+
+// Pipedrive webhook (deal.updated + deal.added) — sem auth, é o Pipedrive
+// chamando de fora. Dispara só na ENTRADA na stage "Envio de proposta"
+// (pipe "5. Vendas"), não em qualquer update do card já nela.
+router.post('/webhook/deal', async (req, res) => {
+    res.json({ received: true });
+
+    try {
+        const payload = req.body;
+        const dealId = payload?.current?.id || payload?.meta?.id;
+        const pipelineId = payload?.current?.pipeline_id;
+        const stageId = payload?.current?.stage_id;
+        const prevStageId = payload?.previous?.stage_id;
+
+        if (!dealId || pipelineId !== SALES_PIPELINE_ID) return;
+        if (stageId !== ENVIO_PROPOSTA_STAGE_ID || prevStageId === ENVIO_PROPOSTA_STAGE_ID) return;
+
+        if (!isProposalAutomationEnabledForDeal(dealId)) {
+            log.info(`Deal #${dealId} entrou em Envio de proposta — automação desligada/fora do piloto`);
+            return;
+        }
+
+        log.info(`Deal #${dealId} entrou em Envio de proposta — gerando (piloto)`);
+        await generateProposalForDeal(dealId);
+    } catch (err) {
+        log.error(`webhook/deal: ${err.message}`);
+    }
+});
+
+// Gera manualmente, sem depender de mudança de stage — útil pra testar sob
+// controle. Protegido por token simples (não é o mesmo sistema de auth do
+// Lia — repo pequeno e dedicado).
+router.post('/generate/:dealId', async (req, res) => {
+    if (PROPOSAL_ADMIN_TOKEN) {
+        const token = req.headers['x-admin-token'];
+        if (token !== PROPOSAL_ADMIN_TOKEN) {
+            return res.status(401).json({ error: 'Token inválido' });
+        }
+    }
+    const dealId = parseInt(req.params.dealId, 10);
+    if (!isProposalAutomationEnabledForDeal(dealId)) {
+        return res.status(403).json({ error: 'Automação desligada ou deal fora do piloto' });
+    }
+    try {
+        await generateProposalForDeal(dealId);
+        res.json({ success: true, dealId });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+export default router;

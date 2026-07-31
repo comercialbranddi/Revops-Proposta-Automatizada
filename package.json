@@ -1,0 +1,21 @@
+{
+  "name": "automacoes-funil-vendas",
+  "version": "1.0.0",
+  "description": "Automações do funil de vendas Branddi — Proposta Automatizada e futuras automações do pipe comercial",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.99.2",
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.0",
+    "express": "^5.2.1",
+    "google-auth-library": "^10.6.2"
+  }
+}
