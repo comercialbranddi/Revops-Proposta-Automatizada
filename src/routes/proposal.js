@@ -8,7 +8,6 @@ import {
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
 import { afterResponse } from '../lib/after-response.js';
-import { listSharedDrives } from '../services/google-docs-client.js';
 
 const log = getContextLogger('routes:proposal');
 const router = Router();
@@ -61,51 +60,6 @@ router.post('/generate/:dealId', async (req, res) => {
     try {
         await generateProposalForDeal(dealId);
         res.json({ success: true, dealId });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Diagnóstico TEMPORÁRIO — confirma se GOOGLE_PROPOSAL_SA_KEY_BASE64 está
-// configurada corretamente, SEM expor o segredo (só metadados). Remover
-// depois que o piloto estabilizar.
-router.get('/debug/google-key', (req, res) => {
-    if (PROPOSAL_ADMIN_TOKEN) {
-        const token = req.headers['x-admin-token'];
-        if (token !== PROPOSAL_ADMIN_TOKEN) {
-            return res.status(401).json({ error: 'Token inválido' });
-        }
-    }
-    const raw = process.env.GOOGLE_PROPOSAL_SA_KEY_BASE64;
-    if (!raw) return res.json({ present: false });
-
-    const info = { present: true, rawLength: raw.length, rawStartsWith: raw.slice(0, 12), rawEndsWith: raw.slice(-12) };
-    try {
-        const decoded = Buffer.from(raw, 'base64').toString('utf-8');
-        info.decodedLength = decoded.length;
-        const parsed = JSON.parse(decoded);
-        info.parsedOk = true;
-        info.client_email = parsed.client_email;
-        info.hasPrivateKey = Boolean(parsed.private_key);
-    } catch (err) {
-        info.parsedOk = false;
-        info.parseError = err.message;
-    }
-    res.json(info);
-});
-
-// Diagnóstico TEMPORÁRIO — lista os Drives Compartilhados que a service
-// account vê de fato (confirma se a permissão pegou e se o ID está certo).
-router.get('/debug/shared-drives', async (req, res) => {
-    if (PROPOSAL_ADMIN_TOKEN) {
-        const token = req.headers['x-admin-token'];
-        if (token !== PROPOSAL_ADMIN_TOKEN) {
-            return res.status(401).json({ error: 'Token inválido' });
-        }
-    }
-    try {
-        const drives = await listSharedDrives();
-        res.json({ count: drives.length, drives: drives.map(d => ({ id: d.id, name: d.name })) });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
