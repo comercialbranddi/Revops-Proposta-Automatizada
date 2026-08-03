@@ -105,3 +105,81 @@ export async function exportAsPdf(docId) {
 export function getDocUrl(docId) {
     return `https://docs.google.com/document/d/${docId}/edit`;
 }
+
+/** Lê o texto puro de um doc (concatena os textRuns dos parágrafos do corpo). */
+export async function getPlainText(docId) {
+    const res = await authedFetch(`https://docs.googleapis.com/v1/documents/${docId}`);
+    const body = await res.json();
+    const content = body.body?.content || [];
+    let text = '';
+    for (const el of content) {
+        const elements = el.paragraph?.elements || [];
+        for (const run of elements) {
+            text += run.textRun?.content || '';
+        }
+    }
+    return text;
+}
+
+/**
+ * Cria um Doc em branco DENTRO da pasta de destino (Drive Compartilhado).
+ * Usa Drive API files.create (não Docs API documents.create) — criar já
+ * com parents definido evita o problema de storageQuotaExceeded (o arquivo
+ * nasce no Drive Compartilhado, nunca passa pelo storage próprio da
+ * service account).
+ */
+export async function createBlankDoc(name, destFolderId) {
+    const res = await authedFetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name,
+            mimeType: 'application/vnd.google-apps.document',
+            ...(destFolderId ? { parents: [destFolderId] } : {}),
+        }),
+    });
+    const body = await res.json();
+    log.info(`📄 Doc em branco criado: ${body.id} ("${name}")`);
+    return body.id;
+}
+
+/** Insere texto puro no início do doc (índice 1 — logo depois do parágrafo inicial vazio). */
+export async function insertText(docId, text) {
+    await authedFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests: [{ insertText: { location: { index: 1 }, text } }] }),
+    });
+}
+
+/**
+ * Aplica um estilo de parágrafo (ex: 'HEADING_1') num range de índices
+ * [startIndex, endIndex). Usado pra formatar títulos depois de inserir o
+ * texto puro — os índices vêm de calcular offsets no próprio texto que a
+ * gente montou (contagem de unidades UTF-16, mesma base do Docs API).
+ */
+export async function applyParagraphStyle(docId, startIndex, endIndex, namedStyleType) {
+    await authedFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            requests: [{
+                updateParagraphStyle: {
+                    range: { startIndex, endIndex },
+                    paragraphStyle: { namedStyleType },
+                    fields: 'namedStyleType',
+                },
+            }],
+        }),
+    });
+}
+
+/** Aplica batchUpdate genérico — usado pra agrupar várias formatações numa chamada só. */
+export async function batchUpdate(docId, requests) {
+    if (requests.length === 0) return;
+    await authedFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests }),
+    });
+}

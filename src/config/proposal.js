@@ -21,6 +21,34 @@ export function getProductByPrincipalOptionId(optionId) {
     return Object.values(PRODUCTS).find(p => p.productPrincipalOptionId === Number(optionId)) || null;
 }
 
+// Ordem de cascata pra escolher o produto-âncora quando há mais de um
+// selecionado (mesma lógica do Lia — BB primeiro, produto fundador).
+export const PRODUCT_CASCADE_ORDER = ['BB', 'BBP', 'GD', 'VM'];
+
+// ─── Campo "Serviço oferecido" (multi-select) — option IDs confirmados
+// via GET /dealFields em 31/07/2026. Só mapeia os 4 produtos automatizados;
+// outras opções do campo (Violação Comercial, APP, Bing, Novos Termos)
+// não têm template e ficam fora do fluxo automático.
+export const SERVICO_OFERECIDO_OPTION_TO_CODE = {
+    152: 'BB',
+    549: 'BBP',
+    153: 'GD',
+    154: 'VM',
+};
+
+/**
+ * Parseia o valor bruto do campo "Serviço oferecido" (string com IDs
+ * separados por vírgula, ex: "152,549") pros nossos códigos de produto.
+ * Ignora opções sem mapeamento (produto não automatizado ainda).
+ */
+export function parseServicoOferecido(rawValue) {
+    if (!rawValue) return [];
+    return String(rawValue)
+        .split(',')
+        .map(id => SERVICO_OFERECIDO_OPTION_TO_CODE[Number(id.trim())])
+        .filter(Boolean);
+}
+
 // ─── Feature flags ──────────────────────────────────────────────────
 export const PROPOSAL_AUTOMATION_ENABLED = process.env.PROPOSAL_AUTOMATION_ENABLED === 'true';
 
