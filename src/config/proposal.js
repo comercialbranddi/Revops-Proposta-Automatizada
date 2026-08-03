@@ -78,8 +78,10 @@ export const PROPOSAL_TEMPLATES = {
     BBP: { docId: '1GS_3YCW0zgfPhCrEp_u8to6l4uJ4hlk2h4D3572bb_E', label: 'Buy Box Protection' },
     GD:  { docId: '1J00b_DjEcDincmgvscMG28XoJNWu_XcWTqsGvy_jeXM', label: 'Golpes Digitais' },
     VM:  { docId: '15EyaxG9aBNQ2dnu6moiPm_okzY-C3Gw_l5pKJY_ykOA', label: 'Violação de Marca' },
-    // Combinações (BB+BBP, BB+GD, ... até BB+BBP+GD+VM) entram aqui quando
-    // forem geradas — ver handoff do Ponto 4.
+    'BB+BBP': { docId: '1bg2tA4fjsVpl_Y-M4gHWwR137U4y718dDf3vHIbotd4', label: 'Brand Bidding + Buy Box Protection' },
+    'BB+GD':  { docId: '1d8kmo07JoeNlB7TtzfwvnSJ2iQjTNlapxe8JvO_Digs', label: 'Brand Bidding + Golpes Digitais' },
+    // Demais combinações (BB+VM, BBP+GD, BBP+VM, GD+VM, e as de 3/4 produtos)
+    // entram aqui quando forem geradas — ver handoff do Ponto 4.
 };
 
 export const PROPOSAL_OUTPUT_FOLDER_ID = process.env.PROPOSAL_OUTPUT_FOLDER_ID || null;
