@@ -38,13 +38,17 @@ export const PROPOSAL_ADMIN_TOKEN = process.env.PROPOSAL_ADMIN_TOKEN || null;
 export const SALES_PIPELINE_ID = 1;
 export const ENVIO_PROPOSTA_STAGE_ID = 257;
 
-// ─── Templates por produto (Google Doc ID na pasta Modelo Propostas) ──
-// Piloto usa o modelo existente (ainda não revisado por conteúdo) só pra
-// validar o encanamento técnico. Trocar o docId aqui quando os modelos
-// finais existirem — nenhuma outra parte do código referencia o ID direto.
+// ─── Templates por produto (Google Doc ID, extraídos das abas do doc
+// "Modelos de Proposta Comercial" em 31/07/2026) ──────────────────────
+// Cada doc tem placeholders únicos ({{MARCA}}, {{DECISOR}}) — resolvida
+// a ambiguidade que "XXX" causava no modelo original. Conteúdo ainda
+// tem notas de validação pendente (Sérgio/DT/Miriam) dentro dos docs —
+// não é bloqueio técnico, mas o texto pode mudar antes de uso real.
 export const PROPOSAL_TEMPLATES = {
+    BB:  { docId: '1HLLwQgcidwtfHAf1C2Jgo7yOXDkqOzqzNon-52XC9x4', label: 'Brand Bidding' },
     BBP: { docId: '1GS_3YCW0zgfPhCrEp_u8to6l4uJ4hlk2h4D3572bb_E', label: 'Buy Box Protection' },
-    // BB, GD, VM: adicionar docId quando os modelos revisados existirem.
+    GD:  { docId: '1J00b_DjEcDincmgvscMG28XoJNWu_XcWTqsGvy_jeXM', label: 'Golpes Digitais' },
+    VM:  { docId: '15EyaxG9aBNQ2dnu6moiPm_okzY-C3Gw_l5pKJY_ykOA', label: 'Violação de Marca' },
 };
 
 export const PROPOSAL_OUTPUT_FOLDER_ID = process.env.PROPOSAL_OUTPUT_FOLDER_ID || null;
