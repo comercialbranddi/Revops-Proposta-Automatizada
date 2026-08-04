@@ -85,6 +85,16 @@ export async function generateProposalForDeal(dealId) {
         const decisorName = deal.person_name || deal.person_id?.name || orgName;
         const price = deal[PROPOSAL_DEAL_FIELDS.PRODUTO_PRECO] ?? deal.value;
 
+        // Modelos de combinação (2+ produtos) têm o preço de CADA produto
+        // escrito como o mesmo literal "R$ 9.900/mês" — não há como saber,
+        // via replaceAllText, qual ocorrência pertence a qual produto. Como
+        // o Pipedrive só guarda um preço por deal (não por produto), tentar
+        // substituir aqui sobrescreveria o preço individual de todos os
+        // produtos pelo valor total do card. Em vez disso, pula a
+        // substituição de preço nos combos e deixa explícito na nota que a
+        // precificação por produto precisa ser preenchida manualmente.
+        const isCombo = productCodes.length > 1;
+
         const newName = `Proposta_${orgName}_${templateKey}_${new Date().toISOString().slice(0, 10)}`;
         const copyId = await copyTemplate(template.docId, newName, PROPOSAL_OUTPUT_FOLDER_ID);
 
@@ -95,7 +105,7 @@ export async function generateProposalForDeal(dealId) {
             'XX de [mês] de [ano]': formatDateBR(),
             '{{MARCA}}': orgName,
             '{{DECISOR}}': decisorName,
-            'R$ 9.900/mês': formatBRL(price) || 'R$ 9.900/mês',
+            ...(isCombo ? {} : { 'R$ 9.900/mês': formatBRL(price) || 'R$ 9.900/mês' }),
         });
 
         await shareWithDomain(copyId).catch((err) => {
@@ -106,9 +116,13 @@ export async function generateProposalForDeal(dealId) {
 
         await pdPut(`/deals/${dealId}`, { [PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA]: docUrl });
 
+        const noteContent = isCombo
+            ? `Proposta gerada automaticamente (piloto) — combinação de ${productCodes.length} produtos, preencher o preço de cada produto manualmente antes de enviar.\n${docUrl}`
+            : `Proposta gerada automaticamente (piloto) — revisar conteúdo antes de enviar.\n${docUrl}`;
+
         await pdPost('/notes', {
             deal_id: dealId,
-            content: `Proposta gerada automaticamente (piloto) — revisar conteúdo antes de enviar.\n${docUrl}`,
+            content: noteContent,
         });
 
         log.info(`✅ Proposta gerada pro deal #${dealId} (${templateKey}): ${docUrl}`);
