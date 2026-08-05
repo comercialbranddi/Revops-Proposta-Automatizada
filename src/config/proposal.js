@@ -104,18 +104,25 @@ export const PROPOSAL_DEAL_FIELDS = {
     // as keys aqui quando forem criados.
 };
 
-// ─── Preço por produto (Pipedrive) — usado só em propostas combinadas
-// (2+ produtos), onde não dá pra saber, via replaceAllText, qual ocorrência
-// do preço no doc pertence a qual produto. Preço é negociado por cliente
-// (não é tabela fixa — confirmado com Jessica em 05/08/2026), então o SDR
-// preenche o preço de cada produto que está na proposta antes do card
-// chegar em "Envio de proposta". Campos criados via API em 05/08/2026.
+// ─── Preço por produto (Pipedrive) — preço é negociado por cliente (não é
+// tabela fixa — confirmado com Jessica em 05/08/2026), então o SDR preenche
+// o preço de cada produto antes do card chegar em "Envio de proposta".
+// Campos criados via API em 05/08/2026 (os 4, pra já deixar pronto se GD/VM
+// ganharem preço de tabela no futuro — ver PRICED_PRODUCTS abaixo).
 export const PRODUCT_PRICE_FIELDS = {
     BB:  'f687fc2369944a2e91ea7f27e8245ac98aaa9de1',
     BBP: 'be55b1efd1ae499f650cc0439be915b90103416e',
     GD:  '1246a7be1c155e2c87b33cc3c37e4e9739359b24',
     VM:  '6452627c3f1a8e54d47f38477ef7ecdf92f6428f',
 };
+
+// Produtos que hoje têm preço de tabela nos templates (BB: "R$ 7.900/mês",
+// BBP: "R$ 9.900/mês") — só esses viram placeholder {{PRECO_<código>}} nos
+// docs e exigem preenchimento do SDR. GD e VM não têm modelo de preço ainda
+// (docs dizem "preço a confirmar"/"R$ XXXX/mês" — prosa estática, não
+// placeholder), consistente com GD/VM não terem automação de qualificação
+// própria pra proposta comercial (ver handoff 27/07/2026).
+export const PRICED_PRODUCTS = ['BB', 'BBP'];
 
 /** True se a automação deve rodar para este deal, dado o estado atual do piloto. */
 export function isProposalAutomationEnabledForDeal(dealId) {
