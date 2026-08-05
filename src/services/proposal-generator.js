@@ -18,7 +18,7 @@
 import { pdGet, pdPut, pdPost } from './pipedrive.js';
 import { copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl } from './google-docs-client.js';
 import {
-    PROPOSAL_TEMPLATES, PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS,
+    PROPOSAL_TEMPLATES, PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS,
     getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
@@ -86,14 +86,22 @@ export async function generateProposalForDeal(dealId) {
         const price = deal[PROPOSAL_DEAL_FIELDS.PRODUTO_PRECO] ?? deal.value;
 
         // Modelos de combinação (2+ produtos) têm o preço de CADA produto
-        // escrito como o mesmo literal "R$ 9.900/mês" — não há como saber,
-        // via replaceAllText, qual ocorrência pertence a qual produto. Como
-        // o Pipedrive só guarda um preço por deal (não por produto), tentar
-        // substituir aqui sobrescreveria o preço individual de todos os
-        // produtos pelo valor total do card. Em vez disso, pula a
-        // substituição de preço nos combos e deixa explícito na nota que a
-        // precificação por produto precisa ser preenchida manualmente.
+        // escrito no doc — não dá pra usar o mesmo literal "R$ 9.900/mês"
+        // pros N produtos porque o replaceAllText não sabe qual ocorrência
+        // pertence a qual produto. Preço é negociado por cliente (não é
+        // tabela fixa), então cada produto tem seu próprio campo no
+        // Pipedrive (PRODUCT_PRICE_FIELDS, preenchido pelo SDR) e um
+        // placeholder próprio no doc ({{PRECO_BB}}, {{PRECO_BBP}}, etc.).
         const isCombo = productCodes.length > 1;
+        const comboPriceReplacements = isCombo
+            ? Object.fromEntries(productCodes.map((code) => [
+                `{{PRECO_${code}}}`,
+                formatBRL(deal[PRODUCT_PRICE_FIELDS[code]]),
+            ]))
+            : {};
+        const missingComboPrices = isCombo
+            ? productCodes.filter((code) => deal[PRODUCT_PRICE_FIELDS[code]] == null)
+            : [];
 
         const newName = `Proposta_${orgName}_${templateKey}_${new Date().toISOString().slice(0, 10)}`;
         const copyId = await copyTemplate(template.docId, newName, PROPOSAL_OUTPUT_FOLDER_ID);
@@ -105,7 +113,7 @@ export async function generateProposalForDeal(dealId) {
             'XX de [mês] de [ano]': formatDateBR(),
             '{{MARCA}}': orgName,
             '{{DECISOR}}': decisorName,
-            ...(isCombo ? {} : { 'R$ 9.900/mês': formatBRL(price) || 'R$ 9.900/mês' }),
+            ...(isCombo ? comboPriceReplacements : { 'R$ 9.900/mês': formatBRL(price) || 'R$ 9.900/mês' }),
         });
 
         await shareWithDomain(copyId).catch((err) => {
@@ -116,8 +124,8 @@ export async function generateProposalForDeal(dealId) {
 
         await pdPut(`/deals/${dealId}`, { [PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA]: docUrl });
 
-        const noteContent = isCombo
-            ? `Proposta gerada automaticamente (piloto) — combinação de ${productCodes.length} produtos, preencher o preço de cada produto manualmente antes de enviar.\n${docUrl}`
+        const noteContent = missingComboPrices.length > 0
+            ? `Proposta gerada automaticamente (piloto) — falta preço de ${missingComboPrices.join('/')} no card (campo "Preço ${missingComboPrices[0]}" etc.), preencher antes de enviar.\n${docUrl}`
             : `Proposta gerada automaticamente (piloto) — revisar conteúdo antes de enviar.\n${docUrl}`;
 
         await pdPost('/notes', {
