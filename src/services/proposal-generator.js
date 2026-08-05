@@ -60,8 +60,14 @@ function resolveProductCodes(deal) {
 /**
  * Gera a proposta pro deal informado e escreve o link de volta no Pipedrive.
  * Nunca lança — qualquer falha é logada e o card segue no fluxo manual normal.
+ *
+ * Se faltar campo obrigatório (preço/catálogo), NÃO gera documento nenhum —
+ * só avisa por nota (quando notifyIfIncomplete=true). O deal fica "pendente"
+ * (sem Link Proposta) até alguém preencher o campo; nesse momento, uma nova
+ * chamada (disparada por qualquer update no card enquanto ele está na fase
+ * "Envio de proposta", ver webhook) encontra os campos completos e gera.
  */
-export async function generateProposalForDeal(dealId) {
+export async function generateProposalForDeal(dealId, { notifyIfIncomplete = false } = {}) {
     try {
         const dealRes = await pdGet(`/deals/${dealId}`);
         const deal = dealRes?.data;
@@ -69,6 +75,10 @@ export async function generateProposalForDeal(dealId) {
             log.warn(`deal #${dealId} não encontrado`);
             await logAttempt(dealId, 'error', { error: 'deal_not_found' });
             return;
+        }
+
+        if (deal[PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA]) {
+            return; // já gerada antes — updates seguintes no card não fazem nada
         }
 
         const productCodes = resolveProductCodes(deal);
@@ -105,6 +115,18 @@ export async function generateProposalForDeal(dealId) {
         const catalogoBBP = productCodes.includes('BBP') ? deal[CATALOGO_BBP_FIELD] : null;
         if (productCodes.includes('BBP') && catalogoBBP == null) missingFields.push('Catálogo BBP (SKUs)');
 
+        if (missingFields.length > 0) {
+            log.warn(`deal #${dealId}: falta ${missingFields.join(', ')} — proposta não gerada ainda`);
+            if (notifyIfIncomplete) {
+                await pdPost('/notes', {
+                    deal_id: dealId,
+                    content: `Proposta NÃO gerada — falta preencher ${missingFields.join(', ')} no card. Assim que for preenchido, a proposta é gerada automaticamente.`,
+                });
+            }
+            await logAttempt(dealId, 'skipped_missing_fields', { missing: missingFields, notified: notifyIfIncomplete });
+            return;
+        }
+
         const newName = `Proposta_${orgName}_${templateKey}_${new Date().toISOString().slice(0, 10)}`;
         const copyId = await copyTemplate(template.docId, newName, PROPOSAL_OUTPUT_FOLDER_ID);
 
@@ -127,13 +149,9 @@ export async function generateProposalForDeal(dealId) {
 
         await pdPut(`/deals/${dealId}`, { [PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA]: docUrl });
 
-        const noteContent = missingFields.length > 0
-            ? `Proposta gerada automaticamente (piloto) — falta preencher ${missingFields.join(', ')} no card, preencher antes de enviar.\n${docUrl}`
-            : `Proposta gerada automaticamente (piloto) — revisar conteúdo antes de enviar.\n${docUrl}`;
-
         await pdPost('/notes', {
             deal_id: dealId,
-            content: noteContent,
+            content: `Proposta gerada automaticamente (piloto) — revisar conteúdo antes de enviar.\n${docUrl}`,
         });
 
         log.info(`✅ Proposta gerada pro deal #${dealId} (${templateKey}): ${docUrl}`);

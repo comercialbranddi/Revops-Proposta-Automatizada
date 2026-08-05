@@ -12,9 +12,17 @@ import { afterResponse } from '../lib/after-response.js';
 const log = getContextLogger('routes:proposal');
 const router = Router();
 
-// Pipedrive webhook (deal.updated + deal.added) — sem auth, é o Pipedrive
-// chamando de fora. Dispara só na ENTRADA na stage "Envio de proposta"
-// (pipe "5. Vendas"), não em qualquer update do card já nela.
+// Pipedrive webhook (deal.updated) — sem auth, é o Pipedrive chamando de
+// fora. Reage a QUALQUER update do card enquanto ele está na stage "Envio
+// de proposta" (pipe "5. Vendas") — não só a entrada. Isso porque, se
+// faltar preço/catálogo na entrada, a proposta não é gerada (só uma nota
+// avisando) — precisa reagir de novo quando o SDR preencher o campo depois,
+// com o card já na fase. generateProposalForDeal() é idempotente (já sai
+// na entrada se "Link Proposta" já estiver preenchido), então chamar de
+// novo em updates seguintes é seguro.
+//
+// notifyIfIncomplete só é true na ENTRADA — evita spam de nota a cada
+// update enquanto o SDR ainda está preenchendo outros campos do card.
 //
 // afterResponse é OBRIGATÓRIO aqui: no Vercel a função serverless congela
 // assim que res.json() é chamado — sem isso, o trabalho async (Google Docs,
@@ -31,15 +39,16 @@ router.post('/webhook/deal', (req, res) => {
         const prevStageId = payload?.previous?.stage_id;
 
         if (!dealId || pipelineId !== SALES_PIPELINE_ID) return;
-        if (stageId !== ENVIO_PROPOSTA_STAGE_ID || prevStageId === ENVIO_PROPOSTA_STAGE_ID) return;
+        if (stageId !== ENVIO_PROPOSTA_STAGE_ID) return;
 
         if (!isProposalAutomationEnabledForDeal(dealId)) {
-            log.info(`Deal #${dealId} entrou em Envio de proposta — automação desligada/fora do piloto`);
+            log.info(`Deal #${dealId} em Envio de proposta — automação desligada/fora do piloto`);
             return;
         }
 
-        log.info(`Deal #${dealId} entrou em Envio de proposta — gerando (piloto)`);
-        await generateProposalForDeal(dealId);
+        const isEntry = prevStageId !== ENVIO_PROPOSTA_STAGE_ID;
+        log.info(`Deal #${dealId} em Envio de proposta (${isEntry ? 'entrada' : 'campo atualizado'}) — avaliando geração`);
+        await generateProposalForDeal(dealId, { notifyIfIncomplete: isEntry });
     });
 });
 
@@ -58,7 +67,7 @@ router.post('/generate/:dealId', async (req, res) => {
         return res.status(403).json({ error: 'Automação desligada ou deal fora do piloto' });
     }
     try {
-        await generateProposalForDeal(dealId);
+        await generateProposalForDeal(dealId, { notifyIfIncomplete: true });
         res.json({ success: true, dealId });
     } catch (err) {
         res.status(500).json({ error: err.message });
