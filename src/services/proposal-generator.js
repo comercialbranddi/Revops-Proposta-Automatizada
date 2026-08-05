@@ -19,7 +19,7 @@ import { pdGet, pdPut, pdPost } from './pipedrive.js';
 import { copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl } from './google-docs-client.js';
 import {
     PROPOSAL_TEMPLATES, PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS, PRICED_PRODUCTS,
-    getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
+    CATALOGO_BBP_FIELD, getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
 import supabase from './supabase-client.js';
@@ -96,18 +96,26 @@ export async function generateProposalForDeal(dealId) {
             `{{PRECO_${code}}}`,
             formatBRL(deal[PRODUCT_PRICE_FIELDS[code]]),
         ]));
-        const missingPrices = pricedCodes.filter((code) => deal[PRODUCT_PRICE_FIELDS[code]] == null);
+        const missingFields = pricedCodes
+            .filter((code) => deal[PRODUCT_PRICE_FIELDS[code]] == null)
+            .map((code) => `Preço ${code}`);
+
+        // Catálogo (nº de SKUs) só aparece no bloco de BBP ("até XX SKUs")
+        // e varia por cliente, então também vem do card (preenchido pelo SDR).
+        const catalogoBBP = productCodes.includes('BBP') ? deal[CATALOGO_BBP_FIELD] : null;
+        if (productCodes.includes('BBP') && catalogoBBP == null) missingFields.push('Catálogo BBP (SKUs)');
 
         const newName = `Proposta_${orgName}_${templateKey}_${new Date().toISOString().slice(0, 10)}`;
         const copyId = await copyTemplate(template.docId, newName, PROPOSAL_OUTPUT_FOLDER_ID);
 
-        // "XX de [mês] de [ano]" é substituído como frase única — trocar só
-        // "XX" isoladamente colidiria com "Até XX SKUs" (mesmo token,
-        // significado diferente, sem contexto pra distinguir).
+        // "XX de [mês] de [ano]" é substituído como frase única — o "XX" de
+        // catálogo já foi trocado por {{CATALOGO_BBP}} nos templates, então
+        // não colide mais com a data.
         await replacePlaceholders(copyId, {
             'XX de [mês] de [ano]': formatDateBR(),
             '{{MARCA}}': orgName,
             '{{DECISOR}}': decisorName,
+            '{{CATALOGO_BBP}}': catalogoBBP != null ? String(catalogoBBP) : null,
             ...priceReplacements,
         });
 
@@ -119,8 +127,8 @@ export async function generateProposalForDeal(dealId) {
 
         await pdPut(`/deals/${dealId}`, { [PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA]: docUrl });
 
-        const noteContent = missingPrices.length > 0
-            ? `Proposta gerada automaticamente (piloto) — falta preço de ${missingPrices.join('/')} no card (campo "Preço ${missingPrices.join('"/"Preço ')}"), preencher antes de enviar.\n${docUrl}`
+        const noteContent = missingFields.length > 0
+            ? `Proposta gerada automaticamente (piloto) — falta preencher ${missingFields.join(', ')} no card, preencher antes de enviar.\n${docUrl}`
             : `Proposta gerada automaticamente (piloto) — revisar conteúdo antes de enviar.\n${docUrl}`;
 
         await pdPost('/notes', {

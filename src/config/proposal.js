@@ -124,6 +124,13 @@ export const PRODUCT_PRICE_FIELDS = {
 // própria pra proposta comercial (ver handoff 27/07/2026).
 export const PRICED_PRODUCTS = ['BB', 'BBP'];
 
+// Tamanho do catálogo do cliente (nº de SKUs monitorados) — só o bloco de
+// BBP cita isso ("até XX SKUs na Proposta Comercial"). Varia muito por
+// cliente (não é limite fixo de plano, diferente do "até 3 palavras-chave"
+// do BB), então também é preenchido pelo SDR antes de "Envio de proposta".
+// Campo criado via API em 05/08/2026.
+export const CATALOGO_BBP_FIELD = '730d76b0c20d2ab3a62665569899646b9cad143d';
+
 /** True se a automação deve rodar para este deal, dado o estado atual do piloto. */
 export function isProposalAutomationEnabledForDeal(dealId) {
     if (!PROPOSAL_AUTOMATION_ENABLED) return false;
