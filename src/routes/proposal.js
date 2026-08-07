@@ -5,6 +5,7 @@ import {
     ENVIO_PROPOSTA_STAGE_ID,
     isProposalAutomationEnabledForDeal,
     PROPOSAL_ADMIN_TOKEN,
+    PROPOSAL_WEBHOOK_SECRET,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
 import { afterResponse } from '../lib/after-response.js';
@@ -30,6 +31,15 @@ const router = Router();
 // Pipedrive) é interrompido no meio, sem erro nenhum no log (bug real do
 // piloto, achado em 31/07/2026 checando os logs da Vercel).
 router.post('/webhook/deal', (req, res) => {
+    if (PROPOSAL_WEBHOOK_SECRET) {
+        if (req.query?.secret !== PROPOSAL_WEBHOOK_SECRET) {
+            log.warn('webhook chamado com secret inválido — ignorado');
+            return res.status(401).json({ error: 'Secret inválido' });
+        }
+    } else {
+        log.warn('PROPOSAL_WEBHOOK_SECRET não configurada — webhook aceitando chamada sem autenticação');
+    }
+
     res.json({ received: true });
 
     afterResponse(async () => {

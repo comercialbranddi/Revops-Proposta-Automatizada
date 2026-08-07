@@ -82,6 +82,20 @@ async function releaseClaim(dealId) {
         .catch((err) => log.warn(`falha ao liberar trava do deal #${dealId}: ${err.message}`));
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Posta nota no card. Falha aqui nunca derruba a geração — a nota é aviso,
+ * não parte do produto.
+ */
+async function postNote(dealId, content) {
+    try {
+        await pdPost('/notes', { deal_id: dealId, content });
+    } catch (err) {
+        log.warn(`não consegui postar nota no deal #${dealId}: ${err.message}`);
+    }
+}
+
 // Janela em que uma nota com o mesmo texto é considerada repetida.
 const NOTE_DEDUPE_MS = 5 * 60 * 1000;
 
@@ -113,9 +127,12 @@ async function postNoteOnce(dealId, content) {
     } catch (err) {
         log.warn(`dedupe de nota falhou, postando mesmo assim: ${err.message}`);
     }
-    await pdPost('/notes', { deal_id: dealId, content });
+    await postNote(dealId, content);
 }
 
+// Auditoria opcional. A equipe optou por rodar sem Supabase (07/08/2026), então
+// na prática isto é no-op: o card é o ÚNICO registro do que aconteceu. É por
+// isso que as notas de falha e de "pulei por causa de X" importam tanto aqui.
 async function logAttempt(dealId, status, extra = {}) {
     if (!supabase) return;
     try {
@@ -125,15 +142,21 @@ async function logAttempt(dealId, status, extra = {}) {
     }
 }
 
-/** Resolve os códigos de produto selecionados no deal, na ordem de cascata. */
+/**
+ * Resolve os produtos do deal, na ordem de cascata, junto com os serviços
+ * selecionados que não têm modelo automatizado.
+ */
 function resolveProductCodes(deal) {
-    const multi = parseServicoOferecido(deal[PROPOSAL_DEAL_FIELDS.SERVICO_OFERECIDO]);
-    if (multi.length > 0) {
-        return PRODUCT_CASCADE_ORDER.filter(code => multi.includes(code));
+    const { codes, semTemplate } = parseServicoOferecido(deal[PROPOSAL_DEAL_FIELDS.SERVICO_OFERECIDO]);
+    // Qualquer coisa marcada em "Serviço oferecido" manda — inclusive quando é
+    // só serviço sem modelo. Cair pro Produto Principal nesse caso produziria
+    // uma proposta que ignora o que o SDR marcou.
+    if (codes.length > 0 || semTemplate.length > 0) {
+        return { codes: PRODUCT_CASCADE_ORDER.filter((code) => codes.includes(code)), semTemplate };
     }
     // Fallback: sem "Serviço oferecido" preenchido, usa o Produto Principal (single).
     const principal = getProductByPrincipalOptionId(deal[PROPOSAL_DEAL_FIELDS.PRODUTO_PRINCIPAL]);
-    return principal ? [principal.code] : [];
+    return { codes: principal ? [principal.code] : [], semTemplate: [] };
 }
 
 /**
@@ -183,7 +206,20 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             await releaseClaim(dealId);
         }
 
-        const productCodes = resolveProductCodes(deal);
+        const { codes: productCodes, semTemplate } = resolveProductCodes(deal);
+
+        // Serviço vendido sem modelo automatizado (Bing, APP, Violação
+        // Comercial, Novos Termos): gerar assim mesmo produziria uma proposta
+        // que não cobre o que foi vendido. Vai pro fluxo manual, avisando.
+        if (semTemplate.length > 0) {
+            log.warn(`deal #${dealId}: "${semTemplate.join(', ')}" sem modelo automatizado — fluxo manual`);
+            if (notifyOnEntry) {
+                await postNoteOnce(dealId, `Proposta NÃO gerada automaticamente — o card tem ${semTemplate.join(', ')} em "Serviço oferecido", e esse serviço não tem modelo automatizado. Monte a proposta manualmente para não deixar o serviço de fora.`);
+            }
+            await logAttempt(dealId, 'skipped_servico_sem_template', { sem_template: semTemplate });
+            return;
+        }
+
         const templateKey = productCodes.join('+'); // "BB" (1 produto) ou "BB+GD" (combinação)
         const template = productCodes.length > 0 && PROPOSAL_TEMPLATES[templateKey];
 
@@ -262,12 +298,31 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
 
         const docUrl = getDocUrl(copyId);
 
-        await pdPut(`/deals/${dealId}`, { [PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA]: docUrl });
+        // Gravar o link é o passo que não pode falhar em silêncio: enquanto ele
+        // não entra, o campo ainda tem a sentinela da trava, que vence em 5 min
+        // e faz o próximo update gerar uma segunda proposta.
+        let linkSaved = false;
+        for (let attempt = 1; attempt <= 3 && !linkSaved; attempt++) {
+            try {
+                await pdPut(`/deals/${dealId}`, { [PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA]: docUrl });
+                linkSaved = true;
+            } catch (err) {
+                log.warn(`deal #${dealId}: tentativa ${attempt}/3 de gravar o link falhou — ${err.message}`);
+                if (attempt < 3) await sleep(500 * attempt);
+            }
+        }
 
-        await pdPost('/notes', {
-            deal_id: dealId,
-            content: `Proposta gerada automaticamente (piloto) — revisar conteúdo antes de enviar.\n${docUrl}`,
-        });
+        if (!linkSaved) {
+            // O documento existe; quem falhou foi o Pipedrive. Entrega o link
+            // pela nota pra ninguém precisar refazer a proposta. Colar o link
+            // no campo também desarma a sentinela e evita a segunda geração.
+            log.error(`deal #${dealId}: proposta gerada mas o link não foi gravado — ${docUrl}`);
+            await postNote(dealId, `Proposta gerada, mas NÃO consegui gravar o campo "Link Proposta" (falha no Pipedrive). Cole o link abaixo no campo manualmente — isso também evita que uma segunda proposta seja gerada:\n${docUrl}`);
+            await logAttempt(dealId, 'error', { error: 'link_write_failed', template_used: templateKey, doc_url: docUrl });
+            return;
+        }
+
+        await postNote(dealId, `Proposta gerada automaticamente (piloto) — revisar conteúdo antes de enviar.\n${docUrl}`);
 
         log.info(`✅ Proposta gerada pro deal #${dealId} (${templateKey}): ${docUrl}`);
         await logAttempt(dealId, 'success', { template_used: templateKey, doc_url: docUrl });
@@ -276,6 +331,10 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         // Sem isso a sentinela ficaria no card até a janela de abandono vencer —
         // liberando na hora, o próximo update do card já pode tentar de novo.
         if (claimed) await releaseClaim(dealId);
+        // Sem banco de auditoria, o card é o único lugar onde o time enxerga
+        // que deu errado. Sem esta nota, falha é indistinguível de "não fez
+        // nada" pra quem está olhando o Pipedrive.
+        await postNoteOnce(dealId, `Proposta NÃO gerada — erro técnico na automação: ${String(err.message).slice(0, 200)}. Monte a proposta manualmente e avise o RevOps.`);
         await logAttempt(dealId, 'error', { error: err.message });
     }
 }

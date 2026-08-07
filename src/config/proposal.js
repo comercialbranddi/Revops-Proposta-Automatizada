@@ -36,17 +36,38 @@ export const SERVICO_OFERECIDO_OPTION_TO_CODE = {
     154: 'VM',
 };
 
+// As demais opções do campo, que não têm modelo automatizado. Rótulos
+// confirmados via GET /dealFields em 07/08/2026. Ficam mapeadas só pra
+// conseguir NOMEAR o que está fora do fluxo na nota do card — antes elas eram
+// descartadas em silêncio e um deal "BB + Bing" virava proposta só de BB.
+export const SERVICO_OFERECIDO_SEM_TEMPLATE = {
+    361: 'Violação Comercial',
+    415: 'APP',
+    416: 'Bing',
+    697: 'Novos Termos',
+};
+
 /**
  * Parseia o valor bruto do campo "Serviço oferecido" (string com IDs
- * separados por vírgula, ex: "152,549") pros nossos códigos de produto.
- * Ignora opções sem mapeamento (produto não automatizado ainda).
+ * separados por vírgula, ex: "152,549").
+ *
+ * Devolve { codes, semTemplate }: os produtos automatizados e os rótulos dos
+ * serviços que não têm modelo. Quem chama PRECISA olhar semTemplate — gerar a
+ * proposta ignorando esses itens produz um documento que não cobre o que foi
+ * vendido.
  */
 export function parseServicoOferecido(rawValue) {
-    if (!rawValue) return [];
-    return String(rawValue)
-        .split(',')
-        .map(id => SERVICO_OFERECIDO_OPTION_TO_CODE[Number(id.trim())])
-        .filter(Boolean);
+    if (!rawValue) return { codes: [], semTemplate: [] };
+    const codes = [];
+    const semTemplate = [];
+    for (const raw of String(rawValue).split(',')) {
+        const id = Number(raw.trim());
+        if (!Number.isFinite(id)) continue;
+        const code = SERVICO_OFERECIDO_OPTION_TO_CODE[id];
+        if (code) codes.push(code);
+        else semTemplate.push(SERVICO_OFERECIDO_SEM_TEMPLATE[id] || `opção ${id}`);
+    }
+    return { codes, semTemplate };
 }
 
 // ─── Feature flags ──────────────────────────────────────────────────
@@ -61,6 +82,16 @@ export const PROPOSAL_TEST_DEAL_ID = process.env.PROPOSAL_TEST_DEAL_ID
 // Secret simples pro endpoint manual de teste (não é o mesmo sistema de auth
 // do Lia — este repo é dedicado e pequeno, não precisa de JWT completo).
 export const PROPOSAL_ADMIN_TOKEN = process.env.PROPOSAL_ADMIN_TOKEN || null;
+
+// Secret do webhook, passado na query pelo Pipedrive (?secret=...), mesmo
+// padrão do webhook do branddi-prospeccao. Sem ele a URL é pública: quem
+// souber o endereço dispara geração em qualquer deal.
+//
+// Enquanto não estiver configurado, o webhook segue aceitando tudo e só loga
+// aviso — assim dá pra subir o código antes de mexer na inscrição do
+// Pipedrive, sem derrubar o fluxo. Configure a env var e acrescente
+// ?secret=<valor> na URL do webhook pra ativar a checagem.
+export const PROPOSAL_WEBHOOK_SECRET = process.env.PROPOSAL_WEBHOOK_SECRET || null;
 
 // ─── Pipeline "5. Vendas" ───────────────────────────────────────────
 export const SALES_PIPELINE_ID = 1;
