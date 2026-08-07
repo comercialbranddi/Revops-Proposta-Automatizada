@@ -116,13 +116,13 @@ export const PRODUCT_PRICE_FIELDS = {
     VM:  '6452627c3f1a8e54d47f38477ef7ecdf92f6428f',
 };
 
-// Produtos que hoje têm preço de tabela nos templates (BB: "R$ 7.900/mês",
-// BBP: "R$ 9.900/mês") — só esses viram placeholder {{PRECO_<código>}} nos
-// docs e exigem preenchimento do SDR. GD e VM não têm modelo de preço ainda
-// (docs dizem "preço a confirmar"/"R$ XXXX/mês" — prosa estática, não
-// placeholder), consistente com GD/VM não terem automação de qualificação
-// própria pra proposta comercial (ver handoff 27/07/2026).
-export const PRICED_PRODUCTS = ['BB', 'BBP'];
+// Todos os 4 produtos têm preço vindo do card — o SDR preenche o campo de
+// cada produto antes de "Envio de proposta" (decisão de 06/08/2026: GD e VM
+// entraram junto com BB/BBP, não ficam mais com "preço a confirmar" estático
+// no doc). Cada código aqui vira placeholder {{PRECO_<código>}} no template e
+// passa a ser obrigatório: sem o campo preenchido, a proposta não é gerada
+// (ver generateProposalForDeal).
+export const PRICED_PRODUCTS = ['BB', 'BBP', 'GD', 'VM'];
 
 // Tamanho do catálogo do cliente (nº de SKUs monitorados) — só o bloco de
 // BBP cita isso ("até XX SKUs na Proposta Comercial"). Varia muito por
