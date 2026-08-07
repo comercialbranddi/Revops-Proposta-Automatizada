@@ -37,6 +37,85 @@ function formatBRL(value) {
     return `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}/mês`;
 }
 
+// ─── Trava contra geração duplicada ─────────────────────────────────
+// O webhook reage a QUALQUER update do card na fase, então dois eventos quase
+// simultâneos (troca de fase + alteração de campo, ou retry do Pipedrive)
+// chegavam juntos: os dois liam "Link Proposta" vazio, os dois passavam pela
+// checagem e os dois geravam um documento. Aconteceu de verdade no piloto —
+// dois pares de propostas com 1 segundo de diferença em 05/08/2026.
+//
+// A trava é o próprio campo "Link Proposta": quem vai gerar escreve antes uma
+// sentinela com token único e relê o campo. Como o Pipedrive é last-write-wins,
+// só uma das execuções encontra o próprio token na releitura — as outras
+// desistem. Não depende do Supabase estar configurado.
+const CLAIM_PREFIX = '⏳ gerando proposta';
+const CLAIM_RE = /^⏳ gerando proposta \| (\S+) \| (\S+)$/;
+// Se uma execução morrer no meio (timeout da Vercel, por exemplo), a sentinela
+// fica pra trás. Depois desta janela ela é considerada abandonada e o próximo
+// update no card retoma a geração.
+const STALE_CLAIM_MS = 5 * 60 * 1000;
+
+const claimValue = (token) => `${CLAIM_PREFIX} | ${new Date().toISOString()} | ${token}`;
+
+function parseClaim(value) {
+    const m = typeof value === 'string' && value.match(CLAIM_RE);
+    if (!m) return null;
+    const at = Date.parse(m[1]);
+    return { token: m[2], at, stale: !Number.isFinite(at) || Date.now() - at > STALE_CLAIM_MS };
+}
+
+/**
+ * Tenta virar o dono da geração deste deal. Devolve true só pra UMA execução
+ * concorrente. Escreve a sentinela e confirma relendo o card.
+ */
+async function claimDeal(dealId) {
+    const token = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    await pdPut(`/deals/${dealId}`, { [PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA]: claimValue(token) });
+    const check = await pdGet(`/deals/${dealId}`);
+    const claim = parseClaim(check?.data?.[PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA]);
+    return claim?.token === token;
+}
+
+/** Libera a trava (volta o campo pra vazio) quando a geração não vai acontecer. */
+async function releaseClaim(dealId) {
+    await pdPut(`/deals/${dealId}`, { [PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA]: '' })
+        .catch((err) => log.warn(`falha ao liberar trava do deal #${dealId}: ${err.message}`));
+}
+
+// Janela em que uma nota com o mesmo texto é considerada repetida.
+const NOTE_DEDUPE_MS = 5 * 60 * 1000;
+
+/**
+ * Posta nota evitando repetir a mesma mensagem em janela curta.
+ *
+ * As notas de entrada ("falta preencher", "proposta já existe") não passam
+ * pela trava de geração — ela só é pega bem depois, na hora de copiar o
+ * modelo. Se o Pipedrive mandar mais de um evento de entrada pro mesmo fato,
+ * o card recebe a nota duas vezes. Este dedupe fecha esse caminho.
+ *
+ * Falha aqui nunca impede a nota: no erro, posta assim mesmo.
+ */
+async function postNoteOnce(dealId, content) {
+    try {
+        const res = await pdGet(`/notes?deal_id=${dealId}&limit=20&sort=add_time%20DESC`);
+        const cutoff = Date.now() - NOTE_DEDUPE_MS;
+        const key = content.slice(0, 60);
+        const repeated = (res?.data || []).some((n) => {
+            // add_time vem como "2026-08-07 09:52:42" (UTC, sem marcador).
+            const at = Date.parse(`${String(n.add_time).replace(' ', 'T')}Z`);
+            const plain = String(n.content || '').replace(/<[^>]*>/g, '');
+            return plain.includes(key) && Number.isFinite(at) && at >= cutoff;
+        });
+        if (repeated) {
+            log.info(`deal #${dealId}: nota repetida ignorada ("${key.slice(0, 40)}...")`);
+            return;
+        }
+    } catch (err) {
+        log.warn(`dedupe de nota falhou, postando mesmo assim: ${err.message}`);
+    }
+    await pdPost('/notes', { deal_id: dealId, content });
+}
+
 async function logAttempt(dealId, status, extra = {}) {
     if (!supabase) return;
     try {
@@ -62,12 +141,16 @@ function resolveProductCodes(deal) {
  * Nunca lança — qualquer falha é logada e o card segue no fluxo manual normal.
  *
  * Se faltar campo obrigatório (preço/catálogo), NÃO gera documento nenhum —
- * só avisa por nota (quando notifyIfIncomplete=true). O deal fica "pendente"
+ * só avisa por nota (quando notifyOnEntry=true). O deal fica "pendente"
  * (sem Link Proposta) até alguém preencher o campo; nesse momento, uma nova
  * chamada (disparada por qualquer update no card enquanto ele está na fase
  * "Envio de proposta", ver webhook) encontra os campos completos e gera.
+ *
+ * notifyOnEntry liga as notas explicativas (falta campo / proposta já existe).
+ * Só vem true na ENTRADA na fase, pra não encher o card de nota a cada update.
  */
-export async function generateProposalForDeal(dealId, { notifyIfIncomplete = false } = {}) {
+export async function generateProposalForDeal(dealId, { notifyOnEntry = false } = {}) {
+    let claimed = false;
     try {
         const dealRes = await pdGet(`/deals/${dealId}`);
         const deal = dealRes?.data;
@@ -77,8 +160,27 @@ export async function generateProposalForDeal(dealId, { notifyIfIncomplete = fal
             return;
         }
 
-        if (deal[PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA]) {
-            return; // já gerada antes — updates seguintes no card não fazem nada
+        const existingLink = deal[PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA];
+        const existingClaim = parseClaim(existingLink);
+        if (existingLink && !existingClaim) {
+            // Já gerada antes — não regera. Mas avisa na entrada: sem a nota,
+            // quem move o card e não vê nada acontecer não consegue distinguir
+            // "já existe" de "a automação quebrou".
+            if (notifyOnEntry) {
+                await postNoteOnce(dealId, 'Proposta já existe neste card (ver o campo "Link Proposta") — não foi gerada de novo. Para gerar outra, limpe o campo "Link Proposta".');
+                await logAttempt(dealId, 'skipped_already_generated', { doc_url: existingLink });
+            }
+            return;
+        }
+        if (existingClaim && !existingClaim.stale) {
+            log.info(`deal #${dealId}: outra execução já está gerando — ignorando este evento`);
+            return;
+        }
+        if (existingClaim) {
+            // Limpa já: se este evento parar antes de gerar (falta preço, por
+            // exemplo), o card não fica exibindo a sentinela no "Link Proposta".
+            log.warn(`deal #${dealId}: trava abandonada há mais de ${STALE_CLAIM_MS / 60000} min — retomando`);
+            await releaseClaim(dealId);
         }
 
         const productCodes = resolveProductCodes(deal);
@@ -95,12 +197,10 @@ export async function generateProposalForDeal(dealId, { notifyIfIncomplete = fal
         const decisorName = deal.person_name || deal.person_id?.name || orgName;
 
         // Preço é negociado por cliente (não é tabela fixa), então cada
-        // produto com preço hoje (PRICED_PRODUTOS: BB e BBP) tem seu próprio
-        // campo no Pipedrive (preenchido pelo SDR) e seu próprio placeholder
-        // no doc ({{PRECO_BB}}, {{PRECO_BBP}}) — vale igual pra proposta de
-        // produto único ou combinação. GD e VM ainda não têm preço de tabela
-        // (docs dizem "preço a confirmar" como prosa estática, sem
-        // placeholder), então ficam de fora da substituição.
+        // produto tem seu próprio campo no Pipedrive (preenchido pelo SDR) e
+        // seu próprio placeholder no doc ({{PRECO_BB}}, {{PRECO_BBP}},
+        // {{PRECO_GD}}, {{PRECO_VM}}) — vale igual pra proposta de produto
+        // único ou combinação.
         const pricedCodes = productCodes.filter((code) => PRICED_PRODUCTS.includes(code));
         const priceReplacements = Object.fromEntries(pricedCodes.map((code) => [
             `{{PRECO_${code}}}`,
@@ -117,13 +217,19 @@ export async function generateProposalForDeal(dealId, { notifyIfIncomplete = fal
 
         if (missingFields.length > 0) {
             log.warn(`deal #${dealId}: falta ${missingFields.join(', ')} — proposta não gerada ainda`);
-            if (notifyIfIncomplete) {
-                await pdPost('/notes', {
-                    deal_id: dealId,
-                    content: `Proposta NÃO gerada — falta preencher ${missingFields.join(', ')} no card. Assim que for preenchido, a proposta é gerada automaticamente.`,
-                });
+            if (notifyOnEntry) {
+                await postNoteOnce(dealId, `Proposta NÃO gerada — falta preencher ${missingFields.join(', ')} no card. Assim que for preenchido, a proposta é gerada automaticamente.`);
             }
-            await logAttempt(dealId, 'skipped_missing_fields', { missing: missingFields, notified: notifyIfIncomplete });
+            await logAttempt(dealId, 'skipped_missing_fields', { missing: missingFields, notified: notifyOnEntry });
+            return;
+        }
+
+        // A trava só é pega aqui, depois de todas as checagens baratas — assim
+        // um card com preço faltando não fica escrevendo no campo a cada update.
+        claimed = await claimDeal(dealId);
+        if (!claimed) {
+            log.info(`deal #${dealId}: outra execução ganhou a trava — ignorando este evento`);
+            await logAttempt(dealId, 'skipped_concurrent', { template_used: templateKey });
             return;
         }
 
@@ -158,6 +264,9 @@ export async function generateProposalForDeal(dealId, { notifyIfIncomplete = fal
         await logAttempt(dealId, 'success', { template_used: templateKey, doc_url: docUrl });
     } catch (err) {
         log.error(`deal #${dealId} falhou: ${err.message}`);
+        // Sem isso a sentinela ficaria no card até a janela de abandono vencer —
+        // liberando na hora, o próximo update do card já pode tentar de novo.
+        if (claimed) await releaseClaim(dealId);
         await logAttempt(dealId, 'error', { error: err.message });
     }
 }

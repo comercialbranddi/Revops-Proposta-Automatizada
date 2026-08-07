@@ -5,7 +5,10 @@
 CREATE TABLE IF NOT EXISTS proposal_generation_log (
     id BIGSERIAL PRIMARY KEY,
     deal_id BIGINT NOT NULL,
-    status TEXT NOT NULL, -- 'success' | 'error' | 'skipped_no_template'
+    -- 'success' | 'error' | 'skipped_no_template' | 'skipped_missing_fields'
+    -- | 'skipped_concurrent' (perdeu a trava pra outra execução do webhook)
+    -- | 'skipped_already_generated' (card já tinha Link Proposta preenchido)
+    status TEXT NOT NULL,
     template_used TEXT,
     doc_url TEXT,
     error TEXT,

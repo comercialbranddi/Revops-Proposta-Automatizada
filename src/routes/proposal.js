@@ -21,8 +21,9 @@ const router = Router();
 // na entrada se "Link Proposta" já estiver preenchido), então chamar de
 // novo em updates seguintes é seguro.
 //
-// notifyIfIncomplete só é true na ENTRADA — evita spam de nota a cada
-// update enquanto o SDR ainda está preenchendo outros campos do card.
+// notifyOnEntry só é true na ENTRADA — evita spam de nota a cada update
+// enquanto o SDR ainda está preenchendo outros campos do card. É ele que
+// libera as notas de "falta campo" e de "proposta já existe".
 //
 // afterResponse é OBRIGATÓRIO aqui: no Vercel a função serverless congela
 // assim que res.json() é chamado — sem isso, o trabalho async (Google Docs,
@@ -48,7 +49,7 @@ router.post('/webhook/deal', (req, res) => {
 
         const isEntry = prevStageId !== ENVIO_PROPOSTA_STAGE_ID;
         log.info(`Deal #${dealId} em Envio de proposta (${isEntry ? 'entrada' : 'campo atualizado'}) — avaliando geração`);
-        await generateProposalForDeal(dealId, { notifyIfIncomplete: isEntry });
+        await generateProposalForDeal(dealId, { notifyOnEntry: isEntry });
     });
 });
 
@@ -67,7 +68,7 @@ router.post('/generate/:dealId', async (req, res) => {
         return res.status(403).json({ error: 'Automação desligada ou deal fora do piloto' });
     }
     try {
-        await generateProposalForDeal(dealId, { notifyIfIncomplete: true });
+        await generateProposalForDeal(dealId, { notifyOnEntry: true });
         res.json({ success: true, dealId });
     } catch (err) {
         res.status(500).json({ error: err.message });
