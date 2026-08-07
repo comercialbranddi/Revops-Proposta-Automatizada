@@ -81,7 +81,7 @@ export async function findOrCreateFolder(name, parentId) {
     const q = `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' `
         + `and name = '${safeName}' and trashed = false`;
     const listUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`
-        + '&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true';
+        + '&fields=files(id,name,createdTime)&supportsAllDrives=true&includeItemsFromAllDrives=true';
 
     const found = await (await authedFetch(listUrl)).json();
     if (found.files?.length) return found.files[0].id;
@@ -91,6 +91,21 @@ export async function findOrCreateFolder(name, parentId) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
     })).json();
+
+    // A trava de geração é por deal, não por cliente: dois deals da mesma
+    // organização nova podem criar a pasta ao mesmo tempo. Relê e fica com a
+    // mais antiga; se a nossa perdeu, apaga — acabou de nascer e está vazia.
+    const depois = await (await authedFetch(listUrl)).json();
+    const maisAntiga = (depois.files || []).slice()
+        .sort((a, b) => String(a.createdTime).localeCompare(String(b.createdTime)))[0];
+
+    if (maisAntiga && maisAntiga.id !== created.id) {
+        log.warn(`📁 corrida na criação de "${name}" — usando a pasta mais antiga e removendo a duplicada`);
+        await authedFetch(`https://www.googleapis.com/drive/v3/files/${created.id}?supportsAllDrives=true`, { method: 'DELETE' })
+            .catch((err) => log.warn(`não consegui remover a pasta duplicada: ${err.message}`));
+        return maisAntiga.id;
+    }
+
     log.info(`📁 Pasta do cliente criada: "${name}" (${created.id})`);
     return created.id;
 }
