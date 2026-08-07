@@ -68,6 +68,34 @@ export async function copyTemplate(templateDocId, newName, destFolderId) {
 }
 
 /**
+ * Acha (ou cria) uma subpasta pelo nome dentro de parentId.
+ *
+ * A proposta vai pra pasta do cliente em vez de cair toda na raiz — com vários
+ * cards gerando, a raiz vira uma lista chapada impossível de consultar. Agrupar
+ * por cliente mantém o histórico dele junto (renegociação, upsell).
+ */
+export async function findOrCreateFolder(name, parentId) {
+    if (!parentId || !name) return null;
+    // Nome vai dentro de string na query do Drive — escapa aspas simples.
+    const safeName = String(name).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const q = `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' `
+        + `and name = '${safeName}' and trashed = false`;
+    const listUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`
+        + '&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true';
+
+    const found = await (await authedFetch(listUrl)).json();
+    if (found.files?.length) return found.files[0].id;
+
+    const created = await (await authedFetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
+    })).json();
+    log.info(`📁 Pasta do cliente criada: "${name}" (${created.id})`);
+    return created.id;
+}
+
+/**
  * Substitui placeholders no documento copiado.
  * @param {string} docId
  * @param {Record<string,string>} replacements — chave = texto literal a buscar, valor = substituição

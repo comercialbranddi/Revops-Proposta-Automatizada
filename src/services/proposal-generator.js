@@ -16,7 +16,7 @@
  * cadastrado ainda, a automação pula e o card segue no fluxo manual.
  */
 import { pdGet, pdPut, pdPost } from './pipedrive.js';
-import { copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl } from './google-docs-client.js';
+import { copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl, findOrCreateFolder } from './google-docs-client.js';
 import {
     PROPOSAL_TEMPLATES, PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS, PRICED_PRODUCTS,
     CATALOGO_BBP_FIELD, getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
@@ -233,8 +233,17 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             return;
         }
 
-        const newName = `Proposta_${orgName}_${templateKey}_${new Date().toISOString().slice(0, 10)}`;
-        const copyId = await copyTemplate(template.docId, newName, PROPOSAL_OUTPUT_FOLDER_ID);
+        // Uma pasta por cliente, e o nº do card no nome — quem abre o doc pelo
+        // Drive consegue voltar pro Pipedrive sem caçar.
+        const newName = `Proposta_${orgName}_${templateKey}_${new Date().toISOString().slice(0, 10)}_deal${dealId}`;
+        let destFolderId = PROPOSAL_OUTPUT_FOLDER_ID;
+        try {
+            destFolderId = await findOrCreateFolder(orgName, PROPOSAL_OUTPUT_FOLDER_ID) || PROPOSAL_OUTPUT_FOLDER_ID;
+        } catch (err) {
+            // Problema de pasta não pode custar a proposta — cai pra raiz.
+            log.warn(`pasta do cliente "${orgName}" falhou, salvando na raiz: ${err.message}`);
+        }
+        const copyId = await copyTemplate(template.docId, newName, destFolderId);
 
         // "XX de [mês] de [ano]" é substituído como frase única — o "XX" de
         // catálogo já foi trocado por {{CATALOGO_BBP}} nos templates, então
