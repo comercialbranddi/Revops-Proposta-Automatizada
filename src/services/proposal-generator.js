@@ -26,15 +26,37 @@ import supabase from './supabase-client.js';
 
 const log = getContextLogger('services:proposal-generator');
 
+// A Vercel roda em UTC. Sem fixar o fuso, toda proposta emitida depois das 21h
+// no Brasil sairia datada do dia seguinte — no texto e no nome do arquivo.
+const TZ = 'America/Sao_Paulo';
+
 function formatDateBR(date = new Date()) {
-    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    return `${date.getDate().toString().padStart(2, '0')} de ${meses[date.getMonth()]} de ${date.getFullYear()}`;
+    const partes = Object.fromEntries(
+        new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, day: '2-digit', month: 'long', year: 'numeric' })
+            .formatToParts(date).map((p) => [p.type, p.value]),
+    );
+    const mes = partes.month.charAt(0).toUpperCase() + partes.month.slice(1);
+    return `${partes.day} de ${mes} de ${partes.year}`;
+}
+
+/** AAAA-MM-DD no fuso de São Paulo (en-CA já devolve nesse formato). */
+function isoDateBR(date = new Date()) {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' })
+        .format(date);
 }
 
 function formatBRL(value) {
-    if (value == null) return null;
-    return `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}/mês`;
+    const n = Number(value);
+    if (value == null || !Number.isFinite(n)) return null;
+    // Preço redondo não mostra centavos; 7900,5 mostra "R$ 7.900,50/mês".
+    const casas = Number.isInteger(n) ? 0 : 2;
+    return `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })}/mês`;
+}
+
+/** Valor de campo numérico que conta como "preenchido": número > 0. */
+function isPreenchido(value) {
+    const n = Number(value);
+    return value != null && value !== '' && Number.isFinite(n) && n > 0;
 }
 
 // ─── Trava contra geração duplicada ─────────────────────────────────
@@ -151,12 +173,19 @@ function resolveProductCodes(deal) {
     // Qualquer coisa marcada em "Serviço oferecido" manda — inclusive quando é
     // só serviço sem modelo. Cair pro Produto Principal nesse caso produziria
     // uma proposta que ignora o que o SDR marcou.
+    const principal = getProductByPrincipalOptionId(deal[PROPOSAL_DEAL_FIELDS.PRODUTO_PRINCIPAL]);
+
     if (codes.length > 0 || semTemplate.length > 0) {
-        return { codes: PRODUCT_CASCADE_ORDER.filter((code) => codes.includes(code)), semTemplate };
+        const ordenados = PRODUCT_CASCADE_ORDER.filter((code) => codes.includes(code));
+        // Divergência entre os dois campos não muda o resultado (o multi-select
+        // manda), mas quase sempre significa "Produto Principal" desatualizado.
+        if (principal && ordenados.length && !ordenados.includes(principal.code)) {
+            log.warn(`deal #${deal.id}: "Produto Principal" (${principal.code}) não está em "Serviço oferecido" (${ordenados.join('+')}) — usando o Serviço oferecido`);
+        }
+        return { codes: ordenados, semTemplate, origem: 'servico' };
     }
     // Fallback: sem "Serviço oferecido" preenchido, usa o Produto Principal (single).
-    const principal = getProductByPrincipalOptionId(deal[PROPOSAL_DEAL_FIELDS.PRODUTO_PRINCIPAL]);
-    return { codes: principal ? [principal.code] : [], semTemplate: [] };
+    return { codes: principal ? [principal.code] : [], semTemplate: [], origem: 'principal' };
 }
 
 /**
@@ -206,7 +235,7 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             await releaseClaim(dealId);
         }
 
-        const { codes: productCodes, semTemplate } = resolveProductCodes(deal);
+        const { codes: productCodes, semTemplate, origem } = resolveProductCodes(deal);
 
         // Serviço vendido sem modelo automatizado (Bing, APP, Violação
         // Comercial, Novos Termos): gerar assim mesmo produziria uma proposta
@@ -229,7 +258,11 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             return;
         }
 
-        const orgName = deal.org_name || deal.org_id?.name || 'Cliente';
+        // A organização vira {{MARCA}} no corpo da proposta e dá nome à pasta do
+        // cliente no Drive. Sem ela o documento sai dizendo "monitoramento da
+        // marca Cliente" — por isso é obrigatória, igual preço, em vez de ter um
+        // valor padrão.
+        const orgName = deal.org_name || deal.org_id?.name || null;
         const decisorName = deal.person_name || deal.person_id?.name || orgName;
 
         // Preço é negociado por cliente (não é tabela fixa), então cada
@@ -242,14 +275,18 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             `{{PRECO_${code}}}`,
             formatBRL(deal[PRODUCT_PRICE_FIELDS[code]]),
         ]));
-        const missingFields = pricedCodes
-            .filter((code) => deal[PRODUCT_PRICE_FIELDS[code]] == null)
-            .map((code) => `Preço ${code}`);
+        // "Preenchido" é número > 0: zero não é preço nem tamanho de catálogo,
+        // e antes passava na checagem e saía "R$ 0/mês" na proposta.
+        const missingFields = [];
+        if (!orgName) missingFields.push('Organização do negócio (o nome dela vai no texto da proposta)');
+        missingFields.push(...pricedCodes
+            .filter((code) => !isPreenchido(deal[PRODUCT_PRICE_FIELDS[code]]))
+            .map((code) => `Preço ${code}`));
 
         // Catálogo (nº de SKUs) só aparece no bloco de BBP ("até XX SKUs")
         // e varia por cliente, então também vem do card (preenchido pelo SDR).
         const catalogoBBP = productCodes.includes('BBP') ? deal[CATALOGO_BBP_FIELD] : null;
-        if (productCodes.includes('BBP') && catalogoBBP == null) missingFields.push('Catálogo BBP (SKUs)');
+        if (productCodes.includes('BBP') && !isPreenchido(catalogoBBP)) missingFields.push('Catálogo BBP (SKUs)');
 
         if (missingFields.length > 0) {
             log.warn(`deal #${dealId}: falta ${missingFields.join(', ')} — proposta não gerada ainda`);
@@ -271,7 +308,7 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
 
         // Uma pasta por cliente, e o nº do card no nome — quem abre o doc pelo
         // Drive consegue voltar pro Pipedrive sem caçar.
-        const newName = `Proposta_${orgName}_${templateKey}_${new Date().toISOString().slice(0, 10)}_deal${dealId}`;
+        const newName = `Proposta_${orgName}_${templateKey}_${isoDateBR()}_deal${dealId}`;
         let destFolderId = PROPOSAL_OUTPUT_FOLDER_ID;
         try {
             destFolderId = await findOrCreateFolder(orgName, PROPOSAL_OUTPUT_FOLDER_ID) || PROPOSAL_OUTPUT_FOLDER_ID;
@@ -322,7 +359,13 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             return;
         }
 
-        await postNote(dealId, `Proposta gerada automaticamente (piloto) — revisar conteúdo antes de enviar.\n${docUrl}`);
+        // Quando o produto veio do "Produto Principal" (porque "Serviço
+        // oferecido" estava vazio), a nota diz de onde saiu — é o caso em que a
+        // automação tem mais chance de escolher o modelo errado sem ninguém ver.
+        const origemAviso = origem === 'principal'
+            ? `\n\nAtenção: o produto foi deduzido do campo "Produto Principal" porque "Serviço oferecido" está vazio. Confira se ${templateKey} é mesmo o que foi vendido.`
+            : '';
+        await postNote(dealId, `Proposta gerada automaticamente (piloto) — revisar conteúdo antes de enviar.\n${docUrl}${origemAviso}`);
 
         log.info(`✅ Proposta gerada pro deal #${dealId} (${templateKey}): ${docUrl}`);
         await logAttempt(dealId, 'success', { template_used: templateKey, doc_url: docUrl });
