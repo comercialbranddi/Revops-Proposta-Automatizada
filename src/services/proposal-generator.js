@@ -19,7 +19,7 @@ import { pdGet, pdPut, pdPost } from './pipedrive.js';
 import { copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl, findOrCreateFolder } from './google-docs-client.js';
 import {
     PROPOSAL_TEMPLATES, PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS, PRICED_PRODUCTS,
-    CATALOGO_BBP_FIELD, getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
+    CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD, getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
 import supabase from './supabase-client.js';
@@ -288,6 +288,11 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         const catalogoBBP = productCodes.includes('BBP') ? deal[CATALOGO_BBP_FIELD] : null;
         if (productCodes.includes('BBP') && !isPreenchido(catalogoBBP)) missingFields.push('Catálogo BBP (SKUs)');
 
+        // Mesma ideia pro bloco de BB ("Até XX palavras"): o modelo trazia 3
+        // fixo, mas as propostas reais saem com 2 ou 3 conforme a negociação.
+        const palavrasBB = productCodes.includes('BB') ? deal[PALAVRAS_BB_FIELD] : null;
+        if (productCodes.includes('BB') && !isPreenchido(palavrasBB)) missingFields.push('Palavras-chave BB (qtd)');
+
         if (missingFields.length > 0) {
             log.warn(`deal #${dealId}: falta ${missingFields.join(', ')} — proposta não gerada ainda`);
             if (notifyOnEntry) {
@@ -325,7 +330,9 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             'XX de [mês] de [ano]': formatDateBR(),
             '{{MARCA}}': orgName,
             '{{DECISOR}}': decisorName,
-            '{{CATALOGO_BBP}}': catalogoBBP != null ? String(catalogoBBP) : null,
+            // Number() evita "150.0" virar texto no documento.
+            '{{CATALOGO_BBP}}': catalogoBBP != null ? String(Number(catalogoBBP)) : null,
+            '{{PALAVRAS_BB}}': palavrasBB != null ? String(Number(palavrasBB)) : null,
             ...priceReplacements,
         });
 

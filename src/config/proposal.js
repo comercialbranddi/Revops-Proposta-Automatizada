@@ -105,10 +105,16 @@ export const ENVIO_PROPOSTA_STAGE_ID = 257;
 // de produto único. Se o deal tiver uma combinação sem modelo cadastrado,
 // a automação pula e o card segue no fluxo manual.
 export const PROPOSAL_TEMPLATES = {
-    BB:  { docId: '1HLLwQgcidwtfHAf1C2Jgo7yOXDkqOzqzNon-52XC9x4', label: 'Brand Bidding' },
-    BBP: { docId: '1GS_3YCW0zgfPhCrEp_u8to6l4uJ4hlk2h4D3572bb_E', label: 'Buy Box Protection' },
-    GD:  { docId: '1J00b_DjEcDincmgvscMG28XoJNWu_XcWTqsGvy_jeXM', label: 'Golpes Digitais' },
-    VM:  { docId: '15EyaxG9aBNQ2dnu6moiPm_okzY-C3Gw_l5pKJY_ykOA', label: 'Violação de Marca' },
+    // Bases trocados em 10/08/2026: o time optou por voltar aos modelos que já
+    // usava manualmente (pasta "Modelo Propostas"), em vez dos redigidos pro
+    // piloto. Estes são cópias daqueles, importadas pro Drive Compartilhado e
+    // com os placeholders inseridos — os originais do time seguem intactos.
+    // No vocabulário antigo, Fraude (FR) = Golpes Digitais e Violação
+    // Comercial (VC) era o nome anterior do Buy Box Protection.
+    BB:  { docId: '1HCk8jYDW3TeGMkw_XsIrUY95wZIM4-JdAWq6zBo-Q2Y', label: 'Brand Bidding' },
+    BBP: { docId: '1VcqZiITQnPhMdFhceOtYVPCXVuwY8lrXFSE848TOxL8', label: 'Buy Box Protection' },
+    GD:  { docId: '1WOIoQHsjKDlGixola3WblqfxgHotINaWiN7Y6u2dbNA', label: 'Golpes Digitais' },
+    VM:  { docId: '1iE20XbTEuFXBJw3t2EtXERqwC1ard3yIGrVX0Oi4lxA', label: 'Violação de Marca' },
     'BB+BBP': { docId: '1bg2tA4fjsVpl_Y-M4gHWwR137U4y718dDf3vHIbotd4', label: 'Brand Bidding + Buy Box Protection' },
     'BB+GD':  { docId: '1d8kmo07JoeNlB7TtzfwvnSJ2iQjTNlapxe8JvO_Digs', label: 'Brand Bidding + Golpes Digitais' },
     'BB+VM':  { docId: '1diZPWS1oQxAqAi95sVt7x2Y1qIz5h_iNRsxIoE_VcSs', label: 'Brand Bidding + Violação de Marca' },
@@ -161,6 +167,19 @@ export const PRICED_PRODUCTS = ['BB', 'BBP', 'GD', 'VM'];
 // do BB), então também é preenchido pelo SDR antes de "Envio de proposta".
 // Campo criado via API em 05/08/2026.
 export const CATALOGO_BBP_FIELD = '730d76b0c20d2ab3a62665569899646b9cad143d';
+
+// Quantidade de palavras-chave monitoradas — só o bloco de BB cita ("Até XX
+// palavras"). O modelo antigo trazia "Até 3 palavras" fixo, mas as propostas
+// reais de agosto/2026 saíram com 2 e com 3: é negociado, igual ao catálogo do
+// BBP. Campo criado via API em 10/08/2026.
+export const PALAVRAS_BB_FIELD = '0d5efa1df20cbf097c23364d5ea69124f6c126ac';
+
+// Valor fechado do pacote, usado no bloco "De R$ X / Por: R$ Y" das propostas
+// combinadas — o "De" é a soma dos preços dos produtos (a automação calcula) e
+// o "Por" é o negociado, que só existe se alguém digitar. O campo ainda não foi
+// criado no Pipedrive; enquanto for null, o bloco de desconto não é montado e a
+// proposta combinada lista os produtos com o preço cheio de cada um.
+export const VALOR_PACOTE_FIELD = process.env.PROPOSAL_VALOR_PACOTE_FIELD || null;
 
 /** True se a automação deve rodar para este deal, dado o estado atual do piloto. */
 export function isProposalAutomationEnabledForDeal(dealId) {
