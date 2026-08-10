@@ -57,6 +57,8 @@ const TROCAS = {
         // O modelo antigo tinha a data de emissão chumbada, não um marcador.
         ['29 de janeiro de 2026', DATA_ALVO],
         ['R$ 4.900,00/mes', '{{PRECO_VM}}'],
+        // Aparece em dois pontos: nas Especificações e na Proposta Comercial.
+        ['Até 3 marketplaces', 'Até {{PLATAFORMAS_VM}} marketplaces'],
     ],
     GD: [
         ['Para: XXX', 'Para: {{DECISOR}}'],

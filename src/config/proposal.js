@@ -174,12 +174,22 @@ export const CATALOGO_BBP_FIELD = '730d76b0c20d2ab3a62665569899646b9cad143d';
 // BBP. Campo criado via API em 10/08/2026.
 export const PALAVRAS_BB_FIELD = '0d5efa1df20cbf097c23364d5ea69124f6c126ac';
 
+// Quantidade de marketplaces monitorados — só o bloco de VM cita ("Até N
+// marketplaces monitorados simultaneamente"), em dois pontos do documento.
+// Campo criado via API em 10/08/2026.
+export const PLATAFORMAS_VM_FIELD = '8d6b50fbd2064b2b942f75100aeb432a6a063632';
+
 // Valor fechado do pacote, usado no bloco "De R$ X / Por: R$ Y" das propostas
-// combinadas — o "De" é a soma dos preços dos produtos (a automação calcula) e
-// o "Por" é o negociado, que só existe se alguém digitar. O campo ainda não foi
-// criado no Pipedrive; enquanto for null, o bloco de desconto não é montado e a
-// proposta combinada lista os produtos com o preço cheio de cada um.
-export const VALOR_PACOTE_FIELD = process.env.PROPOSAL_VALOR_PACOTE_FIELD || null;
+// combinadas: o "De" é a soma dos preços dos produtos (a automação calcula) e o
+// "Por" é o negociado. NÃO é obrigatório — vazio significa "sem desconto", e o
+// combo sai listando os produtos com o preço cheio de cada um.
+export const VALOR_PACOTE_FIELD = '798658c516d673cf29f1c1cd17e9c56e46977ddf';
+
+// Idioma da proposta. Criado junto com os demais pra já entrar no fluxo de
+// preenchimento do closer, mas ainda sem uso: só existe modelo em português.
+// Quando houver EN/ES, é esta chave que escolhe o conjunto de modelos.
+export const IDIOMA_FIELD = '9c95729a15906d4c92843a4fc2c6e79615f103b8';
+export const IDIOMA_OPTION_TO_CODE = { 1588: 'pt', 1589: 'en', 1590: 'es' };
 
 /** True se a automação deve rodar para este deal, dado o estado atual do piloto. */
 export function isProposalAutomationEnabledForDeal(dealId) {

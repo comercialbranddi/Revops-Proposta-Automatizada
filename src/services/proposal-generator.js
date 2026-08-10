@@ -19,7 +19,8 @@ import { pdGet, pdPut, pdPost } from './pipedrive.js';
 import { copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl, findOrCreateFolder } from './google-docs-client.js';
 import {
     PROPOSAL_TEMPLATES, PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS, PRICED_PRODUCTS,
-    CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD, getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
+    CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD,
+    getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
 import supabase from './supabase-client.js';
@@ -293,6 +294,10 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         const palavrasBB = productCodes.includes('BB') ? deal[PALAVRAS_BB_FIELD] : null;
         if (productCodes.includes('BB') && !isPreenchido(palavrasBB)) missingFields.push('Palavras-chave BB (qtd)');
 
+        // E no VM ("Até N marketplaces monitorados simultaneamente").
+        const plataformasVM = productCodes.includes('VM') ? deal[PLATAFORMAS_VM_FIELD] : null;
+        if (productCodes.includes('VM') && !isPreenchido(plataformasVM)) missingFields.push('Plataformas VM (qtd)');
+
         if (missingFields.length > 0) {
             log.warn(`deal #${dealId}: falta ${missingFields.join(', ')} — proposta não gerada ainda`);
             if (notifyOnEntry) {
@@ -333,6 +338,7 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             // Number() evita "150.0" virar texto no documento.
             '{{CATALOGO_BBP}}': catalogoBBP != null ? String(Number(catalogoBBP)) : null,
             '{{PALAVRAS_BB}}': palavrasBB != null ? String(Number(palavrasBB)) : null,
+            '{{PLATAFORMAS_VM}}': plataformasVM != null ? String(Number(plataformasVM)) : null,
             ...priceReplacements,
         });
 
