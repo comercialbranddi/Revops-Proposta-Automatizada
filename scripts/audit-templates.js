@@ -41,6 +41,12 @@ function countTables(content) {
 const client = getClient();
 const { token } = await client.getAccessToken();
 
+// O padrão não é fixo: é o que os modelos-base usam. Quando os bases trocaram
+// (H1+H2 do piloto para H2+H3+H4 dos modelos antigos), um critério chumbado
+// reprovaria os onze combos sem que nada estivesse errado com eles.
+let padraoHeadings = null;
+let caixasPorBase = {};
+
 console.log('modelo          caixas  negrito  headings      placeholders');
 console.log('─'.repeat(96));
 
@@ -63,13 +69,22 @@ for (const [key, { docId }] of Object.entries(PROPOSAL_TEMPLATES)) {
         const ph = [...new Set(text.match(/\{\{[A-Z_]+\}\}/g) || [])].length;
 
         const isBase = BASES.includes(key);
-        // Um combo saudável tem caixa, negrito e os dois níveis de heading.
-        const ok = boxes > 0 && bold > 0 && heads.length === 2;
-        const flag = isBase ? '·' : (ok ? '✅' : '❌');
+        const assinatura = heads.map((h) => h.replace('HEADING_', 'H')).join('+') || '—';
+        if (isBase) {
+            padraoHeadings ??= assinatura;
+            caixasPorBase[key] = boxes;
+        }
+
+        // Combo saudável: mesma hierarquia dos bases e a soma exata das caixas
+        // dos produtos que o compõem — caixa a menos é seção que se perdeu.
+        const esperado = isBase ? boxes
+            : key.split('+').reduce((n, c) => n + (caixasPorBase[c] ?? 0), 0);
+        const ok = bold > 0 && assinatura === padraoHeadings && boxes === esperado;
+        const flag = isBase ? '·' : (ok ? '✅' : `❌ (caixas esperadas: ${esperado})`);
 
         console.log(
-            `${flag} ${key.padEnd(14)}${String(boxes).padStart(4)}${String(bold).padStart(9)}`
-            + `  ${(heads.map((h) => h.replace('HEADING_', 'H')).join('+') || '—').padEnd(12)}  ${ph}`,
+            `${flag.padEnd(2)} ${key.padEnd(14)}${String(boxes).padStart(4)}${String(bold).padStart(9)}`
+            + `  ${assinatura.padEnd(12)}  ${ph}`,
         );
     } catch (err) {
         console.log(`❌ ${key.padEnd(14)} ${err.message}`);

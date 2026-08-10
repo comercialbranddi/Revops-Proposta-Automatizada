@@ -19,7 +19,7 @@ import { pdGet, pdPut, pdPost } from './pipedrive.js';
 import { copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl, findOrCreateFolder } from './google-docs-client.js';
 import {
     PROPOSAL_TEMPLATES, PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS, PRICED_PRODUCTS,
-    CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD,
+    CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD, VALOR_PACOTE_FIELD,
     getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
@@ -303,6 +303,17 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         const plataformasVM = productCodes.includes('VM') ? deal[PLATAFORMAS_VM_FIELD] : null;
         if (productCodes.includes('VM') && !isPreenchido(plataformasVM)) missingFields.push('Plataformas VM (qtd)');
 
+        // Total do pacote — só existe em proposta combinada. Com valor fechado
+        // no card sai "De <soma> — Por: <fechado>"; sem ele, só a soma. Nunca é
+        // obrigatório: vazio significa "sem desconto", não "faltou preencher".
+        const soma = pricedCodes.reduce((n, code) => n + Number(deal[PRODUCT_PRICE_FIELDS[code]] || 0), 0);
+        const valorPacote = deal[VALOR_PACOTE_FIELD];
+        const totalPacote = productCodes.length > 1
+            ? (isPreenchido(valorPacote)
+                ? `De ${formatBRL(soma)} — Por: ${formatBRL(valorPacote)}`
+                : formatBRL(soma))
+            : null;
+
         if (missingFields.length > 0) {
             log.warn(`deal #${dealId}: falta ${missingFields.join(', ')} — proposta não gerada ainda`);
             if (notifyOnEntry) {
@@ -344,6 +355,7 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             '{{CATALOGO_BBP}}': catalogoBBP != null ? String(Number(catalogoBBP)) : null,
             '{{PALAVRAS_BB}}': palavrasBB != null ? String(Number(palavrasBB)) : null,
             '{{PLATAFORMAS_VM}}': plataformasVM != null ? String(Number(plataformasVM)) : null,
+            '{{TOTAL_PACOTE}}': totalPacote,
             ...priceReplacements,
         });
 
