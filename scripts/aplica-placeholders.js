@@ -71,6 +71,14 @@ const TROCAS = {
     ],
 };
 
+// Aplicadas depois das específicas, em todos os modelos.
+const TROCAS_FINAIS = [
+    // O "Para:" leva o nome da EMPRESA, não o do contato — é como os modelos
+    // antigos funcionavam (o mesmo "XXX" servia pros dois lugares). Deixar
+    // {{DECISOR}} aqui só faria o placeholder mentir sobre o que ele preenche.
+    ['Para: {{DECISOR}}', 'Para: {{MARCA}}'],
+];
+
 /** O mesmo trecho pode estar guardado com espaço comum ou com NBSP. */
 function variantes(texto) {
     return [...new Set([texto, texto.replaceAll(' ', NBSP), texto.replaceAll(NBSP, ' ')])];
@@ -113,7 +121,7 @@ for (const cod of Object.keys(TROCAS)) {
     const requests = [];
     console.log(`── ${cod}`);
 
-    for (const [de, para] of TROCAS[cod]) {
+    for (const [de, para] of [...TROCAS[cod], ...TROCAS_FINAIS]) {
         let total = 0;
         for (const v of variantes(de)) {
             const n = simulado.split(v).length - 1;

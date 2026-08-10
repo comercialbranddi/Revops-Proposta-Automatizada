@@ -264,7 +264,12 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         // marca Cliente" — por isso é obrigatória, igual preço, em vez de ter um
         // valor padrão.
         const orgName = deal.org_name || deal.org_id?.name || null;
-        const decisorName = deal.person_name || deal.person_id?.name || orgName;
+        // O "Para:" da proposta leva o nome da EMPRESA, não o do contato
+        // (decisão do time em 10/08/2026). É como os modelos antigos sempre
+        // funcionaram: o mesmo marcador "XXX" servia pro destinatário e pra
+        // marca no corpo do texto. {{DECISOR}} segue mapeado porque os modelos
+        // combinados ainda o contêm — assim eles já saem certos, antes mesmo de
+        // serem regerados.
 
         // Preço é negociado por cliente (não é tabela fixa), então cada
         // produto tem seu próprio campo no Pipedrive (preenchido pelo SDR) e
@@ -334,7 +339,7 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         await replacePlaceholders(copyId, {
             'XX de [mês] de [ano]': formatDateBR(),
             '{{MARCA}}': orgName,
-            '{{DECISOR}}': decisorName,
+            '{{DECISOR}}': orgName,
             // Number() evita "150.0" virar texto no documento.
             '{{CATALOGO_BBP}}': catalogoBBP != null ? String(Number(catalogoBBP)) : null,
             '{{PALAVRAS_BB}}': palavrasBB != null ? String(Number(palavrasBB)) : null,
