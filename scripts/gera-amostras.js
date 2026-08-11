@@ -62,7 +62,9 @@ if (!pasta) {
     })).id;
 }
 for (const f of await listar(pasta)) {
-    await api(`https://www.googleapis.com/drive/v3/files/${f.id}?supportsAllDrives=true`, { method: 'DELETE' });
+    await api(`https://www.googleapis.com/drive/v3/files/${f.id}?supportsAllDrives=true`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }),
+    });
 }
 if (LIMPAR) { console.log(`amostras anteriores removidas de "${PASTA}"`); process.exit(0); }
 

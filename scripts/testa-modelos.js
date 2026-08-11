@@ -134,7 +134,14 @@ for (const [chave, { docId }] of Object.entries(PROPOSAL_TEMPLATES)) {
         falhas.push(`${chave}: ${err.message}`);
         console.log(`❌ ${chave.padEnd(13)} ${err.message}`);
     } finally {
-        if (copia && !KEEP) await api(`https://www.googleapis.com/drive/v3/files/${copia}?supportsAllDrives=true`, { method: 'DELETE' }).catch(() => {});
+        if (copia && !KEEP) {
+            // Lixeira, não DELETE: a service account não tem canDelete neste
+            // Drive Compartilhado e o DELETE falha calado — foi assim que 110
+            // cópias de teste ficaram acumuladas na pasta de saída.
+            await api(`https://www.googleapis.com/drive/v3/files/${copia}?supportsAllDrives=true`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }),
+            }).catch((err) => console.log(`   ⚠️ não consegui limpar a cópia ${copia}: ${err.message.slice(0, 60)}`));
+        }
     }
 }
 
