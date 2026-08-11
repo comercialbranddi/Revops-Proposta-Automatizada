@@ -58,9 +58,12 @@ export const SERVICO_OFERECIDO_SEM_TEMPLATE = {
 // proposta que não cobre o que foi vendido — o mesmo defeito que já corrigimos.
 // O que muda é a nota, que passa a dizer onde marcar em vez de só mandar pro
 // manual. Quando ninguém mais marcar aqui, a opção pode sair do campo.
+// A opção "Bing" foi REMOVIDA do campo em 11/08/2026 — ninguém consegue mais
+// marcar. O mapeamento fica porque um card antigo ainda pode carregar o id 416
+// gravado (o Pipedrive limpou a maioria, mas não todos), e nesse caso a nota
+// ainda explica o que fazer em vez de dizer só "sem modelo".
 export const SERVICO_QUE_VIROU_CANAL = {
     416: { canal: 'Bing', campo: 'Canais BB' },
-    415: { canal: 'Lojas de aplicativos (Apple Store e Play Store)', campo: 'Canais GD' },
 };
 
 /**
@@ -222,7 +225,7 @@ export const CANAIS_OPTION_TO_LABEL = {
     1592: 'Google Search Ads', 1593: 'Google Shopping', 1594: 'Bing', 1595: 'Amazon Ads',
     1596: 'Mercado Livre', 1597: 'Amazon', 1598: 'Marketplaces',
     1599: 'Google', 1600: 'Meta (Facebook e Instagram)', 1601: "TLD's (Domínios)",
-    1602: 'Marketplaces', 1603: 'Lojas de aplicativos (Apple Store e Play Store)',
+    1602: 'Marketplaces',
     1604: 'Marketplaces monitorados simultaneamente', 1605: 'Google Shopping',
     1606: 'Amazon', 1607: 'Mercado Livre',
 };
