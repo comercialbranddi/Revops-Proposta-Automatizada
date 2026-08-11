@@ -119,17 +119,17 @@ export const PROPOSAL_TEMPLATES = {
     // bases. Cada um nasce como cópia do base do primeiro produto — é o que
     // traz cabeçalho (logo), rodapé, estilos e configuração de página.
     // Mudou um base? Roda o script de novo e os onze se refazem.
-    'BB+BBP': { docId: '1MmsodrQUSRlnJJXveMffFunx40plY-dmyMP-5SHXB3A', label: 'Brand Bidding + Buy Box Protection' },
-    'BB+GD':  { docId: '1sSp0pJGrcB5YEutYyNLG_NAHFBdQDOkPd74aTd4epDA', label: 'Brand Bidding + Golpes Digitais' },
-    'BB+VM':  { docId: '1WJaNnj8qMJakwJIhM7YilGSOkRKqZBYBHJqo28vwOBw', label: 'Brand Bidding + Violação de Marca' },
-    'BBP+GD': { docId: '1idlnwgOqdXJmrCw5cn37737oVDzj05PeC2ZzHCXHDNY', label: 'Buy Box Protection + Golpes Digitais' },
-    'BBP+VM': { docId: '16AhTOCD4333KmpFJkfEKqd1kazNYvt-KZ3k9Z4MgEyo', label: 'Buy Box Protection + Violação de Marca' },
-    'GD+VM':  { docId: '1WFz0To7M6fyR3rCEgKF7MUXjPSyPcOvHz8rxkj5mdNk', label: 'Golpes Digitais + Violação de Marca' },
-    'BB+BBP+GD': { docId: '1APNLON6m1fUtACJKOfbzLjyvA9rpGQ8G7HOiYwR1qsg', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais' },
-    'BB+BBP+VM': { docId: '1eHqDzhbUkVErJBOTTJQoy_Kj5RR-pB8PU4fTh00TV3U', label: 'Brand Bidding + Buy Box Protection + Violação de Marca' },
-    'BB+GD+VM':  { docId: '1ejUxrQu9_B4dUFxOQWXFH6V8ab2voSZyiV-LsMj6bF0', label: 'Brand Bidding + Golpes Digitais + Violação de Marca' },
-    'BBP+GD+VM': { docId: '1yXcjmW1sfIcN29o8sxqQdWPs5bA4Ynb_2Yx50xoSt1w', label: 'Buy Box Protection + Golpes Digitais + Violação de Marca' },
-    'BB+BBP+GD+VM': { docId: '1hQ56OavRLyka8OEEdFUhuv5fOPUtZQuWqU5VKfxFKw8', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais + Violação de Marca' },
+    'BB+BBP': { docId: '1GGvFJPay7Um7Ii15Mj9azRhHY5C6LdV-rsAhStOOy9s', label: 'Brand Bidding + Buy Box Protection' },
+    'BB+GD':  { docId: '17LexGlo3oE0Skv8ik0lvqx13KZs7kBq2XQOLBBK7h3g', label: 'Brand Bidding + Golpes Digitais' },
+    'BB+VM':  { docId: '1IaCO7VtSn2bWHLn5vW00Z-bLpVpT5SaFBHiVG0XGD_0', label: 'Brand Bidding + Violação de Marca' },
+    'BBP+GD': { docId: '1dmqZeHrw7IkzSBNqnFddtMdANG99O4FVmam6dgPiBsk', label: 'Buy Box Protection + Golpes Digitais' },
+    'BBP+VM': { docId: '16QSj-c22S3_XbLGNaFmFRTpOzD-yU_lngdPmg0290aU', label: 'Buy Box Protection + Violação de Marca' },
+    'GD+VM':  { docId: '1tJ7XSgLmva24IJys6wQTGN1KszK8eyjDwDGueqRphYc', label: 'Golpes Digitais + Violação de Marca' },
+    'BB+BBP+GD': { docId: '18VpNo2CF_x1Cu_KQNBN2vrq-qboyODspC2Bbr2TVwb0', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais' },
+    'BB+BBP+VM': { docId: '1WZfkJ5XW-0HLB_VqaF8vFf25noiX9KLNK-6HVpF2_vg', label: 'Brand Bidding + Buy Box Protection + Violação de Marca' },
+    'BB+GD+VM':  { docId: '1pn7I-b9T-RdOBCbhHEntd3fEk40R7IKF42eMvKXB2J8', label: 'Brand Bidding + Golpes Digitais + Violação de Marca' },
+    'BBP+GD+VM': { docId: '1-Pjc2vjv4sWyKYQAait-iK-e3haC65QLqBk4f-tveyQ', label: 'Buy Box Protection + Golpes Digitais + Violação de Marca' },
+    'BB+BBP+GD+VM': { docId: '1nm-lOnMxcqaYJNNA4C9hfNHwHJZOz_ukkPY-TtmWBMU', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais + Violação de Marca' },
 };
 
 export const PROPOSAL_OUTPUT_FOLDER_ID = process.env.PROPOSAL_OUTPUT_FOLDER_ID || null;

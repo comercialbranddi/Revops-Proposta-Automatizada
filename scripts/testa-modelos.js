@@ -113,6 +113,13 @@ for (const [chave, { docId }] of Object.entries(PROPOSAL_TEMPLATES)) {
                 : !/TOTAL_|De R\$/.test(txt)],
             // O combo é item próprio e numerado, não uma linha solta no fim.
             ['item combo', codigos.length > 1 ? conta(/^\d+ - Combo:/gm) === 1 : !/ - Combo:/.test(txt)],
+            // Canais do combo: união dos canais dos produtos, sem repetir.
+            ...(codigos.length > 1 ? [['canais combo', (() => {
+                const CANAIS = { BB: ['Google'], BBP: ['Mercado Livre'], GD: ['Google', 'Meta (Facebook e Instagram)', "TLD's"], VM: ['7 marketplaces monitorados simultaneamente'] };
+                const vistos = new Set(); const lista = [];
+                for (const c of codigos) for (const ch of CANAIS[c]) if (!vistos.has(ch)) { vistos.add(ch); lista.push(ch); }
+                return txt.includes(`Plataformas: ${lista.join(' + ')}`);
+            })()]] : []),
             ['condição 1x', conta(/^Condição de pagamento/gm) === 1],
             // Só os combos são uniformizados: os bases são os documentos que o
             // time já usava, e misturar 10pt com 11pt é como eles vieram.

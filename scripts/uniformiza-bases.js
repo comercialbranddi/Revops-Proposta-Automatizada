@@ -118,7 +118,43 @@ for (const cod of BASES) {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requests }),
         });
     }
-    console.log(`${' '.repeat(5)}✅ aplicado`);
+    // ── 3. Paginação manual vira quebra de página de verdade ─────────
+    // Blocos longos de linha em branco existem pra empurrar conteúdo pra página
+    // seguinte. Isso quebra assim que o texto acima muda de tamanho — uma
+    // quebra de página faz o mesmo e não depende de contagem de linhas.
+    // Um bloco por vez, relendo o documento: cada operação move os índices.
+    let trocadas = 0;
+    for (;;) {
+        const atual = await api(`https://docs.googleapis.com/v1/documents/${docId}?includeTabsContent=true`);
+        const corpo = (atual.tabs?.[0]?.documentTab || atual).body;
+        const seq = [];
+        let acc = [];
+        for (const el of corpo.content || []) {
+            const branco = el.paragraph && !textoDe(el.paragraph).trim()
+                && !(el.paragraph.elements || []).some((e) => e.pageBreak);
+            if (branco) { acc.push(el); continue; }
+            if (acc.length > LIMITE_PAGINACAO) seq.push(acc);
+            acc = [];
+        }
+        if (acc.length > LIMITE_PAGINACAO) seq.push(acc);
+        if (!seq.length) break;
+
+        const bloco = seq[0];
+        const fim = corpo.content[corpo.content.length - 1].endIndex;
+        const apagar = bloco.slice(1).filter((el) => el.endIndex < fim);
+        if (!apagar.length) break;
+        await api(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requests: [{ deleteContentRange: { range: { startIndex: apagar[0].startIndex, endIndex: apagar[apagar.length - 1].endIndex, ...t } } }] }),
+        });
+        await api(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requests: [{ insertPageBreak: { location: { index: bloco[0].startIndex, ...t } } }] }),
+        });
+        trocadas++;
+    }
+
+    console.log(`${' '.repeat(5)}✅ aplicado${trocadas ? `  ·  ${trocadas} bloco(s) trocado(s) por quebra de página` : ''}`);
 }
 
 console.log(`\n${APPLY ? 'Rode agora scripts/monta-combos.js --apply para os 11 combos herdarem.' : 'Nada foi alterado.'}`);
