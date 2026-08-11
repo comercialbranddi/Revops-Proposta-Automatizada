@@ -20,7 +20,7 @@ import { copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl, findOrCr
 import {
     PROPOSAL_TEMPLATES, PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS, PRICED_PRODUCTS,
     CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD, VALOR_PACOTE_FIELD,
-    canaisDoDeal, CANAL_VM_COM_CONTAGEM,
+    canaisDoDeal, CANAL_VM_COM_CONTAGEM, SERVICO_QUE_VIROU_CANAL,
     getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
@@ -237,7 +237,7 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             await releaseClaim(dealId);
         }
 
-        const { codes: productCodes, semTemplate, origem } = resolveProductCodes(deal);
+        const { codes: productCodes, semTemplate, idsSemTemplate = [], origem } = resolveProductCodes(deal);
 
         // Serviço vendido sem modelo automatizado (Bing, APP, Violação
         // Comercial, Novos Termos): gerar assim mesmo produziria uma proposta
@@ -245,7 +245,13 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         if (semTemplate.length > 0) {
             log.warn(`deal #${dealId}: "${semTemplate.join(', ')}" sem modelo automatizado — fluxo manual`);
             if (notifyOnEntry) {
-                await postNoteOnce(dealId, `Proposta NÃO gerada automaticamente — o card tem ${semTemplate.join(', ')} em "Serviço oferecido", e esse serviço não tem modelo automatizado. Monte a proposta manualmente para não deixar o serviço de fora.`);
+                // Bing e APP viraram canal de um produto que já existe: em vez
+                // de só mandar pro manual, a nota diz onde marcar.
+                const viraramCanal = idsSemTemplate.map((id) => SERVICO_QUE_VIROU_CANAL[id]).filter(Boolean);
+                const comoResolver = viraramCanal.length
+                    ? ` ${viraramCanal.map((v) => `"${v.canal}" agora é canal: marque em "${v.campo}" e desmarque de "Serviço oferecido".`).join(' ')}`
+                    : ' Monte a proposta manualmente para não deixar o serviço de fora.';
+                await postNoteOnce(dealId, `Proposta NÃO gerada automaticamente — o card tem ${semTemplate.join(', ')} em "Serviço oferecido", que não tem modelo próprio.${comoResolver}`);
             }
             await logAttempt(dealId, 'skipped_servico_sem_template', { sem_template: semTemplate });
             return;

@@ -50,6 +50,19 @@ export const SERVICO_OFERECIDO_SEM_TEMPLATE = {
     697: 'Novos Termos',
 };
 
+// Duas dessas opções não são serviço, são CANAL de um produto que já existe —
+// e agora têm campo próprio. Uso real (57.771 negócios varridos em 11/08/2026):
+// APP 18 cards, Bing 7, os dois pela última vez em 28/07/2026. Pouco, mas vivo.
+//
+// Continuam bloqueando a geração de propósito: gerar ignorando produziria uma
+// proposta que não cobre o que foi vendido — o mesmo defeito que já corrigimos.
+// O que muda é a nota, que passa a dizer onde marcar em vez de só mandar pro
+// manual. Quando ninguém mais marcar aqui, a opção pode sair do campo.
+export const SERVICO_QUE_VIROU_CANAL = {
+    416: { canal: 'Bing', campo: 'Canais BB' },
+    415: { canal: 'Lojas de aplicativos (Apple Store e Play Store)', campo: 'Canais GD' },
+};
+
 /**
  * Parseia o valor bruto do campo "Serviço oferecido" (string com IDs
  * separados por vírgula, ex: "152,549").
@@ -60,9 +73,10 @@ export const SERVICO_OFERECIDO_SEM_TEMPLATE = {
  * vendido.
  */
 export function parseServicoOferecido(rawValue) {
-    if (!rawValue) return { codes: [], semTemplate: [] };
+    if (!rawValue) return { codes: [], semTemplate: [], idsSemTemplate: [] };
     const codes = [];
     const semTemplate = [];
+    const idsSemTemplate = [];
     for (const raw of String(rawValue).split(',')) {
         const id = Number(raw.trim());
         if (!Number.isFinite(id)) continue;
@@ -71,10 +85,10 @@ export function parseServicoOferecido(rawValue) {
         // mesmo produto, e um card com as duas marcadas viraria "BBP+BBP".
         if (code) { if (!codes.includes(code)) codes.push(code); } else {
             const rotulo = SERVICO_OFERECIDO_SEM_TEMPLATE[id] || `opção ${id}`;
-            if (!semTemplate.includes(rotulo)) semTemplate.push(rotulo);
+            if (!semTemplate.includes(rotulo)) { semTemplate.push(rotulo); idsSemTemplate.push(id); }
         }
     }
-    return { codes, semTemplate };
+    return { codes, semTemplate, idsSemTemplate };
 }
 
 // ─── Feature flags ──────────────────────────────────────────────────
