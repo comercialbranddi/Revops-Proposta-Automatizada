@@ -126,17 +126,17 @@ export const PROPOSAL_TEMPLATES = {
     // bases. Cada um nasce como cópia do base do primeiro produto — é o que
     // traz cabeçalho (logo), rodapé, estilos e configuração de página.
     // Mudou um base? Roda o script de novo e os onze se refazem.
-    'BB+BBP': { docId: '1GGvFJPay7Um7Ii15Mj9azRhHY5C6LdV-rsAhStOOy9s', label: 'Brand Bidding + Buy Box Protection' },
-    'BB+GD':  { docId: '17LexGlo3oE0Skv8ik0lvqx13KZs7kBq2XQOLBBK7h3g', label: 'Brand Bidding + Golpes Digitais' },
-    'BB+VM':  { docId: '1IaCO7VtSn2bWHLn5vW00Z-bLpVpT5SaFBHiVG0XGD_0', label: 'Brand Bidding + Violação de Marca' },
-    'BBP+GD': { docId: '1dmqZeHrw7IkzSBNqnFddtMdANG99O4FVmam6dgPiBsk', label: 'Buy Box Protection + Golpes Digitais' },
-    'BBP+VM': { docId: '16QSj-c22S3_XbLGNaFmFRTpOzD-yU_lngdPmg0290aU', label: 'Buy Box Protection + Violação de Marca' },
-    'GD+VM':  { docId: '1tJ7XSgLmva24IJys6wQTGN1KszK8eyjDwDGueqRphYc', label: 'Golpes Digitais + Violação de Marca' },
-    'BB+BBP+GD': { docId: '18VpNo2CF_x1Cu_KQNBN2vrq-qboyODspC2Bbr2TVwb0', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais' },
-    'BB+BBP+VM': { docId: '1WZfkJ5XW-0HLB_VqaF8vFf25noiX9KLNK-6HVpF2_vg', label: 'Brand Bidding + Buy Box Protection + Violação de Marca' },
-    'BB+GD+VM':  { docId: '1pn7I-b9T-RdOBCbhHEntd3fEk40R7IKF42eMvKXB2J8', label: 'Brand Bidding + Golpes Digitais + Violação de Marca' },
-    'BBP+GD+VM': { docId: '1-Pjc2vjv4sWyKYQAait-iK-e3haC65QLqBk4f-tveyQ', label: 'Buy Box Protection + Golpes Digitais + Violação de Marca' },
-    'BB+BBP+GD+VM': { docId: '1nm-lOnMxcqaYJNNA4C9hfNHwHJZOz_ukkPY-TtmWBMU', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais + Violação de Marca' },
+    'BB+BBP': { docId: '147wW-sGDOYOmpCtgUAjL6cJkf_7dzuQ6K_er16T1Bm0', label: 'Brand Bidding + Buy Box Protection' },
+    'BB+GD':  { docId: '1UTotg7CNLTuhnGIMQ4JlJJ54ect62Gqd9YN4pnMHnxI', label: 'Brand Bidding + Golpes Digitais' },
+    'BB+VM':  { docId: '1CAUfVGjtrJ10qLXpTRPuw5X8zIPxNTIV9WZPhzdZEB8', label: 'Brand Bidding + Violação de Marca' },
+    'BBP+GD': { docId: '1518fLIC16Wm9Pc8KtJRI8UMqVpvvXNseSG5QrGS9lho', label: 'Buy Box Protection + Golpes Digitais' },
+    'BBP+VM': { docId: '15zzve2m789I2Tiawi4XKvgt7vf6oMq3M5bt2r9x7dfo', label: 'Buy Box Protection + Violação de Marca' },
+    'GD+VM':  { docId: '1HPopMoDgpkQuajHpmDUlPH04pDDEveIm_dENm2jYD5U', label: 'Golpes Digitais + Violação de Marca' },
+    'BB+BBP+GD': { docId: '1xxyxtqZDvCi74etlyknnQELVV5FrrA7z24xnSknWymQ', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais' },
+    'BB+BBP+VM': { docId: '1rW-YPD57hqtCXU8L_6GqnZC0zeaTPkwcuYFGAhzs6rk', label: 'Brand Bidding + Buy Box Protection + Violação de Marca' },
+    'BB+GD+VM':  { docId: '1ZjfNdAaQpVxgksAfdSH_2PsWQ2TxKaBGOOJwP1gCB3s', label: 'Brand Bidding + Golpes Digitais + Violação de Marca' },
+    'BBP+GD+VM': { docId: '1RZJKe22JeC2zUMpvtrfWqTVAvxZAE8wulTwhXE55OGI', label: 'Buy Box Protection + Golpes Digitais + Violação de Marca' },
+    'BB+BBP+GD+VM': { docId: '1e57SUkNnZywOwXCrJcsKFd4q32S6iJkbfDLyjksXCdk', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais + Violação de Marca' },
 };
 
 export const PROPOSAL_OUTPUT_FOLDER_ID = process.env.PROPOSAL_OUTPUT_FOLDER_ID || null;
@@ -189,6 +189,53 @@ export const PALAVRAS_BB_FIELD = '0d5efa1df20cbf097c23364d5ea69124f6c126ac';
 // marketplaces monitorados simultaneamente"), em dois pontos do documento.
 // Campo criado via API em 10/08/2026.
 export const PLATAFORMAS_VM_FIELD = '8d6b50fbd2064b2b942f75100aeb432a6a063632';
+
+// ─── Canais monitorados, por produto ────────────────────────────────
+// A linha "Plataforma(s) Monitorada(s)" era texto fixo no modelo. Só que as
+// propostas reais do time variam MUITO nesse ponto — 18 valores distintos nos
+// 33 arquivos da pasta do comercial: "Mercado Livre e Amazon", "… + Google
+// Shopping", "Google + Meta + TLD's + Amazon Ads". É assim que Bing e loja de
+// aplicativos entram sem precisar de modelo próprio: como canal, não como
+// produto. Campos criados via API em 11/08/2026.
+export const CANAIS_FIELDS = {
+    BB:  '9c5b5764b4a3e138e263bed5bdc65e125465c760',
+    BBP: '5fa38fdf8a1eb844324298a8ffa291fc3c71b003',
+    GD:  '4b28d56bf13bcb0da4e3d9e4023a54afaa2ff072',
+    VM:  '2200631ef8b36b4f7af84c60115f976c00b36575',
+};
+
+export const CANAIS_OPTION_TO_LABEL = {
+    1592: 'Google Search Ads', 1593: 'Google Shopping', 1594: 'Bing', 1595: 'Amazon Ads',
+    1596: 'Mercado Livre', 1597: 'Amazon', 1598: 'Marketplaces',
+    1599: 'Google', 1600: 'Meta (Facebook e Instagram)', 1601: "TLD's (Domínios)",
+    1602: 'Marketplaces', 1603: 'Lojas de aplicativos (Apple Store e Play Store)',
+    1604: 'Marketplaces monitorados simultaneamente', 1605: 'Google Shopping',
+    1606: 'Amazon', 1607: 'Mercado Livre',
+};
+
+// Usado quando o campo do card está vazio — mantém o que o modelo dizia antes,
+// então não preencher nunca piora a proposta. Por isso canal não é obrigatório.
+export const CANAIS_PADRAO = {
+    BB:  ['Google Search Ads'],
+    BBP: ['Mercado Livre'],
+    GD:  ['Google', 'Meta (Facebook e Instagram)', "TLD's (Domínios)"],
+    VM:  ['Marketplaces monitorados simultaneamente'],
+};
+
+// O canal de marketplaces do VM carrega a contagem ("Até 3 marketplaces
+// monitorados simultaneamente"), então é o único que se combina com o campo
+// de quantidade em vez de aparecer solto.
+export const CANAL_VM_COM_CONTAGEM = 'Marketplaces monitorados simultaneamente';
+
+/** Rótulos dos canais escolhidos no card, ou o padrão do produto se vazio. */
+export function canaisDoDeal(deal, code) {
+    const bruto = deal?.[CANAIS_FIELDS[code]];
+    if (!bruto) return CANAIS_PADRAO[code] || [];
+    const labels = String(bruto).split(',')
+        .map((id) => CANAIS_OPTION_TO_LABEL[Number(id.trim())])
+        .filter(Boolean);
+    return labels.length ? labels : (CANAIS_PADRAO[code] || []);
+}
 
 // Valor fechado do pacote, usado no bloco "De R$ X / Por: R$ Y" das propostas
 // combinadas: o "De" é a soma dos preços dos produtos (a automação calcula) e o

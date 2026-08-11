@@ -20,6 +20,7 @@ import { copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl, findOrCr
 import {
     PROPOSAL_TEMPLATES, PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS, PRICED_PRODUCTS,
     CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD, VALOR_PACOTE_FIELD,
+    canaisDoDeal, CANAL_VM_COM_CONTAGEM,
     getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
@@ -303,6 +304,21 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         const plataformasVM = productCodes.includes('VM') ? deal[PLATAFORMAS_VM_FIELD] : null;
         if (productCodes.includes('VM') && !isPreenchido(plataformasVM)) missingFields.push('Plataformas VM (qtd)');
 
+        // Canais monitorados de cada produto. O canal de marketplaces do VM é o
+        // único que carrega a contagem, então se junta ao campo de quantidade;
+        // os demais entram como estão. Campo vazio cai no padrão do produto,
+        // que é o texto que o modelo já trazia — por isso nunca é obrigatório.
+        const canaisPorProduto = Object.fromEntries(productCodes.map((code) => {
+            const labels = canaisDoDeal(deal, code).map((label) => (
+                code === 'VM' && label === CANAL_VM_COM_CONTAGEM
+                    ? `Até ${Number(plataformasVM) || 3} ${label.charAt(0).toLowerCase()}${label.slice(1)}`
+                    : label
+            ));
+            return [code, labels];
+        }));
+        // No combo, a união dos canais de todos os produtos, sem repetir.
+        const canaisCombo = [...new Set(productCodes.flatMap((c) => canaisPorProduto[c]))].join(' + ');
+
         // Bloco do combo — só existe em proposta combinada, e ocupa duas linhas
         // ("De …" / "Por: …") como nos modelos que o time montava à mão. Sem
         // valor fechado no card não há desconto: a primeira linha leva a soma e
@@ -358,6 +374,8 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             '{{CATALOGO_BBP}}': catalogoBBP != null ? String(Number(catalogoBBP)) : null,
             '{{PALAVRAS_BB}}': palavrasBB != null ? String(Number(palavrasBB)) : null,
             '{{PLATAFORMAS_VM}}': plataformasVM != null ? String(Number(plataformasVM)) : null,
+            ...Object.fromEntries(productCodes.map((code) => [`{{CANAIS_${code}}}`, canaisPorProduto[code].join(' + ')])),
+            '{{CANAIS_COMBO}}': productCodes.length > 1 ? canaisCombo : null,
             '{{TOTAL_DE}}': totalDe,
             '{{TOTAL_POR}}': totalPor,
             ...priceReplacements,

@@ -20,6 +20,13 @@ const KEEP = process.argv.includes('--keep');
 const PRECO = { BB: 8000, BBP: 6000, GD: 9000, VM: 4000 };
 const brl = (n) => `R$ ${n.toLocaleString('pt-BR')}/mês`;
 const MARCA = 'Marca Teste Automacao';
+// Espelham CANAIS_PADRAO da config; o VM leva a contagem junto.
+const CANAIS = {
+    BB: 'Google Search Ads',
+    BBP: 'Mercado Livre',
+    GD: "Google + Meta (Facebook e Instagram) + TLD's (Domínios)",
+    VM: 'Até 7 marketplaces monitorados simultaneamente',
+};
 
 function getClient() {
     const raw = process.env.GOOGLE_PROPOSAL_SA_KEY_BASE64;
@@ -46,6 +53,10 @@ async function preparar(chave, comPacote) {
         ...(codigos.includes('BB') ? { '{{PALAVRAS_BB}}': '4' } : {}),
         ...(codigos.includes('BBP') ? { '{{CATALOGO_BBP}}': '250' } : {}),
         ...(codigos.includes('VM') ? { '{{PLATAFORMAS_VM}}': '7' } : {}),
+        ...Object.fromEntries(codigos.map((c) => [`{{CANAIS_${c}}}`, CANAIS[c]])),
+        ...(codigos.length > 1
+            ? { '{{CANAIS_COMBO}}': [...new Set(codigos.flatMap((c) => CANAIS[c].split(' + ')))].join(' + ') }
+            : {}),
         ...(codigos.length > 1
             ? {
                 '{{TOTAL_DE}}': comPacote ? `De ${brl(soma)}` : brl(soma),
@@ -113,13 +124,10 @@ for (const [chave, { docId }] of Object.entries(PROPOSAL_TEMPLATES)) {
                 : !/TOTAL_|De R\$/.test(txt)],
             // O combo é item próprio e numerado, não uma linha solta no fim.
             ['item combo', codigos.length > 1 ? conta(/^\d+ - Combo:/gm) === 1 : !/ - Combo:/.test(txt)],
-            // Canais do combo: união dos canais dos produtos, sem repetir.
-            ...(codigos.length > 1 ? [['canais combo', (() => {
-                const CANAIS = { BB: ['Google'], BBP: ['Mercado Livre'], GD: ['Google', 'Meta (Facebook e Instagram)', "TLD's"], VM: ['7 marketplaces monitorados simultaneamente'] };
-                const vistos = new Set(); const lista = [];
-                for (const c of codigos) for (const ch of CANAIS[c]) if (!vistos.has(ch)) { vistos.add(ch); lista.push(ch); }
-                return txt.includes(`Plataformas: ${lista.join(' + ')}`);
-            })()]] : []),
+            // Canais: cada produto traz o seu, e o combo a união sem repetir.
+            ...codigos.map((c) => [`canais ${c}`, txt.includes(CANAIS[c])]),
+            ...(codigos.length > 1 ? [['canais combo',
+                txt.includes(`Plataformas: ${[...new Set(codigos.flatMap((c) => CANAIS[c].split(' + ')))].join(' + ')}`)]] : []),
             ['condição 1x', conta(/^Condição de pagamento/gm) === 1],
             // Só os combos são uniformizados: os bases são os documentos que o
             // time já usava, e misturar 10pt com 11pt é como eles vieram.

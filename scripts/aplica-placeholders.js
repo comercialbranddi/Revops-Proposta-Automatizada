@@ -36,6 +36,7 @@ const DATA_ALVO = 'XX de [mês] de [ano]';
 
 const TROCAS = {
     BB: [
+        ['Google Search Ads', '{{CANAIS_BB}}'],
         ['Para: XXX', 'Para: {{DECISOR}}'],
         ['XXX', '{{MARCA}}'],
         ['XX de Maio de 2026', DATA_ALVO],
@@ -45,6 +46,7 @@ const TROCAS = {
         ['Até 3 palavras.', 'Até {{PALAVRAS_BB}} palavras.'],
     ],
     BBP: [
+        ['Mercado Livre', '{{CANAIS_BBP}}'],
         ['Para: XXX', 'Para: {{DECISOR}}'],
         ['XXX', '{{MARCA}}'],
         ['xx de Janeiro de 2026', DATA_ALVO],
@@ -52,6 +54,7 @@ const TROCAS = {
         ['Até XX SKUs', 'Até {{CATALOGO_BBP}} SKUs'],
     ],
     VM: [
+        ['Até {{PLATAFORMAS_VM}} marketplaces monitorados simultaneamente', '{{CANAIS_VM}}'],
         ['Para: XXX', 'Para: {{DECISOR}}'],
         ['XXX', '{{MARCA}}'],
         // O modelo antigo tinha a data de emissão chumbada, não um marcador.
@@ -61,6 +64,7 @@ const TROCAS = {
         ['Até 3 marketplaces', 'Até {{PLATAFORMAS_VM}} marketplaces'],
     ],
     GD: [
+        ["Google + Meta (Facebook e Instagram) + TLD's", '{{CANAIS_GD}}'],
         ['Para: XXX', 'Para: {{DECISOR}}'],
         ['XXX', '{{MARCA}}'],
         ['XX de janeiro de 2026', DATA_ALVO],

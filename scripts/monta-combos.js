@@ -162,33 +162,6 @@ if (DUMP) {
     process.exit(0);
 }
 
-// ─── Canais por produto ─────────────────────────────────────────────
-// Extraídos da seção comercial de cada modelo-base ("Plataformas: …" no GD e
-// no VM; "Plataforma(s) Monitorada(s)" no BB e no BBP). O modelo antigo
-// BB_VM_BBP, montado à mão pelo time, confirma a regra: para BB + VM ele traz
-// "Plataformas: Google + 3 marketplaces monitorados simultaneamente" — que é
-// exatamente a união dos canais dos dois, sem o "Até".
-const CANAIS = {
-    BB:  ['Google'],
-    BBP: ['Mercado Livre'],
-    GD:  ['Google', 'Meta (Facebook e Instagram)', "TLD's"],
-    VM:  ['{{PLATAFORMAS_VM}} marketplaces monitorados simultaneamente'],
-};
-
-/** União dos canais dos produtos, sem repetir (BB e GD compartilham o Google). */
-function canaisDe(codigos) {
-    const vistos = new Set();
-    const canais = [];
-    for (const cod of codigos) {
-        for (const canal of CANAIS[cod] || []) {
-            if (vistos.has(canal)) continue;
-            vistos.add(canal);
-            canais.push(canal);
-        }
-    }
-    return canais.join(' + ');
-}
-
 // ─── Compositor ─────────────────────────────────────────────────────
 /** Tira o "1." do começo de um título de produto — a numeração é reescrita. */
 const semNumero = (t) => t.trim().replace(/^\d+\s*[.)\-–]\s*/, '');
@@ -255,7 +228,9 @@ function compor(codigos, fatiasPorCodigo, introPreservada) {
             out.push(comTexto(linhaModelo, 'Proposta:'));
             out.push(comTexto(linhaModelo, '{{TOTAL_DE}}'));
             out.push(comTexto(linhaModelo, '{{TOTAL_POR}}'));
-            out.push(comTexto(linhaModelo, `Plataformas: ${canaisDe(codigos)}`));
+            // Canais do combo saem do card, não do modelo: cada produto tem seu
+            // campo de canais e o generator monta a união em {{CANAIS_COMBO}}.
+            out.push(comTexto(linhaModelo, 'Plataformas: {{CANAIS_COMBO}}'));
         }
     }
 
