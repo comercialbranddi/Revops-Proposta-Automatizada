@@ -162,11 +162,50 @@ export const PROPOSAL_TEMPLATES = {
         'BBP+GD+VM': { docId: '1JFz5gWd35cB6ZS8NUXSK_2rsr_Nm7sIorFTchHzRBJw', label: 'Buy Box Protection + Golpes Digitais + Violação de Marca' },
         'BB+BBP+GD+VM': { docId: '1lH_XV-2ncfj0I_55nS7AH-ZsFwT7PFAxSmCC00VPYGQ', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais + Violação de Marca' },
     },
-    // Sem modelo cadastrado ainda. Card que pedir en/es não gera e recebe nota
-    // dizendo isso (ver generateProposalForDeal) — gerar em português pra quem
-    // pediu inglês é pior que não gerar.
-    en: {},
-    es: {},
+    // Traduzidos do português em 11/08/2026 por scripts/traduz-bases.js, não
+    // importados dos documentos antigos do comercial: aqueles vendiam contrato
+    // anual com fidelidade, que o time não pratica (ver AUDITORIA-IDIOMAS.md).
+    // A prosa reaproveita o vocabulário deles; as condições vêm do português.
+    en: {
+        BB:  { docId: '1BVxDQuZD2efYKZsmpmPPnXKIURiho9udmLqkBpBkUZs', label: 'Brand Bidding' },
+        BBP: { docId: '1WZUS5tkWsXPpKmyTVOcaCIEBxzbPLr710fcuggCxb04', label: 'Buy Box Protection' },
+        GD:  { docId: '1piVics87KdnNwzsljEtw9LvZKvKmzgMth1nBKXbCpZY', label: 'Digital Fraud Protection' },
+        VM:  { docId: '1sWr2iXyl_vSbKGEhVy72tw3n211OOxGb7xH4jAVlkac', label: 'Intellectual Property Infringement' },
+        // Montados por monta-combos.js --idioma=en a partir dos quatro acima,
+        // igual ao português. Mudou um base? Roda o script de novo.
+        'BB+BBP': { docId: '115FOZTExXbjCjwZL1iNPsE-_f8mjK2dbgu7_iG4z5J0', label: 'Brand Bidding + Buy Box Protection' },
+        'BB+GD':  { docId: '1e2DGCiOjYpUHEfDIcm0OwVrfwCl6UYl_Sarsm8bUYu8', label: 'Brand Bidding + Digital Fraud Protection' },
+        'BB+VM':  { docId: '1PiXUtYZG3nt9hLpEcFZlyWXYGUkRCTaQhXiflRaaU48', label: 'Brand Bidding + Intellectual Property Infringement' },
+        'BBP+GD': { docId: '1j35_cedrVI-o0ko_T1JYZNc87RQQtLwbQ2i4Kc-2A0I', label: 'Buy Box Protection + Digital Fraud Protection' },
+        'BBP+VM': { docId: '13KwHlHWF2SBHXL1vwlII3CZAO_jmAFnd8GSsQ0xOBqg', label: 'Buy Box Protection + Intellectual Property Infringement' },
+        'GD+VM':  { docId: '1d3AY6qowJU_BApaRv97Wf98KC468SJ5qCUAh_E-73QQ', label: 'Digital Fraud Protection + Intellectual Property Infringement' },
+        'BB+BBP+GD': { docId: '1uQv4BooKNCkFJp4cV-931OYPw7myPLgFOw8KAoK5-jo', label: 'Brand Bidding + Buy Box Protection + Digital Fraud Protection' },
+        'BB+BBP+VM': { docId: '1rlbJwdcLcHKDzVNYS1tqom8hujU7BrA42oIgRZk853M', label: 'Brand Bidding + Buy Box Protection + Intellectual Property Infringement' },
+        'BB+GD+VM':  { docId: '1mdKrgKpQwyQ-f6irNYVJMG2BaV5VeECvuI49PZUrm-c', label: 'Brand Bidding + Digital Fraud Protection + Intellectual Property Infringement' },
+        'BBP+GD+VM': { docId: '19PpLnlBwGEgjt9K9cn8bKPcM_vQSq3-BsgobKwzp8DA', label: 'Buy Box Protection + Digital Fraud Protection + Intellectual Property Infringement' },
+        'BB+BBP+GD+VM': { docId: '1hYlhKhKvZaq_dvHJ6ecIsEFZossU6i3W784Fp71hjfg', label: 'Brand Bidding + Buy Box Protection + Digital Fraud Protection + Intellectual Property Infringement' },
+    },
+    // Mesmo caminho do inglês: traduzidos do português, com o vocabulário dos
+    // documentos que o comercial já tinha em espanhol ("Nuestras Protecciones",
+    // "Protección Brand Bidding", "Palabras clave: hasta N palabras").
+    es: {
+        BB:  { docId: '1UfM_IG8Di7QZ9wG9zvtc_z2UHLUYUu-L9sLvq0obL94', label: 'Brand Bidding' },
+        BBP: { docId: '1ySn8KnhGhoYbgEIe5e_bQyvQaHXhP-nKw8dtg5jKvD4', label: 'Buy Box Protection' },
+        GD:  { docId: '1TtiI-o0vzBvj9c2qNIwWv-psA9FEYO0tw2yg9dPyugM', label: 'Protección Fraude' },
+        VM:  { docId: '1GWp5h_mMMJID53DnN2-G62BDqoXjxgfTPYgG9ETnKVM', label: 'Violación de Propiedad Intelectual' },
+        // Montados por monta-combos.js --idioma=es a partir dos quatro acima.
+        'BB+BBP': { docId: '1CtS9cNY5lLdCIJjwPK_H_hP-xUofDznPyasntpqwat8', label: 'Brand Bidding + Buy Box Protection' },
+        'BB+GD':  { docId: '1Wpt7y4K-J25CWF1gXM_E8UcTfzQZJwdwvL-Am14RPHw', label: 'Brand Bidding + Protección Fraude' },
+        'BB+VM':  { docId: '1TmfTDaxhSkKbRJJGLtotboViY9Z3UrgMtCkrZnjpCRI', label: 'Brand Bidding + Violación de Propiedad Intelectual' },
+        'BBP+GD': { docId: '1jVK-9Wcm7Qrk5QhSP-5mFixUYNu505agas4T_lri9FM', label: 'Buy Box Protection + Protección Fraude' },
+        'BBP+VM': { docId: '1GXGkv4MaweOvNjI7Thu0C9G0JABfhaUAc3lr7swJSp4', label: 'Buy Box Protection + Violación de Propiedad Intelectual' },
+        'GD+VM':  { docId: '1PWvU4SwTKNk6Y7cw5WH9MTfkLIR1d0weLv_i9UXmROs', label: 'Protección Fraude + Violación de Propiedad Intelectual' },
+        'BB+BBP+GD': { docId: '1tLPVvVza-zqtlwHN1OVOJAqMB5gnUCYNgBJYPS3M_54', label: 'Brand Bidding + Buy Box Protection + Protección Fraude' },
+        'BB+BBP+VM': { docId: '1b-GAPwK3oBpEKlbOATpymeerePJuDQWg_T257z8e_Rk', label: 'Brand Bidding + Buy Box Protection + Violación de Propiedad Intelectual' },
+        'BB+GD+VM':  { docId: '1O_g2R79SQecoZtliO2jj77BqGxsu5IH8BC9tymzMaQE', label: 'Brand Bidding + Protección Fraude + Violación de Propiedad Intelectual' },
+        'BBP+GD+VM': { docId: '1GpUV856wg0QfrUxhlW3HTn9U_A-aK0J7thIQ8Z1t3yg', label: 'Buy Box Protection + Protección Fraude + Violación de Propiedad Intelectual' },
+        'BB+BBP+GD+VM': { docId: '1DauIgDm7g1hNgfLMGfaWg3M-9muHiDO2UXR-XqOff2g', label: 'Brand Bidding + Buy Box Protection + Protección Fraude + Violación de Propiedad Intelectual' },
+    },
 };
 
 export const PROPOSAL_OUTPUT_FOLDER_ID = process.env.PROPOSAL_OUTPUT_FOLDER_ID || null;
@@ -256,13 +295,34 @@ export const CANAIS_PADRAO = {
 // monitorados simultaneamente"), então é o único que se combina com o campo
 // de quantidade em vez de aparecer solto.
 export const CANAL_VM_COM_CONTAGEM = 'Marketplaces monitorados simultaneamente';
+export const CANAL_VM_COM_CONTAGEM_ID = 1604;
 
-/** Rótulos dos canais escolhidos no card, ou o padrão do produto se vazio. */
-export function canaisDoDeal(deal, code) {
+/**
+ * O rótulo desse canal no idioma pedido. O generator precisa dele pra saber
+ * QUAL dos canais recebe a contagem — comparar com a string em português
+ * falharia num documento em inglês e a proposta sairia sem o "Up to 3".
+ */
+export function labelCanalVmComContagem(idioma = IDIOMA_PADRAO) {
+    return CANAIS_LABEL_POR_IDIOMA[idioma]?.[CANAL_VM_COM_CONTAGEM_ID] || CANAL_VM_COM_CONTAGEM;
+}
+
+/**
+ * Rótulos dos canais escolhidos no card, ou o padrão do produto se vazio.
+ *
+ * O idioma só troca o rótulo do que tem tradução (ver CANAIS_LABEL_POR_IDIOMA,
+ * mais abaixo) — nome próprio de plataforma fica como está em qualquer língua.
+ */
+export function canaisDoDeal(deal, code, idioma = IDIOMA_PADRAO) {
+    const rotulo = (id) => CANAIS_LABEL_POR_IDIOMA[idioma]?.[id] || CANAIS_OPTION_TO_LABEL[id];
     const bruto = deal?.[CANAIS_FIELDS[code]];
-    if (!bruto) return CANAIS_PADRAO[code] || [];
+    if (!bruto) {
+        // O padrão é lista de rótulos em português; reencontra o id pra poder
+        // traduzir, senão o fallback sairia em português num doc em inglês.
+        const idPorLabel = Object.fromEntries(Object.entries(CANAIS_OPTION_TO_LABEL).map(([id, l]) => [l, Number(id)]));
+        return (CANAIS_PADRAO[code] || []).map((l) => rotulo(idPorLabel[l]) || l);
+    }
     const labels = String(bruto).split(',')
-        .map((id) => CANAIS_OPTION_TO_LABEL[Number(id.trim())])
+        .map((id) => rotulo(Number(id.trim())))
         .filter(Boolean);
     return labels.length ? labels : (CANAIS_PADRAO[code] || []);
 }
@@ -304,6 +364,69 @@ export function templatesDoIdioma(idioma) {
 export function resolveTemplate(idioma, chave) {
     return templatesDoIdioma(idioma)[chave] || null;
 }
+
+// ─── Strings que o GENERATOR injeta no documento ────────────────────
+// Traduzir o modelo não basta: parte do que sai na proposta é montada em
+// código, não está no Google Doc. O preço leva "/mês", o bloco de combo leva
+// "De"/"Por:", e o canal de marketplaces do VM leva "Até N …". Sem isto, um
+// modelo em inglês sairia com "R$ 8.000/mês" e "De R$ 27.000/mês" no meio do
+// texto em inglês.
+//
+// O sufixo do preço é IDIOMA, não moeda: mesmo mantendo o real (ver formatBRL),
+// em inglês se escreve "R$ 7.900/month" — é assim nos documentos que o
+// comercial já tem. As duas decisões são independentes.
+// precoLinha e plataformas também são usados pelo monta-combos pra ACHAR a
+// linha modelo dentro do documento — não são só texto de saída. Procurando
+// "Proposta:" num modelo em inglês ele não achava nada e montava o combo sem
+// preço total nenhum, calado.
+export const TEXTOS_POR_IDIOMA = {
+    pt: { porMes: '/mês',   de: 'De ',    por: 'Por: ', ate: 'Até',   precoLinha: 'Proposta:', plataformas: 'Plataformas:' },
+    en: { porMes: '/month', de: 'From: ', por: 'To: ',  ate: 'Up to', precoLinha: 'Price:',    plataformas: 'Platforms:' },
+    es: { porMes: '/mes',   de: 'De: ',   por: 'Por: ', ate: 'Hasta', precoLinha: 'Propuesta:', plataformas: 'Plataformas:' },
+};
+
+export function textosDoIdioma(idioma) {
+    return TEXTOS_POR_IDIOMA[idioma] || TEXTOS_POR_IDIOMA[IDIOMA_PADRAO];
+}
+
+// Títulos que marcam as fronteiras das seções dentro do modelo. O
+// monta-combos.js recorta o documento por eles pra montar as combinações —
+// procurando "Nossas Proteções" num modelo em inglês ele não acha nada e
+// aborta. São expressões, não texto exato, porque os modelos variam na
+// acentuação e no nível de heading.
+export const SECOES_POR_IDIOMA = {
+    pt: { protecoes: /^Nossas Prote/i,  comercial: /^Proposta Comercial/i, condicoes: /^Condi..es Comerciais/i },
+    en: { protecoes: /^Our Protections/i, comercial: /^Business Proposal/i, condicoes: /^Commercial Terms/i },
+    es: { protecoes: /^Nuestras Protecciones/i, comercial: /^Propuesta Comercial/i, condicoes: /^Condiciones Comerciales/i },
+};
+
+export function secoesDoIdioma(idioma) {
+    return SECOES_POR_IDIOMA[idioma] || SECOES_POR_IDIOMA[IDIOMA_PADRAO];
+}
+
+// Rótulo de canal por idioma. Só o que DIFERE do português entra aqui; o que
+// faltar cai no rótulo em português, que é o comportamento certo pra nome
+// próprio — "Google Search Ads", "Mercado Livre" e "Amazon" não se traduzem.
+export const CANAIS_LABEL_POR_IDIOMA = {
+    en: {
+        // "Facebook e Instagram" com "e" é o vazamento de português que a
+        // auditoria achou nos documentos antigos em inglês (AUDITORIA §4).
+        1600: 'Meta (Facebook and Instagram)',
+        1601: "TLD's (Domains)",
+        1603: 'App stores (Apple Store and Play Store)',
+        1604: 'marketplaces monitored simultaneously',
+    },
+    es: {
+        // Em espanhol "Facebook e Instagram" está CERTO — a conjunção vira "e"
+        // antes de som de i. Por isso 1600 não entra aqui.
+        1601: "TLD's (Dominios)",
+        1603: 'Tiendas de aplicaciones (Apple Store y Play Store)',
+        1604: 'marketplaces monitoreados simultáneamente',
+        // A marca chama Mercado Libre fora do Brasil.
+        1596: 'Mercado Libre',
+        1607: 'Mercado Libre',
+    },
+};
 
 /** Todos os docIds em uso, em todos os idiomas — usado pela faxina do Drive. */
 export function todosOsDocIds() {

@@ -35,7 +35,7 @@
  */
 import 'dotenv/config';
 import { JWT } from 'google-auth-library';
-import { templatesDoIdioma, PRODUCTS, PRODUCT_CASCADE_ORDER, PROPOSAL_OUTPUT_FOLDER_ID } from '../src/config/proposal.js';
+import { templatesDoIdioma, PRODUCTS, PRODUCT_CASCADE_ORDER, PROPOSAL_OUTPUT_FOLDER_ID, secoesDoIdioma, textosDoIdioma } from '../src/config/proposal.js';
 import { idiomaDaLinhaDeComando, avisoDeIdioma } from './_idioma.js';
 
 const APPLY = process.argv.includes('--apply');
@@ -147,11 +147,12 @@ function fatiar(blocos) {
     // modelos são inconsistentes entre si (em BB e BBP o "Proposta Comercial"
     // é parágrafo normal; em GD e VM é HEADING_2).
     const acha = (re, desde = 0) => blocos.findIndex((b, i) => i >= desde && b.kind === 'para' && re.test(textoDe(b).trim()));
-    const iProt = acha(/^Nossas Prote/i);
-    const iComercial = acha(/^Proposta Comercial/i, iProt + 1);
-    const iCond = acha(/^Condi..es Comerciais/i, iComercial + 1);
+    const S = secoesDoIdioma(IDIOMA);
+    const iProt = acha(S.protecoes);
+    const iComercial = acha(S.comercial, iProt + 1);
+    const iCond = acha(S.condicoes, iComercial + 1);
     if (iProt < 0 || iComercial < 0 || iCond < 0) {
-        throw new Error(`esqueleto inesperado (Nossas Proteções=${iProt}, Proposta Comercial=${iComercial}, Condições=${iCond})`);
+        throw new Error(`esqueleto inesperado em ${IDIOMA} (proteções=${iProt}, comercial=${iComercial}, condições=${iCond}) — confira SECOES_POR_IDIOMA na config`);
     }
     // Fecho: da última linha não-vazia depois das condições até o fim.
     let iFecho = blocos.length;
@@ -243,19 +244,26 @@ function compor(codigos, fatiasPorCodigo, introPreservada) {
     // ficava escondido no meio dos itens de produto.
     if (codigos.length > 1) {
         const tituloModelo = primeiro.comercial[primeiroCheio(primeiro.comercial)];
-        const linhaModelo = primeiro.comercial.find((b) => /^Proposta:/.test(textoDe(b).trim()));
+        // A linha de preço é achada pelo rótulo NO IDIOMA do modelo. Procurar
+        // "Proposta:" num documento em inglês devolvia undefined e o combo saía
+        // sem preço total nenhum — sem erro, só faltando.
+        const T = textosDoIdioma(IDIOMA);
+        const linhaModelo = primeiro.comercial.find((b) => textoDe(b).trim().startsWith(T.precoLinha));
+        if (!linhaModelo) {
+            console.log(`   ⚠️  não achei a linha "${T.precoLinha}" no modelo de ${codigos[0]} — o combo sai SEM preço total`);
+        }
         const nomes = codigos.map((cod) => {
             const blocos = fatiasPorCodigo[cod].produto;
             return semNumero(textoDe(blocos[primeiroCheio(blocos)]));
         });
         out.push(comoTitulo(tituloModelo, `${codigos.length + 1} - Combo: ${nomes.join(' + ')}`, 3));
         if (linhaModelo) {
-            out.push(comTexto(linhaModelo, 'Proposta:'));
+            out.push(comTexto(linhaModelo, T.precoLinha));
             out.push(comTexto(linhaModelo, '{{TOTAL_DE}}'));
             out.push(comTexto(linhaModelo, '{{TOTAL_POR}}'));
             // Canais do combo saem do card, não do modelo: cada produto tem seu
             // campo de canais e o generator monta a união em {{CANAIS_COMBO}}.
-            out.push(comTexto(linhaModelo, 'Plataformas: {{CANAIS_COMBO}}'));
+            out.push(comTexto(linhaModelo, `${T.plataformas} {{CANAIS_COMBO}}`));
         }
     }
 
@@ -534,8 +542,10 @@ if (APPLY && Object.keys(novosIds).length) {
     // aninhado, e colar as linhas soltas na raiz quebraria o arquivo.
     console.log(`\n── cole em PROPOSAL_TEMPLATES.${IDIOMA} ──`);
     for (const [k, id] of Object.entries(novosIds)) {
+        // Prefere o rótulo dos bases DESTE idioma — senão um combo em inglês
+        // sairia rotulado "Golpes Digitais + Violação de Marca".
         const label = MODELOS[k]?.label
-            || k.split('+').map((c) => PRODUCTS[c].label).join(' + ');
+            || k.split('+').map((c) => MODELOS[c]?.label || PRODUCTS[c].label).join(' + ');
         console.log(`        '${k}': { docId: '${id}', label: '${label}' },`);
     }
 }

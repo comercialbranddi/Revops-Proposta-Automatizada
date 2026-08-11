@@ -15,16 +15,29 @@ a versão que viaja com o repo.
 
 ## Recomendação
 
-**Não aplicar placeholders em nenhum documento como está.**
+**Não aplicar placeholders nos documentos em INGLÊS como estão.**
 
-Todos os modelos em inglês vendem **contrato anual com fidelidade**; o português
-vende **sem fidelidade**. Os dois em espanhol cobram **setup de uma
-mensalidade**; o português não cobra setup. Isso não é escolha de tradução — é
-cláusula de contrato. Automatizar agora colocaria a proposta saindo com termos
-que o time não pratica, em escala e sem revisão humana.
+Todos os quatro vendem **contrato anual com fidelidade**, e ainda divergem entre
+si no aviso prévio (90 dias num, 30 nos outros três). O português vende
+**contrato sem fidelidade, com aviso de 60 dias**. Isso não é escolha de
+tradução — é cláusula de contrato.
 
-O que falta decidir é comercial, não técnico. O encanamento no código já está
-pronto (§5 do handoff) e não depende de nada disto.
+O espanhol está mais perto do que esta auditoria dizia na primeira versão: ele
+cobra `Setup: 01 mensualidad`, **e o português cobra o mesmo** (`Setup: 01
+mensalidade`, nos quatro bases). Aquela linha foi registrada como divergência
+por engano, a partir de um export local desatualizado. A divergência real do
+espanhol é só a **moeda** (§3).
+
+> **Correção de 11/08/2026.** A primeira versão deste documento afirmava que "o
+> português não cobra setup". Errado: os quatro modelos-base em português dizem
+> `Setup: 01 mensalidade`. A afirmação veio de um `modelos-export/BB.txt` velho.
+> Não dá pra saber se o export estava defasado ou se o modelo mudou no Drive,
+> porque `modelos-export/` é gitignored.
+
+**A decisão que segue aberta é uma só, e é comercial:** proposta para cliente de
+fora tem contrato anual com fidelidade, como dizem os documentos em inglês, ou
+sem fidelidade, como o português? Decidido em 11/08/2026 que segue o português —
+ver §6.
 
 ---
 
@@ -61,20 +74,20 @@ Estas linhas saem no documento que o cliente assina.
 
 | Documento | Setup | Duração do contrato | Validade |
 |---|---|---|---|
-| **Português** (produção) | Sem cobrança | Sem fidelidade, aviso 60 dias | 15 dias |
+| **Português** (produção) | 01 mensalidade | Sem fidelidade, aviso 60 dias | 15 dias |
 | EN · BB | ⚠️ `$ 000,00` (nunca preenchido) | ⚠️ **Anual, aviso 90 dias** | ⚠️ ausente |
 | EN · GD | ⚠️ `$ 000,00` | ⚠️ **Anual, aviso 30 dias** | ⚠️ ausente |
 | EN · BB+VM | ⚠️ `$ 000,00` | ⚠️ **Anual, aviso 30 dias** | ⚠️ ausente |
 | EN · BB+VM+GD | ⚠️ `$ 000,00` | ⚠️ **Anual, aviso 30 dias** | ⚠️ data fixa, vencida |
-| ES · BB | ⚠️ **01 mensualidad** | Sin permanencia, aviso 60 días | 15 días |
-| ES · BB+GD | ⚠️ **01 cuota mensual** | Sin permanencia, aviso 60 días | 15 días |
+| ES · BB | 01 mensualidad *(igual ao PT)* | Sin permanencia, aviso 60 días | 15 días |
+| ES · BB+GD | 01 cuota mensual *(igual ao PT)* | Sin permanencia, aviso 60 días | 15 días |
 
 O inglês ainda diverge **de si mesmo**: 90 dias de aviso prévio no modelo de BB,
 30 nos outros três.
 
-O espanhol está perto — só o setup diverge. O inglês está longe: os quatro
-documentos vendem fidelidade anual, o oposto do que o modelo em português
-oferece.
+**O espanhol não diverge nas condições** — setup, contrato e validade batem com
+o português. O inglês está longe: os quatro documentos vendem fidelidade anual,
+o oposto do que o modelo em português oferece.
 
 ## 3. A moeda: a decisão já foi tomada de dois jeitos
 
@@ -120,11 +133,15 @@ Violação de Marca mas lista **Google + Meta** como plataformas, que são os ca
 de Golpes Digitais. Em `BB+VM+GD`, o item 4 se intitula "Combo: Brand Bidding +
 Intellectual Property Violation" e mostra as plataformas dos **três** produtos.
 
-**O inglês descreve um serviço que o português não vende mais.** O modelo de BB
-em inglês promete um **Daily Report** entregue toda manhã por e-mail; o português
-começa direto na triagem semanal. Falta também no inglês a linha de limite de
-palavras-chave que em português vira `{{PALAVRAS_BB}}`, e o monitoramento aparece
-só como "Google Search Ads", sem o Google Shopping que o português já incorporou.
+**Falta no inglês a linha de limite de palavras-chave** que em português vira
+`{{PALAVRAS_BB}}`, e o monitoramento aparece só como "Google Search Ads", sem o
+Google Shopping que o português já incorporou.
+
+> **Correção de 11/08/2026.** Este parágrafo afirmava também que o inglês
+> prometia um "Daily Report" que o português não vendia mais. Errado: o modelo
+> em português **tem** esse entregável ("Relatório diário: as informações do
+> monitoramento serão entregues diariamente no período da manhã…"). Veio da
+> mesma leitura de export desatualizado que gerou o engano sobre o setup.
 
 **Cada idioma usa um marcador diferente pra marca.** Inglês `XXXX`, espanhol
 `XXX`, português já convertido pra `{{MARCA}}`. O `aplica-placeholders.js` só

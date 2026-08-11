@@ -1,0 +1,204 @@
+{
+  "idioma": "en",
+  "produto": "VM",
+  "fonte": "1iE20XbTEuFXBJw3t2EtXERqwC1ard3yIGrVX0Oi4lxA",
+  "_instrucao": "Preencha \"traducao\". Deixar vazio = manter o texto em português no documento final. Placeholders {{...}} devem sobreviver.",
+  "pares": [
+    {
+      "original": "São Paulo, XX de [mês] de [ano].",
+      "traducao": "São Paulo, Brazil, {{DATA}}."
+    },
+    {
+      "original": "Para: {{MARCA}}",
+      "traducao": "To: {{MARCA}}"
+    },
+    {
+      "original": "Prezados,",
+      "traducao": "Dear Sir or Madam,"
+    },
+    {
+      "original": "Apresentamos nossa proposta comercial para prestação de serviços especializados em monitoramento das marcas da {{MARCA}} no ambiente digital, visando proteger seus direitos de propriedade intelectual. Este serviço será executado pela Branddi, aliando a tecnologia de ponta da nossa ferramenta e a expertise para combater o desvio de clientela e maximizar seus esforços de construção de marca.",
+      "traducao": "We are pleased to present our commercial proposal for the provision of specialized services in monitoring the {{MARCA}} brands in the digital environment, aiming to protect your intellectual property rights. This service will be carried out by Branddi, combining the cutting-edge technology of our tool and our expertise to combat customer diversion and maximize your brand-building efforts."
+    },
+    {
+      "original": "Nossas Proteções",
+      "traducao": "Our Protections"
+    },
+    {
+      "original": "Violação de Propriedade Intelectual",
+      "traducao": "Intellectual Property Infringement"
+    },
+    {
+      "original": "O serviço de proteção contra violação de propriedade intelectual da Branddi é projetado para identificar e mitigar proativamente o uso indevido de suas marcas registradas nas principais plataformas de venda online. Nosso objetivo primordial é localizar vendedores, empresas ou entidades que possam estar utilizando, intencional ou inadvertidamente, marcas de terceiros para promover ou vender produtos e serviços.",
+      "traducao": "Branddi's intellectual property infringement protection service is designed to proactively identify and mitigate the misuse of your trademarks on major online selling platforms. Our primary goal is to locate sellers, companies, or entities that may be intentionally or inadvertently using third-party trademarks to promote or sell products and services."
+    },
+    {
+      "original": "Com base em ocorrências encontradas pelo nosso sistema de monitoramento, tomamos medidas adequadas para comunicar as violações às respectivas plataformas de venda, buscando a remoção de listagens inapropriadas ou a correção dos anúncios que possam estar infringindo os seus direitos de propriedade intelectual.",
+      "traducao": "Based on occurrences detected by our monitoring system, we take appropriate measures to communicate the infringements to the respective selling platforms, seeking the removal of inappropriate listings or the correction of advertisements that may be infringing on your intellectual property rights."
+    },
+    {
+      "original": "De acordo com a legislação brasileira de propriedade intelectual, os titulares de marcas têm o direito inalienável de proteger sua marca contra usos não autorizados. A proteção de sua marca não é apenas um direito, mas uma responsabilidade para garantir a autenticidade e a confiança que os consumidores depositam em seus produtos e serviços. Nossos serviços são moldados para ajudá-lo a exercer esse direito e garantir que sua marca permaneça única e inconfundível no mercado.",
+      "traducao": "According to Brazilian intellectual property legislation, trademark holders have the inalienable right to protect their trademark against unauthorized uses. Protecting your brand is not only a right but also a responsibility, to ensure the authenticity and trust that consumers place in your products and services. Our services are shaped to assist you in exercising this right and ensuring that your brand remains unique and unmistakable in the market."
+    },
+    {
+      "original": "Especificações",
+      "traducao": "Specifications"
+    },
+    {
+      "original": "Marca a ser monitorada:",
+      "traducao": "Brand to be monitored:"
+    },
+    {
+      "original": "{{MARCA}}",
+      "traducao": "{{MARCA}}"
+    },
+    {
+      "original": "Plataformas Monitoradas: ",
+      "traducao": "Monitored Platforms: "
+    },
+    {
+      "original": "{{CANAIS_VM}}",
+      "traducao": "{{CANAIS_VM}}"
+    },
+    {
+      "original": "Frequência do Monitoramento: ",
+      "traducao": "Monitoring Frequency: "
+    },
+    {
+      "original": "Diário",
+      "traducao": "Daily"
+    },
+    {
+      "original": "Aspectos do Monitoramento:",
+      "traducao": "Monitoring Aspects:"
+    },
+    {
+      "original": "Identificar:",
+      "traducao": "Identifying:"
+    },
+    {
+      "original": "anúncios de produtos que utilizam termos da marca no título ou conteúdo da oferta;",
+      "traducao": "product advertisements that use brand terms in the title or content of the offer;"
+    },
+    {
+      "original": "perfis em redes sociais que utilizem a marca no nome do usuário ou elementos gráficos da marca na foto de perfil.",
+      "traducao": "social media profiles that use the brand in the username, or brand graphics in the profile picture."
+    },
+    {
+      "original": "anúncios em metaads que utilizem termos da marca no conteúdo do anúncio",
+      "traducao": "ads on Meta Ads that use brand terms in the ad content"
+    },
+    {
+      "original": "A marca deve possuir o devido registro no INPI de titularidade do cliente;",
+      "traducao": "The brand must have proper registration with the INPI (Brazilian National Institute of Industrial Property) under the client's ownership;"
+    },
+    {
+      "original": "Triagem e categorização das ocorrências para determinar o tipo de violação. Esse trabalho é realizado pela nossa equipe de especialistas em Brand Strategy, trazendo a indicação de qual tratativa poderá ser adotada conforme o tipo de violação.",
+      "traducao": "Screening and categorization of occurrences to determine the type of infringement. This task is carried out by our team of Brand Strategy specialists, providing guidance on the appropriate action to be taken based on the type of infringement."
+    },
+    {
+      "original": "Entregáveis ",
+      "traducao": "Deliverables "
+    },
+    {
+      "original": "Setup (Onboarding):",
+      "traducao": "Setup (Onboarding):"
+    },
+    {
+      "original": "Ativação e configuração de robôs de monitoramento;",
+      "traducao": "Activation and configuration of monitoring robots;"
+    },
+    {
+      "original": "Definição das regras de triagem e classificação junto ao cliente;",
+      "traducao": "Definition of screening and classification rules with the client;"
+    },
+    {
+      "original": "Customização dos modelos de aviso.",
+      "traducao": "Customization of notice templates."
+    },
+    {
+      "original": "Triagem semanal: Envio semanal relacionando as violações identificadas para o cliente aprovar a atuação. Nenhum aviso de violação ou denúncia será iniciado sem aprovação expressa do cliente para cada um dos links",
+      "traducao": "Weekly screening: a weekly submission listing the infringements identified, for the client to approve the course of action. No infringement notice or report is initiated without the express approval of the client for each of the links"
+    },
+    {
+      "original": "Relatório semanal: Enviado por e-mail relatório com situação das ocorrências que estão sendo tratadas. O cliente poderá customizar este relatório dentre as informações disponíveis pelo monitoramento.",
+      "traducao": "Weekly report: a report is sent by email with the status of the occurrences being handled. The client can customize this report from the information available through monitoring."
+    },
+    {
+      "original": "Formas de atuação:",
+      "traducao": "Methods of action:"
+    },
+    {
+      "original": "Aviso de Violação: ",
+      "traducao": "Infringement Notice: "
+    },
+    {
+      "original": "Envio de avisos de violação de marca para os infratores, buscando uma solução amistosa. ",
+      "traducao": "Sending trademark infringement notices to the offenders, seeking an amicable resolution. "
+    },
+    {
+      "original": "Os avisos poderão ser enviados via mensagem de chat, através do próprio perfil da Branddi diretamente aos infratores, quando disponibilizado o canal pela plataforma. ",
+      "traducao": "The notices can be sent by chat message, through Branddi's own profile, directly to the offenders, when the platform provides such a channel. "
+    },
+    {
+      "original": "Denúncia: ",
+      "traducao": "Reporting: "
+    },
+    {
+      "original": "No caso de ocorrências classificadas como suspeita de Falsificação ou Uso Ilegal da Marca, ou não resolvidas de maneira amigável através dos avisos de violação, protocolamos as denúncias nas plataformas pedindo a remoção dos referidos conteúdos;",
+      "traducao": "For occurrences classified as suspected Counterfeiting or Illegal Use of the Brand, or not resolved amicably through infringement notices, we file reports with the platforms requesting the removal of the content in question;"
+    },
+    {
+      "original": "Reunião mensal: onde apresentamos relatório das violações por canal, taxa de sucesso e impacto financeiro estimado e as oportunidades identificadas para aprimorar o ambiente de proteção de marca",
+      "traducao": "Monthly meeting: where we present a report of infringements by channel, success rate, estimated financial impact, and the opportunities identified to strengthen the brand protection environment"
+    },
+    {
+      "original": "Proposta Comercial ",
+      "traducao": "Business Proposal "
+    },
+    {
+      "original": "1 - Proteção Violação de marca",
+      "traducao": "1 - Intellectual Property Infringement Protection"
+    },
+    {
+      "original": "Proposta: {{PRECO_VM}}",
+      "traducao": "Price: {{PRECO_VM}}"
+    },
+    {
+      "original": "Plataformas: {{CANAIS_VM}}",
+      "traducao": "Platforms: {{CANAIS_VM}}"
+    },
+    {
+      "original": "Condições Comerciais",
+      "traducao": "Commercial Terms"
+    },
+    {
+      "original": "Setup: 01 mensalidade",
+      "traducao": "Setup: one monthly fee"
+    },
+    {
+      "original": "Limite de denúncias/mediações: Sem limite.",
+      "traducao": "Limit of reports/mediations: no limit."
+    },
+    {
+      "original": "Prazo para início do monitoramento: 3 dias úteis.",
+      "traducao": "Monitoring start time: 3 business days."
+    },
+    {
+      "original": "Condição de pagamento: Mensal - D+30 da emissão da NF\u000bRenovação automática.",
+      "traducao": "Payment terms: monthly - D+30 from the invoice issue date\u000bAutomatic renewal."
+    },
+    {
+      "original": "Duração do contrato:  Contrato sem fidelidade, com aviso prévio de 60 dias para cancelamento sem multa",
+      "traducao": "Contract duration: no minimum term, with 60 days of prior notice for cancellation without penalty"
+    },
+    {
+      "original": "Proposta Válida por 15 dias",
+      "traducao": "Proposal valid for 15 days"
+    },
+    {
+      "original": "Branddi – Combata o uso indevido da sua marca e maximize seus resultados",
+      "traducao": "Branddi – Fight the misuse of your brand and maximize your results"
+    }
+  ]
+}

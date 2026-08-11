@@ -25,9 +25,9 @@ import { copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl, findOrCr
 import {
     PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS, PRICED_PRODUCTS,
     CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD, VALOR_PACOTE_FIELD,
-    canaisDoDeal, CANAL_VM_COM_CONTAGEM, SERVICO_QUE_VIROU_CANAL, SERVICO_OFERECIDO_SEM_TEMPLATE,
+    canaisDoDeal, labelCanalVmComContagem, SERVICO_QUE_VIROU_CANAL, SERVICO_OFERECIDO_SEM_TEMPLATE,
     getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
-    idiomaDoDeal, resolveTemplate, IDIOMA_PADRAO, IDIOMA_LABEL,
+    idiomaDoDeal, resolveTemplate, IDIOMA_PADRAO, IDIOMA_LABEL, textosDoIdioma,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
 import supabase from './supabase-client.js';
@@ -62,16 +62,22 @@ function isoDateBR(date = new Date()) {
         .format(date);
 }
 
-// SEMPRE em reais, inclusive em proposta EN/ES. Não é esquecimento: em que
-// moeda sai uma proposta em outro idioma (BRL? USD? moeda local?) e de onde
+// A MOEDA é sempre real, inclusive em proposta EN/ES. Não é esquecimento: em
+// que moeda sai uma proposta em outro idioma (BRL? USD? moeda local?) e de onde
 // esse dado vem (campo novo no Pipedrive? o currency do deal?) é decisão
 // comercial, não técnica — ainda não foi tomada. Quando for, este é o ponto.
-function formatBRL(value) {
+//
+// O SUFIXO, esse sim muda com o idioma: "R$ 7.900/month" é como os documentos
+// que o comercial já tem em inglês escrevem. São duas decisões independentes, e
+// só uma delas depende do time.
+function formatBRL(value, idioma = IDIOMA_PADRAO) {
     const n = Number(value);
     if (value == null || !Number.isFinite(n)) return null;
     // Preço redondo não mostra centavos; 7900,5 mostra "R$ 7.900,50/mês".
     const casas = Number.isInteger(n) ? 0 : 2;
-    return `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })}/mês`;
+    // O agrupamento segue pt-BR junto com a moeda: "R$ 7,900" com vírgula de
+    // milhar seria uma mistura pior que o ponto num texto em inglês.
+    return `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })}${textosDoIdioma(idioma).porMes}`;
 }
 
 /** Valor de campo numérico que conta como "preenchido": número > 0. */
@@ -356,9 +362,12 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         // {{PRECO_GD}}, {{PRECO_VM}}) — vale igual pra proposta de produto
         // único ou combinação.
         const pricedCodes = productCodes.filter((code) => PRICED_PRODUCTS.includes(code));
+        // Daqui pra baixo tudo que vira TEXTO no documento passa pelo idioma —
+        // preço, conectivos do combo e rótulo de canal. Ver TEXTOS_POR_IDIOMA.
+        const textos = textosDoIdioma(idioma);
         const priceReplacements = Object.fromEntries(pricedCodes.map((code) => [
             `{{PRECO_${code}}}`,
-            formatBRL(deal[PRODUCT_PRICE_FIELDS[code]]),
+            formatBRL(deal[PRODUCT_PRICE_FIELDS[code]], idioma),
         ]));
         // "Preenchido" é número > 0: zero não é preço nem tamanho de catálogo,
         // e antes passava na checagem e saía "R$ 0/mês" na proposta.
@@ -386,10 +395,14 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         // único que carrega a contagem, então se junta ao campo de quantidade;
         // os demais entram como estão. Campo vazio cai no padrão do produto,
         // que é o texto que o modelo já trazia — por isso nunca é obrigatório.
+        // O canal de marketplaces do VM é identificado pelo rótulo NO IDIOMA do
+        // documento — comparar com a string em português faria a proposta em
+        // inglês sair sem o "Up to 3".
+        const canalVmContagem = labelCanalVmComContagem(idioma);
         const canaisPorProduto = Object.fromEntries(productCodes.map((code) => {
-            const labels = canaisDoDeal(deal, code).map((label) => (
-                code === 'VM' && label === CANAL_VM_COM_CONTAGEM
-                    ? `Até ${Number(plataformasVM) || 3} ${label.charAt(0).toLowerCase()}${label.slice(1)}`
+            const labels = canaisDoDeal(deal, code, idioma).map((label) => (
+                code === 'VM' && label === canalVmContagem
+                    ? `${textos.ate} ${Number(plataformasVM) || 3} ${label.charAt(0).toLowerCase()}${label.slice(1)}`
                     : label
             ));
             return [code, labels];
@@ -405,10 +418,10 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         const valorPacote = deal[VALOR_PACOTE_FIELD];
         const comDesconto = productCodes.length > 1 && isPreenchido(valorPacote);
         const totalDe = productCodes.length > 1
-            ? (comDesconto ? `De ${formatBRL(soma)}` : formatBRL(soma))
+            ? (comDesconto ? `${textos.de}${formatBRL(soma, idioma)}` : formatBRL(soma, idioma))
             : null;
         const totalPor = productCodes.length > 1
-            ? (comDesconto ? `Por: ${formatBRL(valorPacote)}` : '')
+            ? (comDesconto ? `${textos.por}${formatBRL(valorPacote, idioma)}` : '')
             : null;
 
         if (missingFields.length > 0) {
