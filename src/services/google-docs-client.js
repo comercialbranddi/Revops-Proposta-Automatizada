@@ -116,8 +116,12 @@ export async function findOrCreateFolder(name, parentId) {
  * @param {Record<string,string>} replacements — chave = texto literal a buscar, valor = substituição
  */
 export async function replacePlaceholders(docId, replacements) {
+    // null/undefined significa "não tenho esse valor, deixa o texto como está";
+    // string vazia significa "apaga este placeholder". Tratar os dois igual
+    // deixava o {{TOTAL_POR}} visível no documento quando a proposta combinada
+    // saía sem desconto — que é justamente quando ele não deve aparecer.
     const requests = Object.entries(replacements)
-        .filter(([, value]) => value != null && value !== '')
+        .filter(([, value]) => value != null)
         .map(([find, replaceText]) => ({
             replaceAllText: { containsText: { text: find, matchCase: true }, replaceText: String(replaceText) },
         }));
