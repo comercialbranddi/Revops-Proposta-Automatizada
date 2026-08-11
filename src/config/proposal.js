@@ -26,22 +26,25 @@ export function getProductByPrincipalOptionId(optionId) {
 export const PRODUCT_CASCADE_ORDER = ['BB', 'BBP', 'GD', 'VM'];
 
 // ─── Campo "Serviço oferecido" (multi-select) — option IDs confirmados
-// via GET /dealFields em 31/07/2026. Só mapeia os 4 produtos automatizados;
-// outras opções do campo (Violação Comercial, APP, Bing, Novos Termos)
-// não têm template e ficam fora do fluxo automático.
+// via GET /dealFields em 31/07/2026.
 export const SERVICO_OFERECIDO_OPTION_TO_CODE = {
     152: 'BB',
     549: 'BBP',
     153: 'GD',
     154: 'VM',
+    // "Violação Comercial" é o nome ANTIGO do Buy Box Protection (confirmado
+    // com a Jessica em 10/08/2026). A opção continua existindo no campo e ainda
+    // é marcada, então aponta pro mesmo modelo. Card com as duas marcadas não
+    // vira "BBP+BBP": parseServicoOferecido remove repetição.
+    361: 'BBP',
 };
 
-// As demais opções do campo, que não têm modelo automatizado. Rótulos
-// confirmados via GET /dealFields em 07/08/2026. Ficam mapeadas só pra
-// conseguir NOMEAR o que está fora do fluxo na nota do card — antes elas eram
-// descartadas em silêncio e um deal "BB + Bing" virava proposta só de BB.
+// Opções do campo que não têm modelo — não existe proposta escrita pra elas em
+// lugar nenhum (procurei nos 33 arquivos da pasta "Modelo Propostas" em
+// 11/08/2026: zero ocorrência). Ficam mapeadas só pra conseguir NOMEAR o que
+// está fora do fluxo na nota do card; antes eram descartadas em silêncio e um
+// deal "BB + Bing" virava proposta só de BB.
 export const SERVICO_OFERECIDO_SEM_TEMPLATE = {
-    361: 'Violação Comercial',
     415: 'APP',
     416: 'Bing',
     697: 'Novos Termos',
@@ -64,8 +67,12 @@ export function parseServicoOferecido(rawValue) {
         const id = Number(raw.trim());
         if (!Number.isFinite(id)) continue;
         const code = SERVICO_OFERECIDO_OPTION_TO_CODE[id];
-        if (code) codes.push(code);
-        else semTemplate.push(SERVICO_OFERECIDO_SEM_TEMPLATE[id] || `opção ${id}`);
+        // Sem repetir: "Buy Box Protection" e "Violação Comercial" apontam pro
+        // mesmo produto, e um card com as duas marcadas viraria "BBP+BBP".
+        if (code) { if (!codes.includes(code)) codes.push(code); } else {
+            const rotulo = SERVICO_OFERECIDO_SEM_TEMPLATE[id] || `opção ${id}`;
+            if (!semTemplate.includes(rotulo)) semTemplate.push(rotulo);
+        }
     }
     return { codes, semTemplate };
 }
