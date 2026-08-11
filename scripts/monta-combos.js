@@ -71,9 +71,12 @@ const tabOf = (d) => d.tabs?.[0];
 const bodyOf = (d) => tabOf(d)?.documentTab?.body || d.body;
 const tabIdOf = (d) => tabOf(d)?.tabProperties?.tabId;
 const fimDe = (body) => body.content[body.content.length - 1].endIndex;
+// Documento com abas guarda as listas dentro da aba, não na raiz — passar
+// doc.lists devolvia undefined e toda lista numerada virava marcador redondo.
+const listsOf = (d) => tabOf(d)?.documentTab?.lists || d.lists || {};
 
 // ─── Parser ─────────────────────────────────────────────────────────
-function paraParaBloco(p) {
+function paraParaBloco(p, listas = {}) {
     const runs = (p.elements || []).filter((e) => e.textRun)
         .map((e) => ({ text: e.textRun.content, textStyle: e.textRun.textStyle || {} }));
     for (let i = runs.length - 1; i >= 0; i--) {
@@ -87,20 +90,30 @@ function paraParaBloco(p) {
         indentStart: ps.indentStart?.magnitude ?? 0,
         indentFirstLine: ps.indentFirstLine?.magnitude ?? 0,
         // nestingLevel do bullet é derivado da indentação na hora de recriar.
-        bullet: p.bullet ? { nivel: p.bullet.nestingLevel ?? 0 } : null,
+        bullet: p.bullet ? { nivel: p.bullet.nestingLevel ?? 0, ordenada: listaOrdenada(listas, p.bullet) } : null,
         runs: runs.filter((r) => r.text.length > 0),
     };
 }
 
-function parseBody(body) {
+/**
+ * Lista numerada ou marcador redondo? O tipo vem do glyphType do nível na
+ * definição da lista — recriar tudo como marcador transformava o "a)"/"i)" do
+ * original em bolinha.
+ */
+function listaOrdenada(listas, bullet) {
+    const nivel = listas?.[bullet.listId]?.listProperties?.nestingLevels?.[bullet.nestingLevel ?? 0];
+    return /DECIMAL|ALPHA|ROMAN/i.test(nivel?.glyphType || '');
+}
+
+function parseBody(body, listas = {}) {
     const blocos = [];
     for (const el of body.content || []) {
-        if (el.paragraph) blocos.push(paraParaBloco(el.paragraph));
+        if (el.paragraph) blocos.push(paraParaBloco(el.paragraph, listas));
         else if (el.table) {
             const paras = [];
             for (const linha of el.table.tableRows || []) {
                 for (const celula of linha.tableCells || []) {
-                    for (const c of celula.content || []) if (c.paragraph) paras.push(paraParaBloco(c.paragraph));
+                    for (const c of celula.content || []) if (c.paragraph) paras.push(paraParaBloco(c.paragraph, listas));
                 }
             }
             blocos.push({ kind: 'caixa', paras, estilo: el.table.tableRows?.[0]?.tableCells?.[0]?.tableCellStyle || null });
@@ -148,7 +161,7 @@ function fatiar(blocos) {
 // ─── Inspeção ───────────────────────────────────────────────────────
 if (DUMP) {
     const doc = await getDoc(PROPOSAL_TEMPLATES[DUMP].docId);
-    const fatias = fatiar(parseBody(bodyOf(doc)));
+    const fatias = fatiar(parseBody(bodyOf(doc), listsOf(doc)));
     for (const [nome, valor] of Object.entries(fatias)) {
         const lista = Array.isArray(valor) ? valor : [valor];
         console.log(`\n━━ ${nome} (${lista.length} bloco(s))`);
@@ -321,7 +334,17 @@ function pedidosPara(bloco, em, tabId, comQuebra = true) {
         }
         off += r.text.length;
     }
-    return { requests, delta: texto.length, bulletRange: bloco.bullet ? { startIndex: em, endIndex: em + texto.length } : null };
+    return {
+        requests,
+        delta: texto.length,
+        // A indentação acima é a que o createParagraphBullets usa pra deduzir o
+        // nível. Ela não é a posição visual certa: dentro de caixa, o marcador
+        // fica pra fora da célula e o Docs corta o "i)". Por isso a original
+        // viaja junto, pra ser restaurada depois que a lista existir.
+        bulletRange: bloco.bullet
+            ? { startIndex: em, endIndex: em + texto.length, indentStart: bloco.indentStart || 0, indentFirstLine: bloco.indentFirstLine || 0, ordenada: !!bloco.bullet.ordenada }
+            : null,
+    };
 }
 
 async function escrever(docId, blocos, presetBullet) {
@@ -377,12 +400,28 @@ async function escrever(docId, blocos, presetBullet) {
     const juntos = [];
     for (const r of bullets) {
         const ult = juntos[juntos.length - 1];
-        if (ult && r.startIndex === ult.endIndex) ult.endIndex = r.endIndex;
+        if (ult && r.startIndex === ult.endIndex && ult.ordenada === r.ordenada) ult.endIndex = r.endIndex;
         else juntos.push({ ...r });
     }
     for (const faixa of juntos) {
-        await batch(docId, [{ createParagraphBullets: { range: { ...faixa, ...t }, bulletPreset: presetBullet } }]);
+        const preset = faixa.ordenada ? 'NUMBERED_DECIMAL_ALPHA_ROMAN' : presetBullet;
+        await batch(docId, [{ createParagraphBullets: { range: { startIndex: faixa.startIndex, endIndex: faixa.endIndex, ...t }, bulletPreset: preset } }]);
     }
+
+    // Marcadores criados: agora cada parágrafo volta pra indentação que tinha no
+    // documento de origem, senão o "i)" da lista romana sai cortado na caixa.
+    const restauro = bullets.map((b) => ({
+        updateParagraphStyle: {
+            range: { startIndex: b.startIndex, endIndex: b.endIndex, ...t },
+            paragraphStyle: {
+                indentStart: { magnitude: b.indentStart, unit: 'PT' },
+                indentFirstLine: { magnitude: b.indentFirstLine, unit: 'PT' },
+            },
+            fields: 'indentStart,indentFirstLine',
+        },
+    }));
+    for (let i = 0; i < restauro.length; i += 40) await batch(docId, restauro.slice(i, i + 40));
+
     return juntos.length;
 }
 
@@ -392,7 +431,7 @@ console.log(APPLY ? '>>> APLICANDO\n' : '>>> SIMULAÇÃO (nada é escrito) — u
 const fatias = {};
 for (const cod of BASES) {
     const doc = await getDoc(PROPOSAL_TEMPLATES[cod].docId);
-    fatias[cod] = fatiar(parseBody(bodyOf(doc)));
+    fatias[cod] = fatiar(parseBody(bodyOf(doc), listsOf(doc)));
 }
 console.log(`bases lidos: ${BASES.join(', ')}\n`);
 
@@ -428,7 +467,8 @@ for (const chave of alvos) {
     const codigos = PRODUCT_CASCADE_ORDER.filter((c) => chave.split('+').includes(c));
     try {
         // Intro do combo atual é a única prosa escrita à mão que vale preservar.
-        const atual = parseBody(bodyOf(await getDoc(PROPOSAL_TEMPLATES[chave].docId)));
+        const docAtual = await getDoc(PROPOSAL_TEMPLATES[chave].docId);
+        const atual = parseBody(bodyOf(docAtual), listsOf(docAtual));
         const intro = atual.map(textoDe).map((s) => s.trim()).find((s) => s.startsWith('Apresentamos'));
         const blocos = compor(codigos, fatias, intro);
         const caixas = blocos.filter((b) => b.kind === 'caixa').length;

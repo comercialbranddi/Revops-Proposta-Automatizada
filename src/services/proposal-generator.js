@@ -20,7 +20,7 @@ import { copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl, findOrCr
 import {
     PROPOSAL_TEMPLATES, PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS, PRICED_PRODUCTS,
     CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD, VALOR_PACOTE_FIELD,
-    canaisDoDeal, CANAL_VM_COM_CONTAGEM, SERVICO_QUE_VIROU_CANAL,
+    canaisDoDeal, CANAL_VM_COM_CONTAGEM, SERVICO_QUE_VIROU_CANAL, SERVICO_OFERECIDO_SEM_TEMPLATE,
     getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
@@ -245,13 +245,33 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         if (semTemplate.length > 0) {
             log.warn(`deal #${dealId}: "${semTemplate.join(', ')}" sem modelo automatizado — fluxo manual`);
             if (notifyOnEntry) {
-                // Bing e APP viraram canal de um produto que já existe: em vez
-                // de só mandar pro manual, a nota diz onde marcar.
-                const viraramCanal = idsSemTemplate.map((id) => SERVICO_QUE_VIROU_CANAL[id]).filter(Boolean);
-                const comoResolver = viraramCanal.length
-                    ? ` ${viraramCanal.map((v) => `"${v.canal}" agora é canal: marque em "${v.campo}" e desmarque de "Serviço oferecido".`).join(' ')}`
-                    : ' Monte a proposta manualmente para não deixar o serviço de fora.';
-                await postNoteOnce(dealId, `Proposta NÃO gerada automaticamente — o card tem ${semTemplate.join(', ')} em "Serviço oferecido", que não tem modelo próprio.${comoResolver}`);
+                // A nota é o único canal com o closer, então diz o problema em
+                // uma linha e as ações em lista — a versão anterior emendava
+                // tudo num parágrafo só e repetia "desmarque de Serviço
+                // oferecido" uma vez por item.
+                const viraramCanal = idsSemTemplate
+                    .map((id) => [SERVICO_OFERECIDO_SEM_TEMPLATE[id], SERVICO_QUE_VIROU_CANAL[id]])
+                    .filter(([, canal]) => canal);
+                const semSaida = semTemplate.filter((rot) => !viraramCanal.some(([r]) => r === rot));
+
+                const acoes = viraramCanal.map(([, v]) => `• marque "${v.canal}" no campo "${v.campo}"`);
+                if (viraramCanal.length) {
+                    acoes.push(`• desmarque ${viraramCanal.map(([rot]) => rot).join(' e ')} de "Serviço oferecido"`);
+                }
+                for (const rot of semSaida) acoes.push(`• ${rot} não tem modelo — essa parte da proposta precisa ser montada à mão`);
+
+                const motivo = viraramCanal.length && !semSaida.length
+                    ? `${semTemplate.join(' e ')} não são serviços separados: são canais de monitoramento, e agora têm campo próprio.`
+                    : `${semTemplate.join(' e ')} não tem modelo automatizado.`;
+
+                await postNoteOnce(dealId, [
+                    'Proposta não gerada automaticamente.',
+                    '',
+                    `O card tem ${semTemplate.join(', ')} marcado em "Serviço oferecido". ${motivo}`,
+                    '',
+                    'O que fazer:',
+                    ...acoes,
+                ].join('\n'));
             }
             await logAttempt(dealId, 'skipped_servico_sem_template', { sem_template: semTemplate });
             return;
