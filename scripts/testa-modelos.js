@@ -47,7 +47,10 @@ async function preparar(chave, comPacote) {
         ...(codigos.includes('BBP') ? { '{{CATALOGO_BBP}}': '250' } : {}),
         ...(codigos.includes('VM') ? { '{{PLATAFORMAS_VM}}': '7' } : {}),
         ...(codigos.length > 1
-            ? { '{{TOTAL_PACOTE}}': comPacote ? `De ${brl(soma)} — Por: ${brl(soma - 1500)}` : brl(soma) }
+            ? {
+                '{{TOTAL_DE}}': comPacote ? `De ${brl(soma)}` : brl(soma),
+                '{{TOTAL_POR}}': comPacote ? `Por: ${brl(soma - 1500)}` : '',
+            }
             : {}),
     };
     return { codigos, soma, valores };
@@ -107,7 +110,15 @@ for (const [chave, { docId }] of Object.entries(PROPOSAL_TEMPLATES)) {
             ...(codigos.includes('VM') ? [['plataformas', /Até 7 marketplaces/.test(txt)]] : []),
             ['pacote', codigos.length > 1
                 ? txt.includes(comPacote ? `De ${brl(soma)}` : brl(soma))
-                : !/TOTAL_PACOTE|De R\$/.test(txt)],
+                : !/TOTAL_|De R\$/.test(txt)],
+            // O combo é item próprio e numerado, não uma linha solta no fim.
+            ['item combo', codigos.length > 1 ? conta(/^\d+ - Combo:/gm) === 1 : !/ - Combo:/.test(txt)],
+            ['condição 1x', conta(/^Condição de pagamento/gm) === 1],
+            // Só os combos são uniformizados: os bases são os documentos que o
+            // time já usava, e misturar 10pt com 11pt é como eles vieram.
+            // Restilizá-los seria mexer no que foi aprovado.
+            ...(codigos.length > 1 ? [['corpo 10pt', paras.every((p) => (p.paragraphStyle?.namedStyleType || '').startsWith('HEADING')
+                || (p.elements || []).every((e) => !e.textRun?.content?.trim() || e.textRun.textStyle?.fontSize?.magnitude === 10))]] : []),
         ];
         const ruins = checagens.filter(([, ok]) => !ok).map(([n]) => n);
         if (ruins.length) falhas.push(`${chave}: ${ruins.join(', ')}`);

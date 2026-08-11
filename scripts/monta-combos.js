@@ -212,24 +212,74 @@ function compor(codigos, fatiasPorCodigo, introPreservada) {
         });
     });
 
-    // ── Total do pacote: só em combo. O generator decide entre "De X — Por: Y"
-    // e a soma simples, conforme o card tenha ou não valor fechado.
+    // ── Combo: item próprio e numerado, como nos modelos antigos feitos à mão
+    // ("3 - Combo: Brand Bidding + Violação PI", com Proposta / De / Por em
+    // linhas separadas). Antes isso era uma linha solta no fim da seção, e
+    // ficava escondido no meio dos itens de produto.
     if (codigos.length > 1) {
-        const modelo = primeiro.comercial.find((b) => /^Proposta:/.test(textoDe(b).trim()));
-        if (modelo) out.push(comTexto(modelo, 'Proposta: {{TOTAL_PACOTE}}'));
+        const tituloModelo = primeiro.comercial[primeiroCheio(primeiro.comercial)];
+        const linhaModelo = primeiro.comercial.find((b) => /^Proposta:/.test(textoDe(b).trim()));
+        const nomes = codigos.map((cod) => {
+            const blocos = fatiasPorCodigo[cod].produto;
+            return semNumero(textoDe(blocos[primeiroCheio(blocos)]));
+        });
+        out.push(comoTitulo(tituloModelo, `${codigos.length + 1} - Combo: ${nomes.join(' + ')}`, 3));
+        if (linhaModelo) {
+            out.push(comTexto(linhaModelo, 'Proposta:'));
+            out.push(comTexto(linhaModelo, '{{TOTAL_DE}}'));
+            out.push(comTexto(linhaModelo, '{{TOTAL_POR}}'));
+        }
     }
 
     // ── Condições Comerciais: as do primeiro, mais qualquer linha que só
     // exista em outro produto (o VM traz "Renovação automática.", por ex.).
-    const jaTem = new Set(primeiro.condicoes.map((b) => textoDe(b).trim()));
+    // A comparação ignora espaço duplicado e NBSP — sem isso a "Condição de
+    // pagamento" do VM não casava com a do BB e saía duplicada no documento.
+    const normaliza = (s) => s.replace(/ /g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+    // Compara por FRASE, não por parágrafo: no VM a "Condição de pagamento" e a
+    // "Renovação automática." dividem o mesmo parágrafo, separadas por quebra
+    // leve (shift+enter). Comparando o parágrafo inteiro, ele nunca casava com
+    // a linha equivalente do BB e a condição saía repetida no documento.
+    const frases = (b) => textoDe(b).split(/[\v\n]/).map((s) => s.trim()).filter(Boolean);
+    const jaTem = new Set(primeiro.condicoes.flatMap(frases).map(normaliza));
     out.push(...primeiro.condicoes);
     for (const cod of codigos.slice(1)) {
         for (const b of fatiasPorCodigo[cod].condicoes) {
-            const t = textoDe(b).trim();
-            if (!t || ehH(b, 3) || jaTem.has(t)) continue;
-            jaTem.add(t);
-            out.push(b);
+            if (ehH(b, 3)) continue;
+            const novas = frases(b).filter((f) => !jaTem.has(normaliza(f)));
+            if (!novas.length) continue;
+            novas.forEach((f) => jaTem.add(normaliza(f)));
+            out.push(comTexto(b, novas.join('\v')));
         }
+    }
+    return padronizar(out);
+}
+
+/**
+ * Uniformiza o documento montado. Os quatro bases foram editados à mão em
+ * épocas diferentes e misturam 10pt com 11pt no corpo, além de acumularem
+ * linhas em branco em sequência — juntar dois deles deixava a diferença
+ * evidente.
+ */
+const CORPO_PT = 10;
+function padronizar(blocos) {
+    const out = [];
+    for (const b of blocos) {
+        if (b.kind === 'caixa') { out.push({ ...b, paras: padronizar(b.paras) }); continue; }
+
+        // No máximo uma linha em branco seguida.
+        if (vazio(b)) { if (out.length && vazio(out[out.length - 1])) continue; out.push(b); continue; }
+
+        const heading = b.style.startsWith('HEADING');
+        const runs = b.runs.map((r) => {
+            const ts = { ...r.textStyle };
+            // Em título, o tamanho vem do estilo nomeado; tamanho explícito no
+            // run é resquício de edição manual e gera título de dois tamanhos.
+            if (heading) delete ts.fontSize;
+            else ts.fontSize = { magnitude: CORPO_PT, unit: 'PT' };
+            return { ...r, textStyle: ts };
+        });
+        out.push({ ...b, runs });
     }
     return out;
 }

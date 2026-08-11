@@ -303,15 +303,18 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         const plataformasVM = productCodes.includes('VM') ? deal[PLATAFORMAS_VM_FIELD] : null;
         if (productCodes.includes('VM') && !isPreenchido(plataformasVM)) missingFields.push('Plataformas VM (qtd)');
 
-        // Total do pacote — só existe em proposta combinada. Com valor fechado
-        // no card sai "De <soma> — Por: <fechado>"; sem ele, só a soma. Nunca é
-        // obrigatório: vazio significa "sem desconto", não "faltou preencher".
+        // Bloco do combo — só existe em proposta combinada, e ocupa duas linhas
+        // ("De …" / "Por: …") como nos modelos que o time montava à mão. Sem
+        // valor fechado no card não há desconto: a primeira linha leva a soma e
+        // a segunda some. Nunca é obrigatório preencher.
         const soma = pricedCodes.reduce((n, code) => n + Number(deal[PRODUCT_PRICE_FIELDS[code]] || 0), 0);
         const valorPacote = deal[VALOR_PACOTE_FIELD];
-        const totalPacote = productCodes.length > 1
-            ? (isPreenchido(valorPacote)
-                ? `De ${formatBRL(soma)} — Por: ${formatBRL(valorPacote)}`
-                : formatBRL(soma))
+        const comDesconto = productCodes.length > 1 && isPreenchido(valorPacote);
+        const totalDe = productCodes.length > 1
+            ? (comDesconto ? `De ${formatBRL(soma)}` : formatBRL(soma))
+            : null;
+        const totalPor = productCodes.length > 1
+            ? (comDesconto ? `Por: ${formatBRL(valorPacote)}` : '')
             : null;
 
         if (missingFields.length > 0) {
@@ -355,7 +358,8 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             '{{CATALOGO_BBP}}': catalogoBBP != null ? String(Number(catalogoBBP)) : null,
             '{{PALAVRAS_BB}}': palavrasBB != null ? String(Number(palavrasBB)) : null,
             '{{PLATAFORMAS_VM}}': plataformasVM != null ? String(Number(plataformasVM)) : null,
-            '{{TOTAL_PACOTE}}': totalPacote,
+            '{{TOTAL_DE}}': totalDe,
+            '{{TOTAL_POR}}': totalPor,
             ...priceReplacements,
         });
 
