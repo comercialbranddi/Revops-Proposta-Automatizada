@@ -171,7 +171,7 @@ async function logAttempt(dealId, status, extra = {}) {
  * selecionados que não têm modelo automatizado.
  */
 function resolveProductCodes(deal) {
-    const { codes, semTemplate } = parseServicoOferecido(deal[PROPOSAL_DEAL_FIELDS.SERVICO_OFERECIDO]);
+    const { codes, semTemplate, idsSemTemplate } = parseServicoOferecido(deal[PROPOSAL_DEAL_FIELDS.SERVICO_OFERECIDO]);
     // Qualquer coisa marcada em "Serviço oferecido" manda — inclusive quando é
     // só serviço sem modelo. Cair pro Produto Principal nesse caso produziria
     // uma proposta que ignora o que o SDR marcou.
@@ -184,10 +184,10 @@ function resolveProductCodes(deal) {
         if (principal && ordenados.length && !ordenados.includes(principal.code)) {
             log.warn(`deal #${deal.id}: "Produto Principal" (${principal.code}) não está em "Serviço oferecido" (${ordenados.join('+')}) — usando o Serviço oferecido`);
         }
-        return { codes: ordenados, semTemplate, origem: 'servico' };
+        return { codes: ordenados, semTemplate, idsSemTemplate, origem: 'servico' };
     }
     // Fallback: sem "Serviço oferecido" preenchido, usa o Produto Principal (single).
-    return { codes: principal ? [principal.code] : [], semTemplate: [], origem: 'principal' };
+    return { codes: principal ? [principal.code] : [], semTemplate: [], idsSemTemplate: [], origem: 'principal' };
 }
 
 /**

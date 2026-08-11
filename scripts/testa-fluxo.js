@@ -13,8 +13,16 @@ import 'dotenv/config';
 import { JWT } from 'google-auth-library';
 import {
     PROPOSAL_DEAL_FIELDS as F, PRODUCT_PRICE_FIELDS as P, CATALOGO_BBP_FIELD,
-    PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD, VALOR_PACOTE_FIELD,
+    PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD, VALOR_PACOTE_FIELD, CANAIS_FIELDS as C,
 } from '../src/config/proposal.js';
+
+// IDs das opções dos campos de canal (ver CANAIS_OPTION_TO_LABEL na config).
+const CANAL = {
+    BB: { google: 1592, shopping: 1593, bing: 1594, amazonAds: 1595 },
+    BBP: { ml: 1596, amazon: 1597, marketplaces: 1598 },
+    GD: { google: 1599, meta: 1600, tld: 1601, marketplaces: 1602, apps: 1603 },
+    VM: { marketplaces: 1604, shopping: 1605 },
+};
 
 const T = process.env.PIPEDRIVE_API_TOKEN;
 const ID = Number(process.env.PROPOSAL_TEST_DEAL_ID);
@@ -44,6 +52,7 @@ const LIMPO = {
     [P.BB]: null, [P.BBP]: null, [P.GD]: null, [P.VM]: null,
     [CATALOGO_BBP_FIELD]: null, [PALAVRAS_BB_FIELD]: null,
     [PLATAFORMAS_VM_FIELD]: null, [VALOR_PACOTE_FIELD]: null,
+    [C.BB]: '', [C.BBP]: '', [C.GD]: '', [C.VM]: '',
 };
 
 const CENARIOS = [
@@ -90,6 +99,43 @@ const CENARIOS = [
             [VALOR_PACOTE_FIELD]: 22000,
         },
         espera: { gera: true, nome: /_BB\+BBP\+GD\+VM_/, contem: ['De R$ 27.000/mês', 'Por: R$ 22.000/mês', 'Até 2 palavras', 'Até 300 SKUs', 'Até 3 marketplaces'] },
+    },
+    {
+        nome: 'BB com Bing marcado no canal',
+        campos: { [F.SERVICO_OFERECIDO]: `${OPT.BB}`, [P.BB]: 8000, [PALAVRAS_BB_FIELD]: 3,
+            [C.BB]: `${CANAL.BB.google},${CANAL.BB.bing}` },
+        espera: { gera: true, nome: /_BB_/, contem: ['Google Search Ads + Bing'] },
+    },
+    {
+        nome: 'Bing ainda em "Serviço oferecido"',
+        campos: { [F.SERVICO_OFERECIDO]: `${OPT.BB},416`, [P.BB]: 8000, [PALAVRAS_BB_FIELD]: 3 },
+        espera: { gera: false, nota: /"Bing" agora é canal: marque em "Canais BB"/i },
+    },
+    {
+        nome: 'GD com loja de aplicativos',
+        campos: { [F.SERVICO_OFERECIDO]: `${OPT.GD}`, [P.GD]: 9000,
+            [C.GD]: `${CANAL.GD.google},${CANAL.GD.meta},${CANAL.GD.apps}` },
+        espera: { gera: true, nome: /_GD_/, contem: ['Lojas de aplicativos (Apple Store e Play Store)'] },
+    },
+    {
+        nome: 'BBP com Amazon somado',
+        campos: { [F.SERVICO_OFERECIDO]: `${OPT.BBP}`, [P.BBP]: 6000, [CATALOGO_BBP_FIELD]: 150,
+            [C.BBP]: `${CANAL.BBP.ml},${CANAL.BBP.amazon}` },
+        espera: { gera: true, nome: /_BBP_/, contem: ['Mercado Livre + Amazon'] },
+    },
+    {
+        nome: 'combo BB+VM com união de canais',
+        campos: { [F.SERVICO_OFERECIDO]: `${OPT.BB},${OPT.VM}`, [P.BB]: 8000, [P.VM]: 4000,
+            [PALAVRAS_BB_FIELD]: 3, [PLATAFORMAS_VM_FIELD]: 4,
+            [C.BB]: `${CANAL.BB.google},${CANAL.BB.bing}`,
+            [C.VM]: `${CANAL.VM.marketplaces},${CANAL.VM.shopping}` },
+        espera: { gera: true, nome: /_BB\+VM_/,
+            contem: ['Google Search Ads + Bing + Até 4 marketplaces monitorados simultaneamente + Google Shopping'] },
+    },
+    {
+        nome: 'canal vazio cai no padrão do produto',
+        campos: { [F.SERVICO_OFERECIDO]: `${OPT.BBP}`, [P.BBP]: 6000, [CATALOGO_BBP_FIELD]: 200 },
+        espera: { gera: true, contem: ['Mercado Livre'], naoContem: ['Amazon'] },
     },
 ];
 
