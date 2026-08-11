@@ -7,12 +7,16 @@
  *
  * Uso:
  *   node scripts/audit-templates.js
+ *   node scripts/audit-templates.js --idioma=en
  */
 import 'dotenv/config';
 import { JWT } from 'google-auth-library';
-import { PROPOSAL_TEMPLATES } from '../src/config/proposal.js';
+import { templatesDoIdioma } from '../src/config/proposal.js';
+import { idiomaDaLinhaDeComando, avisoDeIdioma } from './_idioma.js';
 
 const BASES = ['BB', 'BBP', 'GD', 'VM'];
+const IDIOMA = idiomaDaLinhaDeComando();
+const MODELOS = templatesDoIdioma(IDIOMA);
 
 function getClient() {
     const raw = process.env.GOOGLE_PROPOSAL_SA_KEY_BASE64;
@@ -47,10 +51,11 @@ const { token } = await client.getAccessToken();
 let padraoHeadings = null;
 let caixasPorBase = {};
 
+console.log(avisoDeIdioma(IDIOMA, Object.keys(MODELOS).length));
 console.log('modelo          caixas  negrito  headings      placeholders');
 console.log('─'.repeat(96));
 
-for (const [key, { docId }] of Object.entries(PROPOSAL_TEMPLATES)) {
+for (const [key, { docId }] of Object.entries(MODELOS)) {
     try {
         const res = await fetch(
             `https://docs.googleapis.com/v1/documents/${docId}?includeTabsContent=true`,

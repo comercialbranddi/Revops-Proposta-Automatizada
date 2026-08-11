@@ -20,15 +20,25 @@
  * Idempotente: rodar de novo não faz nada, porque os marcadores já viraram
  * placeholders.
  *
+ * A tabela TROCAS abaixo é dos marcadores em PORTUGUÊS ("XXX", "Até XX SKUs",
+ * "xx de Janeiro de 2026"). Rodar com --idioma=en aponta pro conjunto de
+ * modelos em inglês, mas os marcadores de lá são outros: a simulação vai
+ * acusar zero ocorrência, e é exatamente essa lista de zeros que diz quais
+ * marcadores precisam ser acrescentados aqui.
+ *
  * Uso:
  *   node scripts/aplica-placeholders.js           # simulação
  *   node scripts/aplica-placeholders.js --apply
+ *   node scripts/aplica-placeholders.js --idioma=en
  */
 import 'dotenv/config';
 import { JWT } from 'google-auth-library';
-import { PROPOSAL_TEMPLATES } from '../src/config/proposal.js';
+import { templatesDoIdioma } from '../src/config/proposal.js';
+import { idiomaDaLinhaDeComando, avisoDeIdioma } from './_idioma.js';
 
 const APPLY = process.argv.includes('--apply');
+const IDIOMA = idiomaDaLinhaDeComando();
+const MODELOS = templatesDoIdioma(IDIOMA);
 const NBSP = ' ';
 
 // "XX de [mês] de [ano]" é a frase que o generator troca pela data do dia.
@@ -117,10 +127,13 @@ async function textoDoc(docId) {
     return partes.join('');
 }
 
+console.log(avisoDeIdioma(IDIOMA, Object.keys(MODELOS).length));
 console.log(APPLY ? '>>> APLICANDO nos modelos\n' : '>>> SIMULAÇÃO (nada é escrito) — use --apply para valer\n');
 
 for (const cod of Object.keys(TROCAS)) {
-    const docId = PROPOSAL_TEMPLATES[cod].docId;
+    // Idioma sem esse base ainda: avisa e segue, em vez de estourar no meio.
+    if (!MODELOS[cod]) { console.log(`── ${cod}: sem modelo em ${IDIOMA} — pulando`); continue; }
+    const docId = MODELOS[cod].docId;
     let simulado = await textoDoc(docId);
     const requests = [];
     console.log(`── ${cod}`);

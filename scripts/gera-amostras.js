@@ -11,13 +11,21 @@
  * Uso:
  *   node scripts/gera-amostras.js
  *   node scripts/gera-amostras.js --limpar   # apaga as amostras anteriores
+ *   node scripts/gera-amostras.js --idioma=en
  */
 import 'dotenv/config';
 import { JWT } from 'google-auth-library';
-import { PROPOSAL_TEMPLATES, PROPOSAL_OUTPUT_FOLDER_ID, PRODUCT_CASCADE_ORDER } from '../src/config/proposal.js';
+import { templatesDoIdioma, PROPOSAL_OUTPUT_FOLDER_ID, PRODUCT_CASCADE_ORDER, IDIOMA_PADRAO } from '../src/config/proposal.js';
+import { idiomaDaLinhaDeComando, avisoDeIdioma } from './_idioma.js';
 
 const LIMPAR = process.argv.includes('--limpar');
+const IDIOMA = idiomaDaLinhaDeComando();
+const MODELOS = templatesDoIdioma(IDIOMA);
 const PASTA = '_amostras para validação';
+// Todos os idiomas dividem a mesma pasta, então o nome carrega o idioma e a
+// faxina só toca no que é do idioma corrente. Sem isso, um --idioma=en varreria
+// as amostras em português que o comercial está validando.
+const PREFIXO = IDIOMA === IDIOMA_PADRAO ? 'AMOSTRA — ' : `AMOSTRA (${IDIOMA}) — `;
 const MARCA = 'Cliente Exemplo';
 
 // Preços plausíveis, próximos dos praticados.
@@ -61,18 +69,19 @@ if (!pasta) {
         body: JSON.stringify({ name: PASTA, mimeType: 'application/vnd.google-apps.folder', parents: [PROPOSAL_OUTPUT_FOLDER_ID] }),
     })).id;
 }
-for (const f of await listar(pasta)) {
+for (const f of (await listar(pasta)).filter((f) => f.name.startsWith(PREFIXO))) {
     await api(`https://www.googleapis.com/drive/v3/files/${f.id}?supportsAllDrives=true`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }),
     });
 }
 if (LIMPAR) { console.log(`amostras anteriores removidas de "${PASTA}"`); process.exit(0); }
 
+console.log(avisoDeIdioma(IDIOMA, Object.keys(MODELOS).length));
 console.log(`Amostras em "${PASTA}" — marca fictícia "${MARCA}"\n`);
 console.log(`preços: BB ${brl(PRECO.BB)} · BBP ${brl(PRECO.BBP)} · GD ${brl(PRECO.GD)} · VM ${brl(PRECO.VM)}`);
 console.log(`palavras-chave ${PALAVRAS} · catálogo ${SKUS} SKUs · ${PLATAFORMAS} marketplaces\n`);
 
-for (const [chave, { docId, label }] of Object.entries(PROPOSAL_TEMPLATES)) {
+for (const [chave, { docId, label }] of Object.entries(MODELOS)) {
     const codigos = PRODUCT_CASCADE_ORDER.filter((c) => chave.split('+').includes(c));
     const soma = codigos.reduce((n, c) => n + PRECO[c], 0);
     // Desconto de 10% arredondado na centena, como um fechamento de pacote real.
@@ -80,7 +89,9 @@ for (const [chave, { docId, label }] of Object.entries(PROPOSAL_TEMPLATES)) {
     const combo = codigos.length > 1;
 
     const valores = {
+        // As duas chaves de data, igual ao generator (ver o comentário lá).
         'XX de [mês] de [ano]': dataBR(),
+        '{{DATA}}': dataBR(),
         '{{MARCA}}': MARCA,
         '{{DECISOR}}': MARCA,
         ...Object.fromEntries(codigos.map((c) => [`{{PRECO_${c}}}`, brl(PRECO[c])])),
@@ -90,7 +101,7 @@ for (const [chave, { docId, label }] of Object.entries(PROPOSAL_TEMPLATES)) {
         ...(combo ? { '{{TOTAL_DE}}': `De ${brl(soma)}`, '{{TOTAL_POR}}': `Por: ${brl(fechado)}` } : {}),
     };
 
-    const nome = `AMOSTRA — ${chave}${combo ? ` (${brl(soma)} → ${brl(fechado)})` : ''}`;
+    const nome = `${PREFIXO}${chave}${combo ? ` (${brl(soma)} → ${brl(fechado)})` : ''}`;
     const copia = (await api(`https://www.googleapis.com/drive/v3/files/${docId}/copy?supportsAllDrives=true`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: nome, parents: [pasta] }),

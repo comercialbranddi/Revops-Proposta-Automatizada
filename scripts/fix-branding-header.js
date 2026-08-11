@@ -18,7 +18,12 @@
  */
 import 'dotenv/config';
 import { JWT } from 'google-auth-library';
-import { PROPOSAL_TEMPLATES } from '../src/config/proposal.js';
+import { templatesDoIdioma, IDIOMA_PADRAO } from '../src/config/proposal.js';
+
+// Sem --idioma de propósito: correção de uma vez só nos modelos em português.
+// Modelo novo em outro idioma precisa do wordmark também — quando existir, é
+// aqui que a flag entra.
+const MODELOS = templatesDoIdioma(IDIOMA_PADRAO);
 
 const APPLY = process.argv.includes('--apply');
 
@@ -50,7 +55,7 @@ const { token } = await client.getAccessToken();
 console.log(APPLY ? '>>> APLICANDO nos templates de produção\n' : '>>> SIMULAÇÃO (nada é escrito) — use --apply para valer\n');
 
 let changed = 0;
-for (const [key, { docId }] of Object.entries(PROPOSAL_TEMPLATES)) {
+for (const [key, { docId }] of Object.entries(MODELOS)) {
     try {
         const doc = await api(token, `https://docs.googleapis.com/v1/documents/${docId}?includeTabsContent=true`);
         const tab = doc.tabs?.[0];

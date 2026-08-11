@@ -9,6 +9,7 @@
  *   node scripts/export-templates.js                 # .txt em modelos-export/
  *   node scripts/export-templates.js --format=docx   # .docx em modelos-export/docx/
  *   node scripts/export-templates.js --format=pdf    # .pdf  em modelos-export/pdf/
+ *   node scripts/export-templates.js --idioma=en     # .txt em modelos-export/en/
  *
  * txt serve pra diff/grep (perde formatação); docx e pdf mostram o documento
  * como o cliente recebe.
@@ -16,7 +17,8 @@
 import 'dotenv/config';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { JWT } from 'google-auth-library';
-import { PROPOSAL_TEMPLATES } from '../src/config/proposal.js';
+import { templatesDoIdioma, IDIOMA_PADRAO } from '../src/config/proposal.js';
+import { idiomaDaLinhaDeComando, avisoDeIdioma } from './_idioma.js';
 
 const FORMATS = {
     txt:  { mime: 'text/plain', subdir: '' },
@@ -31,7 +33,14 @@ if (!format) {
     process.exit(1);
 }
 
-const OUT_DIR = new URL(`../modelos-export/${format.subdir}`, import.meta.url);
+const IDIOMA = idiomaDaLinhaDeComando();
+const MODELOS = templatesDoIdioma(IDIOMA);
+
+// Português exporta na raiz de modelos-export/, como sempre — os outros idiomas
+// ganham subpasta própria pra não sobrescrever o export do PT, que é a
+// referência de comparação.
+const subIdioma = IDIOMA === IDIOMA_PADRAO ? '' : `${IDIOMA}/`;
+const OUT_DIR = new URL(`../modelos-export/${subIdioma}${format.subdir}`, import.meta.url);
 
 function getClient() {
     const raw = process.env.GOOGLE_PROPOSAL_SA_KEY_BASE64;
@@ -63,8 +72,9 @@ async function exportDoc(client, docId, mimeType) {
 
 const client = getClient();
 await mkdir(OUT_DIR, { recursive: true });
+console.log(avisoDeIdioma(IDIOMA, Object.keys(MODELOS).length));
 
-for (const [key, { docId, label }] of Object.entries(PROPOSAL_TEMPLATES)) {
+for (const [key, { docId, label }] of Object.entries(MODELOS)) {
     try {
         const buf = await exportDoc(client, docId, format.mime);
         await writeFile(new URL(`${key}.${formatArg}`, OUT_DIR), buf);

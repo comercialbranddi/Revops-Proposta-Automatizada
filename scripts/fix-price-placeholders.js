@@ -19,7 +19,11 @@
 import 'dotenv/config';
 import { readFile } from 'node:fs/promises';
 import { JWT } from 'google-auth-library';
-import { PROPOSAL_TEMPLATES } from '../src/config/proposal.js';
+import { templatesDoIdioma, IDIOMA_PADRAO } from '../src/config/proposal.js';
+
+// Sem --idioma de propósito: correção de uma vez só, e as RULES_BY_KEY abaixo
+// casam texto em português ("Proposta: R$ XXXX/mês").
+const MODELOS = templatesDoIdioma(IDIOMA_PADRAO);
 
 const APPLY = process.argv.includes('--apply');
 const EXPORT_DIR = new URL('../modelos-export/', import.meta.url);
@@ -63,7 +67,7 @@ let total = 0;
 
 console.log(APPLY ? '>>> APLICANDO nos templates de produção\n' : '>>> SIMULAÇÃO (nada é escrito) — use --apply para valer\n');
 
-for (const [key, { docId }] of Object.entries(PROPOSAL_TEMPLATES)) {
+for (const [key, { docId }] of Object.entries(MODELOS)) {
     const rules = RULES_BY_KEY(key);
     try {
         let n;
