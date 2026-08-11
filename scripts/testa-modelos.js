@@ -6,15 +6,26 @@
  * certo, placeholders todos substituídos, seções por produto, numeração,
  * caixas, cabeçalho/rodapé e as linhas comerciais.
  *
+ * ATENÇÃO ao --idioma: a flag troca o CONJUNTO de modelos testado, mas as
+ * checagens de conteúdo abaixo continuam em português ("Até 7 marketplaces",
+ * "R$ …/mês"). Num idioma diferente elas vão acusar falha — o que a flag
+ * entrega hoje é a metade estrutural (placeholders substituídos, cabeçalho,
+ * caixas). Traduzir as asserções é trabalho pra quando existir modelo EN/ES
+ * de verdade, com o texto já fechado.
+ *
  * Uso:
  *   node scripts/testa-modelos.js
  *   node scripts/testa-modelos.js --keep     # não apaga as cópias
+ *   node scripts/testa-modelos.js --idioma=en
  */
 import 'dotenv/config';
 import { JWT } from 'google-auth-library';
-import { PROPOSAL_TEMPLATES, PROPOSAL_OUTPUT_FOLDER_ID, PRODUCT_CASCADE_ORDER } from '../src/config/proposal.js';
+import { templatesDoIdioma, PROPOSAL_OUTPUT_FOLDER_ID, PRODUCT_CASCADE_ORDER } from '../src/config/proposal.js';
+import { idiomaDaLinhaDeComando, avisoDeIdioma } from './_idioma.js';
 
 const KEEP = process.argv.includes('--keep');
+const IDIOMA = idiomaDaLinhaDeComando();
+const MODELOS = templatesDoIdioma(IDIOMA);
 
 // Valores distintos por produto pra flagrar troca de campo entre eles.
 const PRECO = { BB: 8000, BBP: 6000, GD: 9000, VM: 4000 };
@@ -46,7 +57,10 @@ async function preparar(chave, comPacote) {
     const codigos = PRODUCT_CASCADE_ORDER.filter((c) => chave.split('+').includes(c));
     const soma = codigos.reduce((n, c) => n + PRECO[c], 0);
     const valores = {
+        // As duas chaves de data, igual ao generator: a frase literal é o que os
+        // modelos em português trazem, {{DATA}} é a convenção dos modelos novos.
         'XX de [mês] de [ano]': '10 de Agosto de 2026',
+        '{{DATA}}': '10 de Agosto de 2026',
         '{{MARCA}}': MARCA,
         '{{DECISOR}}': MARCA,
         ...Object.fromEntries(codigos.map((c) => [`{{PRECO_${c}}}`, brl(PRECO[c])])),
@@ -68,10 +82,11 @@ async function preparar(chave, comPacote) {
 }
 
 const falhas = [];
+console.log(avisoDeIdioma(IDIOMA, Object.keys(MODELOS).length));
 console.log('modelo         prod  caixas  bullets  cab/rod  checagens');
 console.log('─'.repeat(92));
 
-for (const [chave, { docId }] of Object.entries(PROPOSAL_TEMPLATES)) {
+for (const [chave, { docId }] of Object.entries(MODELOS)) {
     const comPacote = chave.includes('+') && chave.split('+').length % 2 === 0; // alterna com/sem
     const { codigos, soma, valores } = await preparar(chave, comPacote);
     let copia = null;

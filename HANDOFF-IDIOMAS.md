@@ -39,8 +39,22 @@ Digitais; `Proposta_Branddi_VC` é Buy Box Protection.
 
 ## 3. O que existe em outro idioma
 
+> **Esta seção foi superada.** Os nove documentos foram abertos e auditados em
+> 11/08/2026 — ver **`AUDITORIA-IDIOMAS.md`**. A tabela abaixo foi montada pelos
+> NOMES dos arquivos e três deles enganam. Use a auditoria; isto fica só como
+> registro do que se acreditava antes.
+
 Pasta do comercial (**somente leitura**, não escrever nela):
 `https://drive.google.com/drive/folders/1yS1Vuqm_P9GESPfsjKdeh5jWLoQuGQel`
+
+O resumo do que a auditoria corrigiu:
+
+- São **nove** arquivos, não oito, descrevendo **seis** documentos distintos.
+- `[ENGLISH] …_VM_FR.docx` contém **BB+VM+GD**, não GD+VM.
+- `[ENGLISH] …_BB_VM_FR.docx` é o mesmo documento **preenchido pra Pierre Fabre**.
+- Os dois `Propuesta_Branddi_BB` em espanhol são **idênticos**.
+- **O bloqueio não é tradução**: o inglês vende contrato anual com fidelidade e o
+  português vende sem fidelidade. É cláusula de contrato, não escolha de palavra.
 
 ### 📁 Propostas em Espanhol
 | Arquivo | Equivale a | Modificado |
@@ -55,17 +69,24 @@ Pasta do comercial (**somente leitura**, não escrever nela):
 | [ENGLISH] Proposal_Branddi_BB | BB | 17/06/2025 |
 | [ENGLISH] Proposal_Branddi_FR | GD | 12/05/2025 |
 | [ENGLISH] Proposal_Branddi_BB_VM.docx | BB+VM | 05/03/2026 |
-| [ENGLISH] Proposal_Branddi_VM_FR.docx | GD+VM | 05/03/2026 |
-| [ENGLISH] Proposal_Branddi_BB_VM_FR.docx | BB+GD+VM | 16/04/2026 |
+| [ENGLISH] Proposal_Branddi_VM_FR.docx | ~~GD+VM~~ → **BB+VM+GD** | 05/03/2026 |
+| [ENGLISH] Proposal_Branddi_BB_VM_FR.docx | BB+GD+VM (**preenchido**) | 16/04/2026 |
 
 ### Cobertura real
+
+Contando só o que é modelo aproveitável, e considerando base extraível de dentro
+de combo (ver `AUDITORIA-IDIOMAS.md` §5):
 
 | | PT | EN | ES |
 |---|---|---|---|
 | BB | ✅ | ✅ | ✅ |
 | BBP | ✅ | ❌ | ❌ |
-| GD | ✅ | ✅ | ❌ |
-| VM | ✅ | ❌ | ❌ |
+| GD | ✅ | ✅ | ⚙️ extraível de BB+GD |
+| VM | ✅ | ⚙️ extraível de BB+VM | ❌ |
+| **modelos alcançáveis** | **15 de 15** | 7 de 15 | 3 de 15 |
+
+**BBP não aparece em documento EN ou ES nenhum** — busca por "Buy Box", "BBP" e
+"caja de compra" nos nove: zero ocorrência. Tem que ser escrito do zero.
 
 **Nenhum dos dois idiomas tem BBP nem VM sozinhos.** E as versões em inglês de
 BB e GD são de 2025, anteriores à revisão dos modelos em português — provável
@@ -103,27 +124,80 @@ ao redor. Ex.: no inglês, `Platform(s) Monitored: {{CANAIS_BB}}`.
 
 ---
 
-## 5. O que falta decidir antes de codar
+## 5. O encanamento — RESOLVIDO em 11/08/2026
 
-**a) O campo de idioma já existe e não faz nada.**
-`Idioma da proposta` (Português / Inglês / Espanhol), chave
-`9c95729a15906d4c92843a4fc2c6e79615f103b8`, grupo Closer. O closer preenche, mas
-a automação ignora — sempre usa português.
+Os itens (a), (b) e (c) deixaram de ser decisão em aberto: estão implementados.
+O código lê o idioma e escolhe o conjunto de modelos. **Nenhum modelo foi
+traduzido** — o português segue idêntico e en/es estão vazios.
 
-**b) Como o `PROPOSAL_TEMPLATES` passa a ser indexado.**
-Hoje é `{ 'BB+GD': { docId } }`. Com idioma vira algo como
-`{ pt: { 'BB+GD': {...} }, en: {...} }`, ou chave composta `'en:BB+GD'`.
-Decisão de arquitetura, não é grande, mas muda o `resolveProductCodes`.
+**a) O campo de idioma passou a ser lido.** `idiomaDoDeal(deal)` em
+`src/config/proposal.js`. Campo vazio cai em português: ele é novo e a
+esmagadora maioria dos cards está sem preencher — exigir preenchimento pararia
+a geração de todo mundo.
 
-**c) O que fazer quando não existe modelo no idioma pedido.**
-Três opções: cair pro português, não gerar e avisar por nota, ou gerar só as
-combinações cobertas. **Recomendo não gerar e avisar** — mandar proposta em
-português pra cliente que pediu inglês é pior que não mandar.
+**b) `PROPOSAL_TEMPLATES` é aninhado por idioma.**
+`{ pt: { 'BB+GD': {...} }, en: {}, es: {} }`, com `resolveTemplate(idioma,
+chave)` e `templatesDoIdioma(idioma)`. Escolhido sobre a chave composta
+`'en:BB+GD'` porque o `monta-combos.js` filtra combo por `.includes('+')` e
+passaria a tratar `'en:BB'` como combinação.
 
-**d) Quem escreve o que falta.**
-Pra cobrir os 15 em cada idioma são necessários os 4 bases traduzidos. Faltam
-BBP e VM em inglês, e BBP, GD e VM em espanhol. Os combinados o script monta
-sozinho depois.
+**c) Idioma sem modelo NÃO gera, e agora avisa.** O caminho de "sem template"
+era mudo — o card não gerava e não dizia nada, indistinguível de automação
+quebrada. Agora posta nota nomeando o motivo certo: "não existe modelo de BB+VM
+em inglês" (existe em PT) ou "não existe modelo pra combinação BB+VM" (não
+existe em idioma nenhum).
+
+**Data localizada, moeda não.** `formatDate(date, idioma)` escreve a data no
+idioma da proposta, e o generator manda **duas** chaves: a frase literal
+`XX de [mês] de [ano]` (o que os 15 modelos PT trazem) e `{{DATA}}`, a
+convenção pros modelos novos. Sem isso, o primeiro modelo EN cadastrado sairia
+com a data não substituída, em silêncio.
+**A moeda continua em BRL em qualquer idioma**, de propósito: em que moeda sai
+uma proposta EN/ES, e de onde vem esse dado, é decisão comercial que ninguém
+tomou. O ponto está marcado em `formatBRL`.
+
+**Scripts ganharam `--idioma`.** Sete deles (`aplica-placeholders`,
+`monta-combos`, `uniformiza-bases`, `audit-templates`, `testa-modelos`,
+`export-templates`, `gera-amostras`). Sem a flag, comportam-se como antes.
+Idioma inválido mata o processo — `--idioma=eng` num script com `--apply`
+escreveria nos modelos de produção. Os três `fix-*` não têm a flag (migração de
+uma vez só, casam texto em português) e o `limpa-drive` deliberadamente enxerga
+**todos** os idiomas, senão a faxina apagaria modelo em uso.
+
+O `monta-combos.js` agora deriva a lista de combos dos **bases disponíveis** em
+vez das chaves já cadastradas — num idioma novo só os bases estão na config, e
+filtrar por chave existente não montaria nada. Em português dá exatamente os
+mesmos 11 (verificado).
+
+### O que ainda falta
+
+**d) Quem escreve o que falta.** Pra cobrir os 15 em cada idioma são
+necessários os 4 bases traduzidos.
+
+| | bases que existem | bases que faltam | alcançável hoje |
+|---|---|---|---|
+| EN | BB, GD, (VM extraível dos combos) | **BBP** | 7 de 15 |
+| ES | BB, (GD extraível de BB+GD) | **BBP, VM** | 3 de 15 |
+
+Base pode ser **extraída de dentro de um combo** — é a operação inversa do
+`monta-combos.js`, que já sabe recortar bloco por produto. O `[ENGLISH] BB_VM`
+e o `VM_FR` carregam o bloco de VM em inglês; o `Propuesta_BB_FR` carrega o de
+GD em espanhol.
+
+**BBP não aparece em nenhum documento EN nem ES** — esse tem que ser escrito do
+zero nos dois idiomas.
+
+**A auditoria foi feita em 11/08/2026 — ver `AUDITORIA-IDIOMAS.md`.** Ela achou
+um bloqueio anterior a qualquer tradução: os documentos em inglês vendem
+contrato anual com fidelidade, e o português vende sem fidelidade; os dois em
+espanhol cobram setup de uma mensalidade, que o português não cobra. São
+cláusulas de contrato, não escolhas de tradução.
+
+A moeda também não está resolvida nem dentro do espanhol: o modelo de BB vende
+em USD e o de BB+GD em BRL. Isso confirma manter `formatBRL` em reais.
+
+Ordem correta: o comercial decide as condições, e só então se importa e
+placeholderiza.
 
 ---
 
@@ -141,16 +215,25 @@ sozinho depois.
 ### Scripts
 | Script | Para quê |
 |---|---|
-| `aplica-placeholders.js` | insere os placeholders num modelo importado |
-| `monta-combos.js` | monta as 11 combinações a partir dos 4 bases |
-| `uniformiza-bases.js` | padroniza fonte e paginação dos bases |
-| `testa-modelos.js` | bateria estrutural nos 15 (não toca no Pipedrive) |
-| `testa-fluxo.js` | 12 cenários ponta a ponta pelo card de teste |
-| `gera-amostras.js` | exemplares preenchidos pra validação humana |
+| `_idioma.js` | leitura e validação da flag `--idioma` (não é executável) |
+| `aplica-placeholders.js` | insere os placeholders num modelo importado ⟨idioma⟩ |
+| `monta-combos.js` | monta as combinações a partir dos bases disponíveis ⟨idioma⟩ |
+| `uniformiza-bases.js` | padroniza fonte e paginação dos bases ⟨idioma⟩ |
+| `testa-modelos.js` | bateria estrutural nos 15 (não toca no Pipedrive) ⟨idioma⟩ |
+| `export-templates.js` | exporta os modelos em txt/docx/pdf ⟨idioma⟩ |
+| `gera-amostras.js` | exemplares preenchidos pra validação humana ⟨idioma⟩ |
+| `audit-templates.js` | auditoria de caixas, negrito e headings ⟨idioma⟩ |
+| `testa-fluxo.js` | 16 cenários ponta a ponta pelo card de teste |
 | `limpa-drive.js` | faxina das versões antigas e temporários |
-| `audit-templates.js` | auditoria de caixas, negrito e headings |
+| `fix-*.js` | correções pontuais já aplicadas nos modelos PT |
 
-Todos aceitam simulação por padrão e `--apply` pra valer.
+Todos aceitam simulação por padrão e `--apply` pra valer. ⟨idioma⟩ marca os que
+aceitam `--idioma=en` / `--idioma=es`; sem a flag, operam em português.
+
+Duas exceções deliberadas: o `limpa-drive.js` NÃO aceita `--idioma` porque
+decide o que apagar e precisa enxergar os modelos de todos os idiomas; e as
+checagens de conteúdo do `testa-modelos.js` continuam em português, então
+`--idioma=en` só valida a metade estrutural.
 
 ### Acesso
 - Service account: `proposal-bot@automacoes-pipedrive.iam.gserviceaccount.com`
@@ -161,10 +244,29 @@ Todos aceitam simulação por padrão e `--apply` pra valer.
 ## 7. Pendências que atravessam qualquer frente
 
 1. **Validação do comercial** nas 15 amostras em português. Enquanto não
-   acontecer, não faz sentido traduzir — corre o risco de traduzir texto que vai
-   mudar.
+   acontecer, traduzir corre o risco de traduzir texto que vai mudar. O
+   encanamento (§5) foi feito sem essa dependência de propósito: ele não toca
+   no conteúdo de modelo nenhum.
 2. **Trava do piloto** (`PROPOSAL_TEST_ONLY`) — decisão do time, segurar por ora.
-3. **Rotacionar credenciais**: o token do Pipedrive e a chave da service account
+
+3. **O Pipedrive limita 100 notas por negócio, e a automação fica muda ao
+   bater nesse teto.** Descoberto em 11/08/2026: o card de teste 60956 chegou
+   às 100 notas e a API passou a recusar toda nota nova com HTTP 403 — que o
+   `postNote` engole como warning, invisível pra quem olha o card.
+
+   Em produção isso importa mais do que parece. O time optou por rodar sem
+   Supabase, e o comentário do próprio `proposal-generator.js` diz que "o card
+   é o ÚNICO registro do que aconteceu". Num negócio que acumule 100 notas, a
+   automação para de conseguir avisar: falha técnica, "falta preencher preço" e
+   "pulei porque não há modelo nesse idioma" viram todos indistinguíveis de
+   "não fez nada".
+
+   Não foi tratado — decisão de 11/08/2026 de só registrar. Quando a automação
+   sair do piloto e passar a rodar em todos os cards, isto vira concreto. O
+   ponto de conserto é o `postNote`: detectar o 403 de limite e degradar de
+   forma visível (gravar num campo do card, ou logar como erro pra aparecer no
+   monitoramento da Vercel).
+4. **Rotacionar credenciais**: o token do Pipedrive e a chave da service account
    ficaram expostos no histórico da conversa em que o projeto foi construído.
    Google Cloud → IAM → Service Accounts → proposal-bot → Keys; e Pipedrive →
    Personal preferences → API.

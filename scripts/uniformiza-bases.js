@@ -17,12 +17,16 @@
  * Uso:
  *   node scripts/uniformiza-bases.js           # simulação
  *   node scripts/uniformiza-bases.js --apply
+ *   node scripts/uniformiza-bases.js --idioma=en
  */
 import 'dotenv/config';
 import { JWT } from 'google-auth-library';
-import { PROPOSAL_TEMPLATES } from '../src/config/proposal.js';
+import { templatesDoIdioma } from '../src/config/proposal.js';
+import { idiomaDaLinhaDeComando, avisoDeIdioma } from './_idioma.js';
 
 const APPLY = process.argv.includes('--apply');
+const IDIOMA = idiomaDaLinhaDeComando();
+const MODELOS = templatesDoIdioma(IDIOMA);
 const BASES = ['BB', 'BBP', 'GD', 'VM'];
 const CORPO_PT = 10;
 // Acima disso, a sequência de linhas em branco é considerada paginação manual.
@@ -44,10 +48,13 @@ async function api(url, opts = {}) {
 
 const textoDe = (p) => (p.elements || []).map((e) => e.textRun?.content || '').join('');
 
-console.log(APPLY ? '>>> APLICANDO nos quatro modelos-base\n' : '>>> SIMULAÇÃO (nada é escrito) — use --apply para valer\n');
+console.log(avisoDeIdioma(IDIOMA, Object.keys(MODELOS).length));
+console.log(APPLY ? '>>> APLICANDO nos modelos-base\n' : '>>> SIMULAÇÃO (nada é escrito) — use --apply para valer\n');
 
 for (const cod of BASES) {
-    const docId = PROPOSAL_TEMPLATES[cod].docId;
+    // Nem todo idioma tem os quatro bases (ver HANDOFF-IDIOMAS.md §3).
+    if (!MODELOS[cod]) { console.log(`── ${cod}: sem modelo em ${IDIOMA} — pulando`); continue; }
+    const docId = MODELOS[cod].docId;
     const doc = await api(`https://docs.googleapis.com/v1/documents/${docId}?includeTabsContent=true`);
     const tab = doc.tabs?.[0];
     const tabId = tab?.tabProperties?.tabId;

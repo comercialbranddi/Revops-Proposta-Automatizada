@@ -7,8 +7,13 @@
  *    foram remontados;
  *  - propostas de teste na pasta do cliente, que não são a vigente do card.
  *
- * O que NUNCA é tocado: os 15 modelos da config, a proposta vinculada ao card,
- * as amostras de validação e o arquivo morto (_testes-piloto).
+ * O que NUNCA é tocado: os modelos da config EM TODOS OS IDIOMAS, a proposta
+ * vinculada ao card, as amostras de validação e o arquivo morto
+ * (_testes-piloto).
+ *
+ * Este é o único script que deliberadamente NÃO aceita --idioma: ele decide o
+ * que apagar, e enxergar um idioma só faria a faxina varrer os modelos dos
+ * outros.
  *
  * Uso:
  *   node scripts/limpa-drive.js            # lista o que faria
@@ -16,7 +21,7 @@
  */
 import 'dotenv/config';
 import { JWT } from 'google-auth-library';
-import { PROPOSAL_TEMPLATES, PROPOSAL_OUTPUT_FOLDER_ID as ROOT, PROPOSAL_DEAL_FIELDS as F } from '../src/config/proposal.js';
+import { todosOsDocIds, PROPOSAL_OUTPUT_FOLDER_ID as ROOT, PROPOSAL_DEAL_FIELDS as F } from '../src/config/proposal.js';
 
 const APPLY = process.argv.includes('--apply');
 const PROTEGIDAS = ['_amostras para validação', '_testes-piloto'];
@@ -60,7 +65,7 @@ if (T && ID) {
     vinculada = (String(d?.[F.LINK_PROPOSTA] || '').match(/document\/d\/([\w-]+)/) || [])[1] || null;
 }
 
-const emUso = new Set(Object.values(PROPOSAL_TEMPLATES).map((t) => t.docId));
+const emUso = new Set(todosOsDocIds());
 const alvos = [];
 
 const raiz = await listar(ROOT);

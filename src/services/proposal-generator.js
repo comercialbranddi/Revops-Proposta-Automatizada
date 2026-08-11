@@ -7,6 +7,11 @@
  * preenche placeholders → escreve o link de volta no campo "Link Proposta"
  * → nota no card.
  *
+ * O modelo é escolhido por DOIS eixos: a combinação de produtos e o idioma
+ * pedido no card ("Idioma da proposta"). Se não houver modelo naquele idioma,
+ * a proposta NÃO é gerada e o card recebe nota explicando — mandar português
+ * pra quem pediu inglês é pior que não mandar.
+ *
  * Combinações de 2+ produtos usam um modelo PRÉ-GERADO (mesma pasta do
  * Drive, cadastrado em PROPOSAL_TEMPLATES com a chave "BB+GD" etc.) — a
  * prosa de transição entre produtos foi escrita uma vez, na criação desse
@@ -18,10 +23,11 @@
 import { pdGet, pdPut, pdPost } from './pipedrive.js';
 import { copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl, findOrCreateFolder } from './google-docs-client.js';
 import {
-    PROPOSAL_TEMPLATES, PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS, PRICED_PRODUCTS,
+    PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS, PRICED_PRODUCTS,
     CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD, VALOR_PACOTE_FIELD,
     canaisDoDeal, CANAL_VM_COM_CONTAGEM, SERVICO_QUE_VIROU_CANAL, SERVICO_OFERECIDO_SEM_TEMPLATE,
     getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
+    idiomaDoDeal, resolveTemplate, IDIOMA_PADRAO, IDIOMA_LABEL,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
 import supabase from './supabase-client.js';
@@ -32,12 +38,21 @@ const log = getContextLogger('services:proposal-generator');
 // no Brasil sairia datada do dia seguinte — no texto e no nome do arquivo.
 const TZ = 'America/Sao_Paulo';
 
-function formatDateBR(date = new Date()) {
+// A data é escrita no idioma da proposta. O fuso continua sendo o de São
+// Paulo em todos eles: quem emite está no Brasil, então o "hoje" da proposta
+// é o hoje daqui, independente da língua do documento.
+const DATA_LOCALE = { pt: 'pt-BR', en: 'en-US', es: 'es-ES' };
+
+function formatDate(date = new Date(), idioma = IDIOMA_PADRAO) {
+    const locale = DATA_LOCALE[idioma] || DATA_LOCALE[IDIOMA_PADRAO];
     const partes = Object.fromEntries(
-        new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, day: '2-digit', month: 'long', year: 'numeric' })
+        new Intl.DateTimeFormat(locale, { timeZone: TZ, day: '2-digit', month: 'long', year: 'numeric' })
             .formatToParts(date).map((p) => [p.type, p.value]),
     );
     const mes = partes.month.charAt(0).toUpperCase() + partes.month.slice(1);
+    // Inglês escreve "August 11, 2025"; português e espanhol usam a mesma
+    // forma "11 de Agosto de 2025" / "11 de Agosto de 2025".
+    if (idioma === 'en') return `${mes} ${Number(partes.day)}, ${partes.year}`;
     return `${partes.day} de ${mes} de ${partes.year}`;
 }
 
@@ -47,6 +62,10 @@ function isoDateBR(date = new Date()) {
         .format(date);
 }
 
+// SEMPRE em reais, inclusive em proposta EN/ES. Não é esquecimento: em que
+// moeda sai uma proposta em outro idioma (BRL? USD? moeda local?) e de onde
+// esse dado vem (campo novo no Pipedrive? o currency do deal?) é decisão
+// comercial, não técnica — ainda não foi tomada. Quando for, este é o ponto.
 function formatBRL(value) {
     const n = Number(value);
     if (value == null || !Number.isFinite(n)) return null;
@@ -242,8 +261,16 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         // Serviço vendido sem modelo automatizado (Bing, APP, Violação
         // Comercial, Novos Termos): gerar assim mesmo produziria uma proposta
         // que não cobre o que foi vendido. Vai pro fluxo manual, avisando.
-        if (semTemplate.length > 0) {
-            log.warn(`deal #${dealId}: "${semTemplate.join(', ')}" sem modelo automatizado — fluxo manual`);
+        // Isto BLOQUEAVA a geração inteira, pra não mandar proposta que deixa
+        // de fora algo vendido. Na prática era pior: um card "BB + APP" ficava
+        // sem nada e o closer refazia à mão o Brand Bidding que já existia
+        // pronto — acrescentar um bloco num documento gerado dá muito menos
+        // trabalho que montar a proposta do zero.
+        //
+        // Só bloqueia quando NENHUM produto tem modelo (card só com APP, por
+        // exemplo): aí realmente não há o que gerar.
+        if (semTemplate.length > 0 && productCodes.length === 0) {
+            log.warn(`deal #${dealId}: só "${semTemplate.join(', ')}" no card, nenhum produto com modelo — fluxo manual`);
             if (notifyOnEntry) {
                 // A nota é o único canal com o closer, então diz o problema em
                 // uma linha e as ações em lista — a versão anterior emendava
@@ -278,11 +305,36 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         }
 
         const templateKey = productCodes.join('+'); // "BB" (1 produto) ou "BB+GD" (combinação)
-        const template = productCodes.length > 0 && PROPOSAL_TEMPLATES[templateKey];
+        const idioma = idiomaDoDeal(deal);
+        const template = productCodes.length > 0 && resolveTemplate(idioma, templateKey);
 
         if (!template) {
-            log.warn(`deal #${dealId}: sem template pra "${templateKey || 'nenhum produto'}" — fica no fluxo manual`);
-            await logAttempt(dealId, 'skipped_no_template', { product_code: templateKey || null });
+            log.warn(`deal #${dealId}: sem template pra "${templateKey || 'nenhum produto'}" em ${idioma} — fica no fluxo manual`);
+            if (notifyOnEntry) {
+                // Antes este caminho era mudo: o card não gerava proposta e não
+                // dizia nada, e quem moveu não conseguia distinguir de "a
+                // automação quebrou". A nota nomeia o motivo certo dos dois.
+                const existeEmPt = templateKey && resolveTemplate(IDIOMA_PADRAO, templateKey);
+                const idiomaNome = IDIOMA_LABEL[idioma] || idioma;
+                await postNoteOnce(dealId, !templateKey
+                    ? 'Proposta NÃO gerada — o card não tem produto identificável em "Serviço oferecido" nem em "Produto Principal". Preencha um dos dois.'
+                    : existeEmPt
+                        ? [
+                            // O idioma e a combinação vêm na PRIMEIRA linha de
+                            // propósito: postNoteOnce deduplica pelos 60
+                            // primeiros caracteres, e um cabeçalho genérico
+                            // faria a nota de espanhol ser engolida como
+                            // repetição da de inglês num card que trocasse de
+                            // idioma dentro da janela de 5 minutos.
+                            `Proposta em ${idiomaNome} NÃO gerada — ainda não existe modelo de ${templateKey} nesse idioma.`,
+                            '',
+                            'O que fazer:',
+                            `• monte esta proposta à mão em ${idiomaNome}, ou`,
+                            '• mude o campo "Idioma da proposta" para Português, se ela puder sair em português',
+                        ].join('\n')
+                        : `Proposta NÃO gerada — não existe modelo automatizado para a combinação ${templateKey}. Monte a proposta manualmente e avise o RevOps.`);
+            }
+            await logAttempt(dealId, 'skipped_no_template', { product_code: templateKey || null, idioma });
             return;
         }
 
@@ -379,7 +431,10 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
 
         // Uma pasta por cliente, e o nº do card no nome — quem abre o doc pelo
         // Drive consegue voltar pro Pipedrive sem caçar.
-        const newName = `Proposta_${orgName}_${templateKey}_${isoDateBR()}_deal${dealId}`;
+        // Sufixo de idioma só quando não é português, pra não renomear o padrão
+        // do que já está no Drive.
+        const sufixoIdioma = idioma === IDIOMA_PADRAO ? '' : `_${idioma}`;
+        const newName = `Proposta_${orgName}_${templateKey}${sufixoIdioma}_${isoDateBR()}_deal${dealId}`;
         let destFolderId = PROPOSAL_OUTPUT_FOLDER_ID;
         try {
             destFolderId = await findOrCreateFolder(orgName, PROPOSAL_OUTPUT_FOLDER_ID) || PROPOSAL_OUTPUT_FOLDER_ID;
@@ -392,8 +447,18 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         // "XX de [mês] de [ano]" é substituído como frase única — o "XX" de
         // catálogo já foi trocado por {{CATALOGO_BBP}} nos templates, então
         // não colide mais com a data.
+        //
+        // As duas chaves de data vão juntas de propósito. A frase literal é o
+        // que os 15 modelos em português trazem hoje; {{DATA}} é a convenção
+        // pros modelos novos, em qualquer idioma — a frase em português
+        // obviamente não existe num documento em inglês, e sem {{DATA}} a data
+        // simplesmente não seria substituída, em silêncio. Mandar as duas é
+        // seguro: replacePlaceholders só descarta valor null, e a chave que não
+        // existir no documento vira um replaceAllText sem ocorrência.
+        const dataProposta = formatDate(new Date(), idioma);
         await replacePlaceholders(copyId, {
-            'XX de [mês] de [ano]': formatDateBR(),
+            'XX de [mês] de [ano]': dataProposta,
+            '{{DATA}}': dataProposta,
             '{{MARCA}}': orgName,
             '{{DECISOR}}': orgName,
             // Number() evita "150.0" virar texto no documento.
@@ -443,10 +508,19 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         const origemAviso = origem === 'principal'
             ? `\n\nAtenção: o produto foi deduzido do campo "Produto Principal" porque "Serviço oferecido" está vazio. Confira se ${templateKey} é mesmo o que foi vendido.`
             : '';
-        await postNote(dealId, `Proposta gerada automaticamente (piloto) — revisar conteúdo antes de enviar.\n${docUrl}${origemAviso}`);
+        // Servico vendido sem modelo: a proposta saiu, mas incompleta. O aviso
+        // fica na MESMA nota do link — em nota separada corre o risco de o
+        // closer ler so a do link e mandar faltando um bloco.
+        // Serviço vendido sem modelo: a proposta saiu, mas incompleta. O aviso
+        // fica na MESMA nota do link — em nota separada corre o risco de o
+        // closer ler só a do link e mandar faltando um bloco.
+        const faltaAviso = semTemplate.length
+            ? `\n\nAtenção: esta proposta NÃO cobre ${semTemplate.join(' e ')}, que não tem modelo automatizado. Acrescente esse bloco à mão antes de enviar.`
+            : '';
+        await postNote(dealId, `Proposta gerada automaticamente (piloto) — revisar conteúdo antes de enviar.\n${docUrl}${origemAviso}${faltaAviso}`);
 
-        log.info(`✅ Proposta gerada pro deal #${dealId} (${templateKey}): ${docUrl}`);
-        await logAttempt(dealId, 'success', { template_used: templateKey, doc_url: docUrl });
+        log.info(`✅ Proposta gerada pro deal #${dealId} (${templateKey}, ${idioma}): ${docUrl}`);
+        await logAttempt(dealId, 'success', { template_used: templateKey, idioma, doc_url: docUrl });
     } catch (err) {
         log.error(`deal #${dealId} falhou: ${err.message}`);
         // Sem isso a sentinela ficaria no card até a janela de abandono vencer —

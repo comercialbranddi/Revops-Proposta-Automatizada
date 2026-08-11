@@ -121,39 +121,52 @@ export const PROPOSAL_WEBHOOK_SECRET = process.env.PROPOSAL_WEBHOOK_SECRET || nu
 export const SALES_PIPELINE_ID = 1;
 export const ENVIO_PROPOSTA_STAGE_ID = 257;
 
-// ─── Templates (Google Doc ID) por chave — chave é o código do produto
-// pra 1 produto ("BB") ou os códigos ordenados unidos por "+" pra uma
-// combinação ("BB+GD"). Modelos de combinação são PRÉ-GERADOS uma vez
-// (prosa de transição escrita na criação, não em tempo real — sem
+// ─── Templates (Google Doc ID) por IDIOMA e por chave — chave é o código
+// do produto pra 1 produto ("BB") ou os códigos ordenados unidos por "+"
+// pra uma combinação ("BB+GD"). Modelos de combinação são PRÉ-GERADOS uma
+// vez (prosa de transição escrita na criação, não em tempo real — sem
 // dependência de IA no caminho de produção) e cadastrados aqui igual aos
 // de produto único. Se o deal tiver uma combinação sem modelo cadastrado,
 // a automação pula e o card segue no fluxo manual.
+//
+// O primeiro nível é o idioma pedido no card (ver IDIOMA_FIELD). Só o
+// português está completo; en/es começam vazios de propósito, pra deixar a
+// cobertura real visível de bate e pro fluxo ter onde cair. Ver
+// HANDOFF-IDIOMAS.md §3 pros arquivos que o comercial já tem em outro
+// idioma.
 export const PROPOSAL_TEMPLATES = {
-    // Bases trocados em 10/08/2026: o time optou por voltar aos modelos que já
-    // usava manualmente (pasta "Modelo Propostas"), em vez dos redigidos pro
-    // piloto. Estes são cópias daqueles, importadas pro Drive Compartilhado e
-    // com os placeholders inseridos — os originais do time seguem intactos.
-    // No vocabulário antigo, Fraude (FR) = Golpes Digitais e Violação
-    // Comercial (VC) era o nome anterior do Buy Box Protection.
-    BB:  { docId: '1HCk8jYDW3TeGMkw_XsIrUY95wZIM4-JdAWq6zBo-Q2Y', label: 'Brand Bidding' },
-    BBP: { docId: '1VcqZiITQnPhMdFhceOtYVPCXVuwY8lrXFSE848TOxL8', label: 'Buy Box Protection' },
-    GD:  { docId: '1WOIoQHsjKDlGixola3WblqfxgHotINaWiN7Y6u2dbNA', label: 'Golpes Digitais' },
-    VM:  { docId: '1iE20XbTEuFXBJw3t2EtXERqwC1ard3yIGrVX0Oi4lxA', label: 'Violação de Marca' },
-    // Combinados montados por scripts/monta-combos.js a partir dos quatro
-    // bases. Cada um nasce como cópia do base do primeiro produto — é o que
-    // traz cabeçalho (logo), rodapé, estilos e configuração de página.
-    // Mudou um base? Roda o script de novo e os onze se refazem.
-    'BB+BBP': { docId: '1GeVNz340pIh7kRuV2vxsHUxUHmeyHYEbTy5ybB0n22Y', label: 'Brand Bidding + Buy Box Protection' },
-    'BB+GD':  { docId: '1VeCzKKjyDHNs6wYX--amaOrnQeg7ZKZzprUgLTl3pzE', label: 'Brand Bidding + Golpes Digitais' },
-    'BB+VM':  { docId: '1yH17eXLypVxxk1hBBkYm78MezsVOb34GbpkCbp2QVuE', label: 'Brand Bidding + Violação de Marca' },
-    'BBP+GD': { docId: '1aJlaZpm9dnbYIJBlOqlTzEsfppq4seTmmTNBfbpAkR4', label: 'Buy Box Protection + Golpes Digitais' },
-    'BBP+VM': { docId: '1UNceMug4sGVaNeK116Rzu5Od7Otf38oi98TL83BYIAA', label: 'Buy Box Protection + Violação de Marca' },
-    'GD+VM':  { docId: '1nLaeHqlzbrJo9M-aIAYO3HWZxZLKUYi317f70X7hqz0', label: 'Golpes Digitais + Violação de Marca' },
-    'BB+BBP+GD': { docId: '1TLOcEuOz_Ag_lbXX_86r-CI_X5BmJTgThphW6QfyFak', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais' },
-    'BB+BBP+VM': { docId: '1jwfNL071JBCqhOX4l2xnu-r5rB6z6_M0uactC0ldo0Y', label: 'Brand Bidding + Buy Box Protection + Violação de Marca' },
-    'BB+GD+VM':  { docId: '13RKkuQnCDXIFHUQF9sPnWA-ax5Hg3w8TT8ccGPa1Bz8', label: 'Brand Bidding + Golpes Digitais + Violação de Marca' },
-    'BBP+GD+VM': { docId: '1JFz5gWd35cB6ZS8NUXSK_2rsr_Nm7sIorFTchHzRBJw', label: 'Buy Box Protection + Golpes Digitais + Violação de Marca' },
-    'BB+BBP+GD+VM': { docId: '1lH_XV-2ncfj0I_55nS7AH-ZsFwT7PFAxSmCC00VPYGQ', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais + Violação de Marca' },
+    pt: {
+        // Bases trocados em 10/08/2026: o time optou por voltar aos modelos que já
+        // usava manualmente (pasta "Modelo Propostas"), em vez dos redigidos pro
+        // piloto. Estes são cópias daqueles, importadas pro Drive Compartilhado e
+        // com os placeholders inseridos — os originais do time seguem intactos.
+        // No vocabulário antigo, Fraude (FR) = Golpes Digitais e Violação
+        // Comercial (VC) era o nome anterior do Buy Box Protection.
+        BB:  { docId: '1HCk8jYDW3TeGMkw_XsIrUY95wZIM4-JdAWq6zBo-Q2Y', label: 'Brand Bidding' },
+        BBP: { docId: '1VcqZiITQnPhMdFhceOtYVPCXVuwY8lrXFSE848TOxL8', label: 'Buy Box Protection' },
+        GD:  { docId: '1WOIoQHsjKDlGixola3WblqfxgHotINaWiN7Y6u2dbNA', label: 'Golpes Digitais' },
+        VM:  { docId: '1iE20XbTEuFXBJw3t2EtXERqwC1ard3yIGrVX0Oi4lxA', label: 'Violação de Marca' },
+        // Combinados montados por scripts/monta-combos.js a partir dos quatro
+        // bases. Cada um nasce como cópia do base do primeiro produto — é o que
+        // traz cabeçalho (logo), rodapé, estilos e configuração de página.
+        // Mudou um base? Roda o script de novo e os onze se refazem.
+        'BB+BBP': { docId: '1GeVNz340pIh7kRuV2vxsHUxUHmeyHYEbTy5ybB0n22Y', label: 'Brand Bidding + Buy Box Protection' },
+        'BB+GD':  { docId: '1VeCzKKjyDHNs6wYX--amaOrnQeg7ZKZzprUgLTl3pzE', label: 'Brand Bidding + Golpes Digitais' },
+        'BB+VM':  { docId: '1yH17eXLypVxxk1hBBkYm78MezsVOb34GbpkCbp2QVuE', label: 'Brand Bidding + Violação de Marca' },
+        'BBP+GD': { docId: '1aJlaZpm9dnbYIJBlOqlTzEsfppq4seTmmTNBfbpAkR4', label: 'Buy Box Protection + Golpes Digitais' },
+        'BBP+VM': { docId: '1UNceMug4sGVaNeK116Rzu5Od7Otf38oi98TL83BYIAA', label: 'Buy Box Protection + Violação de Marca' },
+        'GD+VM':  { docId: '1nLaeHqlzbrJo9M-aIAYO3HWZxZLKUYi317f70X7hqz0', label: 'Golpes Digitais + Violação de Marca' },
+        'BB+BBP+GD': { docId: '1TLOcEuOz_Ag_lbXX_86r-CI_X5BmJTgThphW6QfyFak', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais' },
+        'BB+BBP+VM': { docId: '1jwfNL071JBCqhOX4l2xnu-r5rB6z6_M0uactC0ldo0Y', label: 'Brand Bidding + Buy Box Protection + Violação de Marca' },
+        'BB+GD+VM':  { docId: '13RKkuQnCDXIFHUQF9sPnWA-ax5Hg3w8TT8ccGPa1Bz8', label: 'Brand Bidding + Golpes Digitais + Violação de Marca' },
+        'BBP+GD+VM': { docId: '1JFz5gWd35cB6ZS8NUXSK_2rsr_Nm7sIorFTchHzRBJw', label: 'Buy Box Protection + Golpes Digitais + Violação de Marca' },
+        'BB+BBP+GD+VM': { docId: '1lH_XV-2ncfj0I_55nS7AH-ZsFwT7PFAxSmCC00VPYGQ', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais + Violação de Marca' },
+    },
+    // Sem modelo cadastrado ainda. Card que pedir en/es não gera e recebe nota
+    // dizendo isso (ver generateProposalForDeal) — gerar em português pra quem
+    // pediu inglês é pior que não gerar.
+    en: {},
+    es: {},
 };
 
 export const PROPOSAL_OUTPUT_FOLDER_ID = process.env.PROPOSAL_OUTPUT_FOLDER_ID || null;
@@ -260,11 +273,42 @@ export function canaisDoDeal(deal, code) {
 // combo sai listando os produtos com o preço cheio de cada um.
 export const VALOR_PACOTE_FIELD = '798658c516d673cf29f1c1cd17e9c56e46977ddf';
 
-// Idioma da proposta. Criado junto com os demais pra já entrar no fluxo de
-// preenchimento do closer, mas ainda sem uso: só existe modelo em português.
-// Quando houver EN/ES, é esta chave que escolhe o conjunto de modelos.
+// ─── Idioma da proposta ─────────────────────────────────────────────
+// O closer preenche este campo no card e ele escolhe o conjunto de modelos
+// em PROPOSAL_TEMPLATES. Até 11/08/2026 era lido por ninguém: o card podia
+// pedir inglês e receber proposta em português, sem aviso.
 export const IDIOMA_FIELD = '9c95729a15906d4c92843a4fc2c6e79615f103b8';
 export const IDIOMA_OPTION_TO_CODE = { 1588: 'pt', 1589: 'en', 1590: 'es' };
+
+// Campo vazio cai aqui. Ele é novo e a esmagadora maioria dos cards é PT —
+// exigir preenchimento pararia a geração de todo mundo por um campo que
+// ninguém sabia que existia.
+export const IDIOMA_PADRAO = 'pt';
+
+// Pro texto das notas, que são o único canal com o closer.
+export const IDIOMA_LABEL = { pt: 'português', en: 'inglês', es: 'espanhol' };
+
+/** Código do idioma pedido no card ('pt'|'en'|'es'), ou o padrão se vazio. */
+export function idiomaDoDeal(deal) {
+    const bruto = deal?.[IDIOMA_FIELD];
+    if (bruto == null || bruto === '') return IDIOMA_PADRAO;
+    return IDIOMA_OPTION_TO_CODE[Number(String(bruto).trim())] || IDIOMA_PADRAO;
+}
+
+/** Os modelos cadastrados num idioma. Objeto vazio se o idioma não tem nenhum. */
+export function templatesDoIdioma(idioma) {
+    return PROPOSAL_TEMPLATES[idioma] || {};
+}
+
+/** O modelo de uma combinação num idioma, ou null se não existe. */
+export function resolveTemplate(idioma, chave) {
+    return templatesDoIdioma(idioma)[chave] || null;
+}
+
+/** Todos os docIds em uso, em todos os idiomas — usado pela faxina do Drive. */
+export function todosOsDocIds() {
+    return Object.values(PROPOSAL_TEMPLATES).flatMap((porChave) => Object.values(porChave).map((t) => t.docId));
+}
 
 /** True se a automação deve rodar para este deal, dado o estado atual do piloto. */
 export function isProposalAutomationEnabledForDeal(dealId) {

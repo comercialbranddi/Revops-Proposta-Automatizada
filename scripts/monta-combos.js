@@ -25,15 +25,26 @@
  *   node scripts/monta-combos.js                    # simula os 11
  *   node scripts/monta-combos.js --only=GD+VM --apply
  *   node scripts/monta-combos.js --apply
+ *   node scripts/monta-combos.js --idioma=en --apply
+ *
+ * Idioma com bases faltando monta só o que dá: a lista de combos deriva dos
+ * bases DISPONÍVEIS, não do que já está cadastrado na config. Em português dá
+ * exatamente os 11 de sempre (4 bases → todos os subconjuntos de 2 ou mais);
+ * em inglês, sem o base de BBP, sai o que não depende dele. Ver
+ * HANDOFF-IDIOMAS.md §3.
  */
 import 'dotenv/config';
 import { JWT } from 'google-auth-library';
-import { PROPOSAL_TEMPLATES, PRODUCT_CASCADE_ORDER, PROPOSAL_OUTPUT_FOLDER_ID } from '../src/config/proposal.js';
+import { templatesDoIdioma, PRODUCTS, PRODUCT_CASCADE_ORDER, PROPOSAL_OUTPUT_FOLDER_ID } from '../src/config/proposal.js';
+import { idiomaDaLinhaDeComando, avisoDeIdioma } from './_idioma.js';
 
 const APPLY = process.argv.includes('--apply');
 const ONLY = (process.argv.find((a) => a.startsWith('--only=')) || '').split('=')[1] || null;
 const DUMP = (process.argv.find((a) => a.startsWith('--dump=')) || '').split('=')[1] || null;
-const BASES = ['BB', 'BBP', 'GD', 'VM'];
+const IDIOMA = idiomaDaLinhaDeComando();
+const MODELOS = templatesDoIdioma(IDIOMA);
+// Só os bases que existem NESTE idioma.
+const BASES = ['BB', 'BBP', 'GD', 'VM'].filter((c) => MODELOS[c]);
 
 // ─── API ────────────────────────────────────────────────────────────
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -160,7 +171,8 @@ function fatiar(blocos) {
 
 // ─── Inspeção ───────────────────────────────────────────────────────
 if (DUMP) {
-    const doc = await getDoc(PROPOSAL_TEMPLATES[DUMP].docId);
+    if (!MODELOS[DUMP]) { console.error(`Não há modelo "${DUMP}" em ${IDIOMA}.`); process.exit(1); }
+    const doc = await getDoc(MODELOS[DUMP].docId);
     const fatias = fatiar(parseBody(bodyOf(doc), listsOf(doc)));
     for (const [nome, valor] of Object.entries(fatias)) {
         const lista = Array.isArray(valor) ? valor : [valor];
@@ -426,17 +438,43 @@ async function escrever(docId, blocos, presetBullet) {
 }
 
 // ─── Main ───────────────────────────────────────────────────────────
+console.log(avisoDeIdioma(IDIOMA, Object.keys(MODELOS).length));
 console.log(APPLY ? '>>> APLICANDO\n' : '>>> SIMULAÇÃO (nada é escrito) — use --apply para valer\n');
+
+if (BASES.length < 2) {
+    console.error(`${IDIOMA} tem ${BASES.length} base(s) cadastrado(s) — precisa de pelo menos 2 pra montar combo.`);
+    process.exit(1);
+}
 
 const fatias = {};
 for (const cod of BASES) {
-    const doc = await getDoc(PROPOSAL_TEMPLATES[cod].docId);
+    const doc = await getDoc(MODELOS[cod].docId);
     fatias[cod] = fatiar(parseBody(bodyOf(doc), listsOf(doc)));
 }
-console.log(`bases lidos: ${BASES.join(', ')}\n`);
+const faltando = ['BB', 'BBP', 'GD', 'VM'].filter((c) => !BASES.includes(c));
+console.log(`bases lidos: ${BASES.join(', ')}${faltando.length ? ` | SEM base em ${IDIOMA}: ${faltando.join(', ')}` : ''}\n`);
 
-const combos = Object.keys(PROPOSAL_TEMPLATES).filter((k) => k.includes('+'));
+/**
+ * Todas as combinações de 2+ bases disponíveis, na ordem de cascata. Deriva
+ * dos bases e não das chaves já cadastradas: num idioma novo só os bases estão
+ * na config, e filtrar por chave existente não montaria combo nenhum.
+ */
+function combinacoes(codigos) {
+    const out = [];
+    for (let mask = 1; mask < (1 << codigos.length); mask++) {
+        const sub = codigos.filter((_, i) => mask & (1 << i));
+        if (sub.length > 1) out.push(sub.join('+'));
+    }
+    // Mesma ordem de sempre: por tamanho, e dentro do tamanho pela cascata.
+    return out.sort((a, b) => a.split('+').length - b.split('+').length || a.localeCompare(b));
+}
+
+const combos = combinacoes(PRODUCT_CASCADE_ORDER.filter((c) => BASES.includes(c)));
 const alvos = ONLY ? combos.filter((k) => k === ONLY) : combos;
+if (ONLY && !alvos.length) {
+    console.error(`"${ONLY}" não é montável em ${IDIOMA}. Disponíveis: ${combos.join(', ')}`);
+    process.exit(1);
+}
 
 // Pasta _modelos, onde vivem os bases importados.
 async function pastaModelos() {
@@ -452,7 +490,7 @@ async function pastaModelos() {
  * pela API de documentos.
  */
 async function criarCombo(chave, codigos, pasta) {
-    const base = PROPOSAL_TEMPLATES[codigos[0]].docId;
+    const base = MODELOS[codigos[0]].docId;
     const cp = await api(`https://www.googleapis.com/drive/v3/files/${base}/copy?supportsAllDrives=true`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: `MODELO ${chave}`, parents: [pasta] }),
@@ -467,9 +505,14 @@ for (const chave of alvos) {
     const codigos = PRODUCT_CASCADE_ORDER.filter((c) => chave.split('+').includes(c));
     try {
         // Intro do combo atual é a única prosa escrita à mão que vale preservar.
-        const docAtual = await getDoc(PROPOSAL_TEMPLATES[chave].docId);
-        const atual = parseBody(bodyOf(docAtual), listsOf(docAtual));
-        const intro = atual.map(textoDe).map((s) => s.trim()).find((s) => s.startsWith('Apresentamos'));
+        // Combo que ainda não existe neste idioma não tem o que preservar — usa
+        // a do base, como na primeira montagem.
+        let intro;
+        if (MODELOS[chave]) {
+            const docAtual = await getDoc(MODELOS[chave].docId);
+            const atual = parseBody(bodyOf(docAtual), listsOf(docAtual));
+            intro = atual.map(textoDe).map((s) => s.trim()).find((s) => s.startsWith('Apresentamos'));
+        }
         const blocos = compor(codigos, fatias, intro);
         const caixas = blocos.filter((b) => b.kind === 'caixa').length;
         const chars = blocos.reduce((n, b) => n + textoDe(b).length, 0);
@@ -487,8 +530,12 @@ for (const chave of alvos) {
 console.log(`\n${alvos.length} combo(s) ${APPLY ? 'montado(s)' : 'simulado(s)'}`);
 
 if (APPLY && Object.keys(novosIds).length) {
-    console.log('\n── cole em PROPOSAL_TEMPLATES ──');
+    // O bloco sai já indentado dentro da chave do idioma — PROPOSAL_TEMPLATES é
+    // aninhado, e colar as linhas soltas na raiz quebraria o arquivo.
+    console.log(`\n── cole em PROPOSAL_TEMPLATES.${IDIOMA} ──`);
     for (const [k, id] of Object.entries(novosIds)) {
-        console.log(`    '${k}': { docId: '${id}', label: '${PROPOSAL_TEMPLATES[k].label}' },`);
+        const label = MODELOS[k]?.label
+            || k.split('+').map((c) => PRODUCTS[c].label).join(' + ');
+        console.log(`        '${k}': { docId: '${id}', label: '${label}' },`);
     }
 }

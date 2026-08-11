@@ -18,7 +18,11 @@
  */
 import 'dotenv/config';
 import { JWT } from 'google-auth-library';
-import { PROPOSAL_TEMPLATES } from '../src/config/proposal.js';
+import { templatesDoIdioma, IDIOMA_PADRAO } from '../src/config/proposal.js';
+
+// Sem --idioma de propósito: correção de uma vez só, e o LABEL_LINE abaixo é o
+// padrão de pontuação dos modelos em português.
+const MODELOS = templatesDoIdioma(IDIOMA_PADRAO);
 
 const APPLY = process.argv.includes('--apply');
 const BASES = ['BB', 'BBP', 'GD', 'VM'];
@@ -43,7 +47,7 @@ console.log(APPLY ? '>>> APLICANDO nos modelos base\n' : '>>> SIMULAÇÃO (nada 
 
 let total = 0;
 for (const key of BASES) {
-    const docId = PROPOSAL_TEMPLATES[key].docId;
+    const docId = MODELOS[key].docId;
     const doc = await api(`https://docs.googleapis.com/v1/documents/${docId}?includeTabsContent=true`);
     const tab = doc.tabs?.[0];
     const tabId = tab?.tabProperties?.tabId;
