@@ -292,30 +292,23 @@ function compor(codigos, fatiasPorCodigo, introPreservada) {
 }
 
 /**
- * Uniformiza o documento montado. Os quatro bases foram editados à mão em
- * épocas diferentes e misturam 10pt com 11pt no corpo, além de acumularem
- * linhas em branco em sequência — juntar dois deles deixava a diferença
- * evidente.
+ * Limpa o documento montado. Só mexe em linha em branco repetida — a
+ * tipografia vem do base, intacta.
+ *
+ * Já forçou 10pt em todo run de corpo, achando que os bases misturarem 10pt e
+ * 11pt fosse resquício de edição manual. Não é: o comercial olhou os
+ * documentos em 12/08/2026 e disse que a variação de tamanho e de peso é
+ * característica do modelo que eles usam, e o que estava errado era o combo
+ * chapado. Achatar aqui também encolhia a seção comercial de 12pt (herdado do
+ * estilo nomeado, que é como o base a deixa) pra 10pt.
  */
-const CORPO_PT = 10;
 function padronizar(blocos) {
     const out = [];
     for (const b of blocos) {
         if (b.kind === 'caixa') { out.push({ ...b, paras: padronizar(b.paras) }); continue; }
-
         // No máximo uma linha em branco seguida.
         if (vazio(b)) { if (out.length && vazio(out[out.length - 1])) continue; out.push(b); continue; }
-
-        const heading = b.style.startsWith('HEADING');
-        const runs = b.runs.map((r) => {
-            const ts = { ...r.textStyle };
-            // Em título, o tamanho vem do estilo nomeado; tamanho explícito no
-            // run é resquício de edição manual e gera título de dois tamanhos.
-            if (heading) delete ts.fontSize;
-            else ts.fontSize = { magnitude: CORPO_PT, unit: 'PT' };
-            return { ...r, textStyle: ts };
-        });
-        out.push({ ...b, runs });
+        out.push(b);
     }
     return out;
 }
@@ -350,7 +343,18 @@ function pedidosPara(bloco, em, tabId, comQuebra = true) {
     let off = em;
     for (const r of bloco.runs) {
         if (r.text.length) {
-            requests.push({ updateTextStyle: { range: { startIndex: off, endIndex: off + r.text.length, ...t }, textStyle: r.textStyle, fields: 'bold,italic,fontSize,foregroundColor' } });
+            // weightedFontFamily PRECISA estar em fields. Sem ele, a fonte
+            // copiada do base era enviada e descartada em silêncio pela API —
+            // os 11 combos ficaram sem fonte própria e caíram no padrão do
+            // documento, que é Arial/12, enquanto os 4 bases estão em
+            // Montserrat. Documento inteiro na fonte errada, e nenhuma bateria
+            // pegava porque nenhuma olhava tipografia.
+            //
+            // fontSize continua listado de propósito: quando o run do base NÃO
+            // tem tamanho próprio, mandar o campo sem valor limpa o tamanho e
+            // devolve o parágrafo ao estilo nomeado — que é exatamente como o
+            // base se comporta.
+            requests.push({ updateTextStyle: { range: { startIndex: off, endIndex: off + r.text.length, ...t }, textStyle: r.textStyle, fields: 'bold,italic,fontSize,foregroundColor,weightedFontFamily' } });
         }
         off += r.text.length;
     }
