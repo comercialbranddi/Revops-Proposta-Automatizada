@@ -55,6 +55,9 @@ O resumo do que a auditoria corrigiu:
 - Os dois `Propuesta_Branddi_BB` em espanhol são **idênticos**.
 - **O bloqueio não é tradução**: o inglês vende contrato anual com fidelidade e o
   português vende sem fidelidade. É cláusula de contrato, não escolha de palavra.
+  Resolvido em 11/08/2026: os modelos EN/ES passam a ser **traduzidos do
+  português**, que já carrega as condições praticadas hoje. Os documentos antigos
+  viram glossário de vocabulário, não fonte de conteúdo.
 
 ### 📁 Propostas em Espanhol
 | Arquivo | Equivale a | Modificado |
@@ -72,21 +75,22 @@ O resumo do que a auditoria corrigiu:
 | [ENGLISH] Proposal_Branddi_VM_FR.docx | ~~GD+VM~~ → **BB+VM+GD** | 05/03/2026 |
 | [ENGLISH] Proposal_Branddi_BB_VM_FR.docx | BB+GD+VM (**preenchido**) | 16/04/2026 |
 
-### Cobertura real
+### Cobertura — RESOLVIDA em 11/08/2026
 
-Contando só o que é modelo aproveitável, e considerando base extraível de dentro
-de combo (ver `AUDITORIA-IDIOMAS.md` §5):
+**Os três idiomas têm os 15 modelos.** A cobertura acima era o teto se os
+documentos antigos fossem a fonte; não são. Os modelos EN e ES foram
+**traduzidos do português** por `scripts/traduz-bases.js`, o que resolve os dois
+problemas de uma vez: cobre BBP (que não existia em documento nenhum) e carrega
+as condições comerciais que o time pratica hoje.
 
 | | PT | EN | ES |
 |---|---|---|---|
-| BB | ✅ | ✅ | ✅ |
-| BBP | ✅ | ❌ | ❌ |
-| GD | ✅ | ✅ | ⚙️ extraível de BB+GD |
-| VM | ✅ | ⚙️ extraível de BB+VM | ❌ |
-| **modelos alcançáveis** | **15 de 15** | 7 de 15 | 3 de 15 |
+| **modelos cadastrados** | **15** | **15** | **15** |
 
-**BBP não aparece em documento EN ou ES nenhum** — busca por "Buy Box", "BBP" e
-"caja de compra" nos nove: zero ocorrência. Tem que ser escrito do zero.
+Os documentos antigos do comercial viraram **glossário**, não fonte: deles saiu
+o vocabulário da Branddi em cada idioma ("Intellectual Property Infringement",
+"Protección Fraude", "Palabras clave: hasta N palabras"). O conteúdo e as
+cláusulas vêm do português.
 
 **Nenhum dos dois idiomas tem BBP nem VM sozinhos.** E as versões em inglês de
 BB e GD são de 2025, anteriores à revisão dos modelos em português — provável
@@ -169,35 +173,81 @@ vez das chaves já cadastradas — num idioma novo só os bases estão na config
 filtrar por chave existente não montaria nada. Em português dá exatamente os
 mesmos 11 (verificado).
 
+### d) Os modelos EN e ES — FEITOS em 11/08/2026
+
+Traduzidos do português com `scripts/traduz-bases.js`, que copia o modelo em
+português e troca o texto parágrafo a parágrafo. Copiar (em vez de recriar) é o
+que preserva cabeçalho com o wordmark, rodapé, estilos, caixas e paginação —
+mesma razão do `monta-combos.js`. Os 11 combos de cada idioma saíram do
+`monta-combos --idioma=<idioma>`, igual ao português.
+
+As traduções ficam versionadas em `traducoes/<idioma>/<produto>.json`, um par
+`{original, traducao}` por parágrafo. Mudou o português? `--dump` de novo: ele
+preserva o que já foi traduzido e mostra só o que entrou ou mudou.
+
+**Traduzir o documento não bastava.** Quatro coisas quebraram, todas por texto
+que o CÓDIGO injeta e que ninguém enxerga lendo o modelo:
+
+1. O preço saía `R$ 8.000/mês` e o combo `De R$ …`/`Por: …` — português no meio
+   do texto em inglês. Virou `TEXTOS_POR_IDIOMA` na config.
+2. Os rótulos de canal (`TLD's (Domínios)`, `Até 3 marketplaces monitorados
+   simultaneamente`) idem — viraram `CANAIS_LABEL_POR_IDIOMA`. Só o que muda
+   entra lá: "Google Search Ads" e "Amazon" não se traduzem. Em espanhol,
+   "Mercado Livre" vira **Mercado Libre**.
+3. O `monta-combos` achava as seções pelos títulos em português e abortava —
+   virou `SECOES_POR_IDIOMA`.
+4. Pior de todas: ele procurava a linha de preço por `/^Proposta:/`. Em inglês é
+   `Price:`, então **montava o combo sem preço total nenhum, calado**. Foi
+   pega pela auditoria de formatação, que acusou 12 placeholders em inglês
+   contra 14 em português.
+
+O rodapé também não vive no corpo do documento — o `traduz-bases` varre
+cabeçalho e rodapé de propósito, senão a assinatura da Branddi fica em
+português.
+
 ### O que ainda falta
 
-**d) Quem escreve o que falta.** Pra cobrir os 15 em cada idioma são
-necessários os 4 bases traduzidos.
+**Validação humana do texto**, nos três idiomas. As amostras preenchidas estão
+em `_amostras para validação` no Drive, nomeadas `AMOSTRA (en) — …` e
+`AMOSTRA (es) — …`; as em português seguem intactas ao lado.
 
-| | bases que existem | bases que faltam | alcançável hoje |
+**A moeda** segue em reais nos três idiomas — decisão comercial não tomada, ver
+`AUDITORIA-IDIOMAS.md` §3. O sufixo, esse já é por idioma (`/month`, `/mes`).
+
+### O que está verificado
+
+| bateria | pt | en | es |
 |---|---|---|---|
-| EN | BB, GD, (VM extraível dos combos) | **BBP** | 7 de 15 |
-| ES | BB, (GD extraível de BB+GD) | **BBP, VM** | 3 de 15 |
+| `testa-modelos` (15 modelos, conteúdo e estrutura) | 15/15 | 15/15 | 15/15 |
+| `audit-templates` (combos no padrão dos bases) | 11/11 | 11/11 | 11/11 |
+| paridade de placeholders com o português | — | ✅ | ✅ |
+| `testa-fluxo --local` (19 cenários, ponta a ponta) | 17/19 ¹ | | |
 
-Base pode ser **extraída de dentro de um combo** — é a operação inversa do
-`monta-combos.js`, que já sabe recortar bloco por produto. O `[ENGLISH] BB_VM`
-e o `VM_FR` carregam o bloco de VM em inglês; o `Propuesta_BB_FR` carrega o de
-GD em espanhol.
+¹ Os 2 vermelhos são anteriores a esta frente: testam Bing em "Serviço
+oferecido" e a loja de aplicativos em "Canais GD", opções que o commit
+`33b2744` removeu do Pipedrive sem atualizar os cenários. Deixados visíveis de
+propósito — apagá-los esconderia que **APP continua selecionável como serviço
+mas ficou sem canal de destino**.
 
-**BBP não aparece em nenhum documento EN nem ES** — esse tem que ser escrito do
-zero nos dois idiomas.
+As asserções da `testa-modelos` valem nos três idiomas desde 11/08/2026: o que
+ela espera ler sai dos mesmos helpers que o generator usa. Antes eram strings em
+português duplicadas no script, e `--idioma=en` acusava 15 falhas com os modelos
+certos.
 
 **A auditoria foi feita em 11/08/2026 — ver `AUDITORIA-IDIOMAS.md`.** Ela achou
 um bloqueio anterior a qualquer tradução: os documentos em inglês vendem
-contrato anual com fidelidade, e o português vende sem fidelidade; os dois em
-espanhol cobram setup de uma mensalidade, que o português não cobra. São
-cláusulas de contrato, não escolhas de tradução.
+contrato anual com fidelidade, e o português vende sem fidelidade, com aviso de
+60 dias. É cláusula de contrato, não escolha de tradução. **O espanhol não
+diverge nas condições** — cobra `Setup: 01 mensualidad`, igual ao português.
 
 A moeda também não está resolvida nem dentro do espanhol: o modelo de BB vende
 em USD e o de BB+GD em BRL. Isso confirma manter `formatBRL` em reais.
 
-Ordem correta: o comercial decide as condições, e só então se importa e
-placeholderiza.
+**Como o bloqueio foi resolvido:** não importando aqueles documentos. Os modelos
+EN/ES foram traduzidos do português, que já carrega as condições praticadas — o
+que torna a pergunta "quais cláusulas valem lá fora?" uma decisão que o
+comercial pode tomar depois, editando um modelo, em vez de um bloqueio para
+começar. Decidido em 11/08/2026 que as condições seguem as do português.
 
 ---
 

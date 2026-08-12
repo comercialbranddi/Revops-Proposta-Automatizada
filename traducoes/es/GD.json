@@ -1,0 +1,236 @@
+{
+  "idioma": "es",
+  "produto": "GD",
+  "fonte": "1WOIoQHsjKDlGixola3WblqfxgHotINaWiN7Y6u2dbNA",
+  "_instrucao": "Preencha \"traducao\". Deixar vazio = manter o texto em português no documento final. Placeholders {{...}} devem sobreviver.",
+  "pares": [
+    {
+      "original": "São Paulo, XX de [mês] de [ano].",
+      "traducao": "São Paulo, Brasil, {{DATA}}."
+    },
+    {
+      "original": "Para: {{MARCA}}",
+      "traducao": "Para: {{MARCA}}"
+    },
+    {
+      "original": "Prezados,",
+      "traducao": "Estimados,"
+    },
+    {
+      "original": "Apresentamos nossa proposta comercial para prestação de serviços especializados em monitoramento das marcas da {{MARCA}} no ambiente digital, visando proteger seus direitos de propriedade intelectual. Este serviço será executado pela Branddi, aliando a tecnologia de ponta da nossa ferramenta e a expertise para combater o desvio de clientela e maximizar seus esforços de construção de marca.",
+      "traducao": "Presentamos nuestra propuesta comercial para la prestación de servicios especializados en el monitoreo de las marcas de {{MARCA}} en el entorno digital, con el objetivo de proteger sus derechos de propiedad intelectual. Este servicio será ejecutado por Branddi, combinando la tecnología de punta de nuestra herramienta y la experiencia necesaria para combatir el desvío de clientes y maximizar sus esfuerzos de construcción de marca."
+    },
+    {
+      "original": "Nossas Proteções",
+      "traducao": "Nuestras Protecciones"
+    },
+    {
+      "original": "Fraudes Digitais e Impersonação de Marca",
+      "traducao": "Fraudes Digitales y Suplantación de Marca"
+    },
+    {
+      "original": "Nosso serviço de Proteção Contra Fraudes Digitais e Impersonação de Marca é essencial para combater e neutralizar ameaças digitais que simulam ou clonam a identidade de marcas reconhecidas para prejudicar tanto a marca quanto seus consumidores. Utilizamos tecnologia avançada de monitoramento em uma ampla gama de plataformas digitais, assegurando que qualquer uso fraudulento ou malicioso da marca seja prontamente identificado e denunciado.",
+      "traducao": "Nuestro servicio de Protección Contra Fraudes Digitales y Suplantación de Marca es esencial para combatir y neutralizar amenazas digitales que simulan o clonan la identidad de marcas reconocidas para perjudicar tanto a la marca como a sus consumidores. Utilizamos tecnología avanzada de monitoreo en una amplia gama de plataformas digitales, asegurando que cualquier uso fraudulento o malicioso de la marca sea identificado y denunciado rápidamente."
+    },
+    {
+      "original": "Objetivos:",
+      "traducao": "Objetivos:"
+    },
+    {
+      "original": "Preservar a Reputação da Marca: Proteger a imagem da marca contra associações com atividades fraudulentas ou maliciosas.",
+      "traducao": "Preservar la Reputación de la Marca: proteger la imagen de la marca contra asociaciones con actividades fraudulentas o maliciosas."
+    },
+    {
+      "original": "Prevenir Fraudes: Identificar e neutralizar atividades fraudulentas que prejudicam tanto a marca quanto seus clientes, como esquemas de phishing e golpes.",
+      "traducao": "Prevenir Fraudes: identificar y neutralizar actividades fraudulentas que perjudican tanto a la marca como a sus clientes, tales como esquemas de phishing y estafas."
+    },
+    {
+      "original": "Manter a Confiança do Cliente: Garantir que os consumidores possam confiar na autenticidade das comunicações e interações da marca.",
+      "traducao": "Mantener la Confianza del Cliente: garantizar que los consumidores puedan confiar en la autenticidad de las comunicaciones e interacciones de la marca."
+    },
+    {
+      "original": "Especificações",
+      "traducao": "Especificaciones"
+    },
+    {
+      "original": "Marca a ser monitorada:",
+      "traducao": "Marca a ser monitoreada:"
+    },
+    {
+      "original": "{{MARCA}} ",
+      "traducao": "{{MARCA}} "
+    },
+    {
+      "original": "Plataformas Monitoradas: ",
+      "traducao": "Plataformas Monitoreadas: "
+    },
+    {
+      "original": "Registradores de Domínio: Monitoramos mais de 2800 registradores de domínios em todo o mundo para detectar registros suspeitos e prevenir ações de cybersquatting que possam confundir ou enganar consumidores e prejudicar a reputação da marca.",
+      "traducao": "Registradores de Dominio: monitoreamos más de 2.800 registradores de dominios en todo el mundo para detectar registros sospechosos y prevenir acciones de cybersquatting que puedan confundir o engañar a los consumidores y perjudicar la reputación de la marca."
+    },
+    {
+      "original": "Tipos de Domínios: Abrangemos uma vasta gama de domínios, incluindo mais de 746 TLDs (Top-Level Domains) e 1510 ccTLDs (Country Code Top-Level Domains), para uma cobertura completa em diferentes regiões geográficas e setores de mercado.",
+      "traducao": "Tipos de Dominios: abarcamos una amplia gama de dominios, incluyendo más de 746 TLDs (Top-Level Domains) y 1.510 ccTLDs (Country Code Top-Level Domains), para una cobertura completa en diferentes regiones geográficas y sectores de mercado."
+    },
+    {
+      "original": "Criação de Domínios: Monitoramos aproximadamente 250.000 novos domínios criados diariamente, analisando rapidamente qualquer potencial uso indevido que possa estar associado a atividades fraudulentas.",
+      "traducao": "Creación de Dominios: monitoreamos aproximadamente 250.000 nuevos dominios creados diariamente, analizando rápidamente cualquier potencial uso indebido que pueda estar asociado a actividades fraudulentas."
+    },
+    {
+      "original": "Plataformas de E-commerce: Canal direto com centenas de plataformas de e-commerce",
+      "traducao": "Plataformas de E-commerce: canal directo con cientos de plataformas de e-commerce"
+    },
+    {
+      "original": "Plataformas de Checkout / Carrinho: Canal direto com centenas de plataformas de gerenciamento de checkout e gateways de pagamento para agir rapidamente no bloqueio de métodos de pagamento..",
+      "traducao": "Plataformas de Checkout / Carrito: canal directo con cientos de plataformas de gestión de checkout y pasarelas de pago para actuar rápidamente en el bloqueo de métodos de pago."
+    },
+    {
+      "original": "Provedores de Hospedagem: Canal direto com provedores de hospedagem para desativar sites fraudulentos que possam estar hospedando conteúdo prejudicial ou enganoso.",
+      "traducao": "Proveedores de Alojamiento: canal directo con proveedores de hosting para desactivar sitios fraudulentos que puedan estar alojando contenido perjudicial o engañoso."
+    },
+    {
+      "original": "Plataformas de Anúncios: Incluímos monitoramento contínuo de bibliotecas de anúncios e resultados de pesquisa patrocinados, garantindo que anúncios falsos ou enganosos não sejam utilizados para desviar tráfego ou prejudicar a integridade da marca.",
+      "traducao": "Plataformas de Anuncios: incluimos monitoreo continuo de bibliotecas de anuncios y resultados de búsqueda patrocinados, garantizando que anuncios falsos o engañosos no sean utilizados para desviar tráfico o perjudicar la integridad de la marca."
+    },
+    {
+      "original": "Frequência do Monitoramento: ",
+      "traducao": "Frecuencia del Monitoreo: "
+    },
+    {
+      "original": "Monitoramento contínuo",
+      "traducao": "Monitoreo continuo"
+    },
+    {
+      "original": "Aspectos do Monitoramento:",
+      "traducao": "Aspectos del Monitoreo:"
+    },
+    {
+      "original": "Métodos de Impersonação Monitorados:",
+      "traducao": "Métodos de Suplantación Monitoreados:"
+    },
+    {
+      "original": "Contas Falsas nas Redes Sociais: Criação de perfis falsos que imitam as contas oficiais da marca, usados para disseminar desinformação ou golpes.",
+      "traducao": "Cuentas Falsas en Redes Sociales: creación de perfiles falsos que imitan las cuentas oficiales de la marca, usados para difundir desinformación o estafas."
+    },
+    {
+      "original": "Websites Falsos: Sites que se assemelham ao site oficial da marca, muitas vezes usados para aplicar golpes ou capturar dados de clientes.",
+      "traducao": "Sitios Web Falsos: sitios que se asemejan al sitio oficial de la marca, muchas veces usados para cometer estafas o capturar datos de clientes."
+    },
+    {
+      "original": "Uso de Domínios Falsos: Registro de nomes de domínio que se assemelham ao site oficial da marca com a intenção de induzir ao erro ou lucrar com a confusão da marca.",
+      "traducao": "Uso de Dominios Falsos: registro de nombres de dominio que se asemejan al sitio oficial de la marca con la intención de inducir a error o lucrar con la confusión de la marca."
+    },
+    {
+      "original": "Anúncios Falsos nas Redes Sociais: Publicação de anúncios enganosos que parecem ser da marca, mas direcionam para sites maliciosos ou golpes.",
+      "traducao": "Anuncios Falsos en Redes Sociales: publicación de anuncios engañosos que parecen ser de la marca, pero dirigen a sitios maliciosos o estafas."
+    },
+    {
+      "original": "Anúncios de Resultados Patrocinados em Mecanismos de Pesquisa: Monitoramento de anúncios que utilizam indevidamente o nome da marca em resultados patrocinados, desviando tráfego e potencialmente prejudicando a imagem da marca",
+      "traducao": "Anuncios de Resultados Patrocinados en Buscadores: monitoreo de anuncios que utilizan indebidamente el nombre de la marca en resultados patrocinados, desviando tráfico y potencialmente perjudicando la imagen de la marca"
+    },
+    {
+      "original": "A marca deve possuir o devido registro no INPI de titularidade do cliente;",
+      "traducao": "La marca debe contar con el debido registro en el INPI (Instituto Nacional de la Propiedad Industrial de Brasil) a nombre del cliente;"
+    },
+    {
+      "original": "Triagem e Categorização das Ocorrências: Nossa equipe especializada em Brand Strategy realiza a filtragem para identificar falsos positivos e categorizar as ocorrências. Esta triagem é crucial para determinar a abordagem correta para cada tipo de ameaça detectada.",
+      "traducao": "Filtro y Categorización de las Incidencias: nuestro equipo especializado en Brand Strategy realiza el filtrado para identificar falsos positivos y categorizar las incidencias. Este filtro es crucial para determinar el enfoque correcto para cada tipo de amenaza detectada."
+    },
+    {
+      "original": "Entregáveis ",
+      "traducao": "Entregables "
+    },
+    {
+      "original": "Setup (Onboarding):",
+      "traducao": "Setup (Onboarding):"
+    },
+    {
+      "original": "Ativação e configuração de robôs de monitoramento;",
+      "traducao": "Activación y configuración de robots de monitoreo;"
+    },
+    {
+      "original": "Definição das regras de triagem e classificação junto ao cliente.",
+      "traducao": "Definición de las reglas de filtro y clasificación junto al cliente."
+    },
+    {
+      "original": "Triagem Diária: Envio diário de relatórios listando todas as ameaças identificadas, sujeitas à aprovação do cliente antes de prosseguir com qualquer ação. Opção de takedown automatizado disponível mediante aprovação expressa e fornecimento de uma safelist pelo cliente.",
+      "traducao": "Filtro diario: envío diario de informes listando todas las amenazas identificadas, sujetas a la aprobación del cliente antes de proceder con cualquier acción. Opción de takedown automatizado disponible mediante aprobación expresa y provisión de una safelist por parte del cliente."
+    },
+    {
+      "original": "Relatório semanal: Relatórios semanais enviados por e-mail com o status das ameaças que estão sendo tratadas, permitindo ao cliente customizar as informações conforme sua necessidade.",
+      "traducao": "Informe semanal: informes semanales enviados por correo electrónico con el estado de las amenazas que se están tratando, permitiendo al cliente personalizar las informaciones según su necesidad."
+    },
+    {
+      "original": "Formas de atuação:",
+      "traducao": "Formas de actuación:"
+    },
+    {
+      "original": "Denúncias e Remoções: Executamos denúncias em todas as entidades e plataformas envolvidas para solicitar a remoção de conteúdos infratores ou bloqueio de domínios fraudulentos.",
+      "traducao": "Denuncias y Remociones: ejecutamos denuncias ante todas las entidades y plataformas involucradas para solicitar la eliminación de contenidos infractores o el bloqueo de dominios fraudulentos."
+    },
+    {
+      "original": "Safelist: O cliente pode fornecer uma lista de URLs, domínios e perfis oficiais que serão incluídos numa safelist para otimizar a automação das ações de monitoramento e remoção.",
+      "traducao": "Safelist: el cliente puede proporcionar una lista de URLs, dominios y perfiles oficiales que serán incluidos en una safelist para optimizar la automatización de las acciones de monitoreo y remoción."
+    },
+    {
+      "original": "Assessoria para Disputas de Domínios: Facilitamos a intermediação de disputas de nomes de domínios com escritórios parceiros ou escolhidos pelo cliente, abrangendo desde câmaras de arbitragem até ações judiciais para casos não resolvidos pelas vias administrativas.",
+      "traducao": "Asesoría para Disputas de Dominios: facilitamos la intermediación de disputas de nombres de dominio con despachos socios o elegidos por el cliente, abarcando desde cámaras de arbitraje hasta acciones judiciales para casos no resueltos por las vías administrativas."
+    },
+    {
+      "original": "Reunião mensal: onde apresentamos relatório das violações por canal, taxa de sucesso e impacto financeiro estimado e as oportunidades identificadas para aprimorar o ambiente de proteção de marca",
+      "traducao": "Reunión mensual: donde presentamos el informe de violaciones por canal, tasa de éxito, impacto financiero estimado y las oportunidades identificadas para mejorar el entorno de protección de la marca"
+    },
+    {
+      "original": "Proposta Comercial ",
+      "traducao": "Propuesta Comercial "
+    },
+    {
+      "original": "1 - Proteção Fraude",
+      "traducao": "1 - Protección Fraude"
+    },
+    {
+      "original": "Proposta:",
+      "traducao": "Propuesta:"
+    },
+    {
+      "original": "{{PRECO_GD}}",
+      "traducao": "{{PRECO_GD}}"
+    },
+    {
+      "original": "Plataformas: {{CANAIS_GD}}",
+      "traducao": "Plataformas: {{CANAIS_GD}}"
+    },
+    {
+      "original": "Condições Comerciais",
+      "traducao": "Condiciones Comerciales"
+    },
+    {
+      "original": "Setup: 01 mensalidade",
+      "traducao": "Setup: 01 mensualidad"
+    },
+    {
+      "original": "Limite de denúncias/mediações: Sem limite.",
+      "traducao": "Límite de denuncias/mediaciones: Sin límite."
+    },
+    {
+      "original": "Prazo para início do monitoramento: 3 dias úteis.",
+      "traducao": "Plazo para inicio del monitoreo: 3 días hábiles."
+    },
+    {
+      "original": "Condição de pagamento: Mensal - D+30 da emissão da NF",
+      "traducao": "Condición de pago: Mensual - D+30 de la emisión de la factura"
+    },
+    {
+      "original": "Duração do contrato:  Contrato sem fidelidade, com aviso prévio de 60 dias para cancelamento sem multa",
+      "traducao": "Duración del contrato: Contrato sin permanencia, con aviso previo de 60 días para cancelación sin multa"
+    },
+    {
+      "original": "Proposta Válida por 15 dias",
+      "traducao": "Propuesta válida por 15 días"
+    },
+    {
+      "original": "Branddi – Combata o uso indevido da sua marca e maximize seus resultados",
+      "traducao": "Branddi – Combata el uso indebido de su marca y maximice sus resultados"
+    }
+  ]
+}

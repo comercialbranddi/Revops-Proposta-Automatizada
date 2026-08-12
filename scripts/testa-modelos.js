@@ -6,12 +6,14 @@
  * certo, placeholders todos substituídos, seções por produto, numeração,
  * caixas, cabeçalho/rodapé e as linhas comerciais.
  *
- * ATENÇÃO ao --idioma: a flag troca o CONJUNTO de modelos testado, mas as
- * checagens de conteúdo abaixo continuam em português ("Até 7 marketplaces",
- * "R$ …/mês"). Num idioma diferente elas vão acusar falha — o que a flag
- * entrega hoje é a metade estrutural (placeholders substituídos, cabeçalho,
- * caixas). Traduzir as asserções é trabalho pra quando existir modelo EN/ES
- * de verdade, com o texto já fechado.
+ * As checagens valem nos três idiomas. O que o teste espera ler sai dos MESMOS
+ * helpers que o generator usa (textosDoIdioma, canaisDoDeal) — duplicar as
+ * strings aqui foi o que fez esta bateria acusar 15 falhas em inglês quando os
+ * modelos estavam certos e quem estava em português eram as asserções.
+ *
+ * O pouco que sobra em FRASES é texto do MODELO, não do código: "Setup: 01
+ * mensalidade" está escrito no documento, não é montado em tempo de execução.
+ * Se o comercial reescrever essas linhas, é lá que se ajusta.
  *
  * Uso:
  *   node scripts/testa-modelos.js
@@ -20,7 +22,10 @@
  */
 import 'dotenv/config';
 import { JWT } from 'google-auth-library';
-import { templatesDoIdioma, PROPOSAL_OUTPUT_FOLDER_ID, PRODUCT_CASCADE_ORDER } from '../src/config/proposal.js';
+import {
+    templatesDoIdioma, PROPOSAL_OUTPUT_FOLDER_ID, PRODUCT_CASCADE_ORDER,
+    textosDoIdioma, canaisDoDeal, labelCanalVmComContagem,
+} from '../src/config/proposal.js';
 import { idiomaDaLinhaDeComando, avisoDeIdioma } from './_idioma.js';
 
 const KEEP = process.argv.includes('--keep');
@@ -29,15 +34,48 @@ const MODELOS = templatesDoIdioma(IDIOMA);
 
 // Valores distintos por produto pra flagrar troca de campo entre eles.
 const PRECO = { BB: 8000, BBP: 6000, GD: 9000, VM: 4000 };
-const brl = (n) => `R$ ${n.toLocaleString('pt-BR')}/mês`;
 const MARCA = 'Marca Teste Automacao';
-// Espelham CANAIS_PADRAO da config; o VM leva a contagem junto.
-const CANAIS = {
-    BB: 'Google Search Ads',
-    BBP: 'Mercado Livre',
-    GD: "Google + Meta (Facebook e Instagram) + TLD's (Domínios)",
-    VM: 'Até 7 marketplaces monitorados simultaneamente',
+const PALAVRAS = 4, SKUS = 250, PLATAFORMAS = 7;
+
+// Tudo que o teste espera ler no documento sai dos MESMOS helpers que o
+// generator usa. Duplicar as strings aqui foi o que fez esta bateria acusar 15
+// falhas em inglês quando os modelos estavam certos: quem estava em português
+// eram as asserções.
+const T = textosDoIdioma(IDIOMA);
+const brl = (n) => `R$ ${n.toLocaleString('pt-BR')}${T.porMes}`;
+
+// Canais: o padrão de cada produto, no idioma do modelo. O VM leva a contagem
+// junto, igual ao generator.
+const canalVmContagem = labelCanalVmComContagem(IDIOMA);
+const CANAIS = Object.fromEntries(['BB', 'BBP', 'GD', 'VM'].map((c) => [c,
+    canaisDoDeal({}, c, IDIOMA).map((l) => (
+        c === 'VM' && l === canalVmContagem
+            ? `${T.ate} ${PLATAFORMAS} ${l.charAt(0).toLowerCase()}${l.slice(1)}`
+            : l
+    )).join(' + '),
+]));
+
+const DATA_LOCALE = { pt: 'pt-BR', en: 'en-US', es: 'es-ES' };
+function dataFixa() {
+    const d = new Date(Date.UTC(2026, 7, 10, 12));
+    const p = Object.fromEntries(new Intl.DateTimeFormat(DATA_LOCALE[IDIOMA] || 'pt-BR',
+        { timeZone: 'America/Sao_Paulo', day: '2-digit', month: 'long', year: 'numeric' })
+        .formatToParts(d).map((x) => [x.type, x.value]));
+    const mes = p.month.charAt(0).toUpperCase() + p.month.slice(1);
+    return IDIOMA === 'en' ? `${mes} ${Number(p.day)}, ${p.year}` : `${p.day} de ${mes} de ${p.year}`;
+}
+const DATA = dataFixa();
+
+// As poucas frases que não vêm de helper — são texto do modelo, não do código.
+const FRASES = {
+    pt: { setup: 'Setup: 01 mensalidade', pagamento: /^Condição de pagamento/gm, condicoes: /^Condições Comerciais$/gm,
+          palavras: (n) => `Até ${n} palavras`, skus: (n) => `Até ${n} SKUs`, marketplaces: (n) => `Até ${n} marketplaces` },
+    en: { setup: 'Setup: one monthly fee', pagamento: /^Payment terms/gm, condicoes: /^Commercial Terms$/gm,
+          palavras: (n) => `up to ${n} keywords`, skus: (n) => `Up to ${n} SKUs`, marketplaces: (n) => `Up to ${n} marketplaces` },
+    es: { setup: 'Setup: 01 mensualidad', pagamento: /^Condición de pago/gm, condicoes: /^Condiciones Comerciales$/gm,
+          palavras: (n) => `hasta ${n} palabras`, skus: (n) => `Hasta ${n} SKUs`, marketplaces: (n) => `Hasta ${n} marketplaces` },
 };
+const F = FRASES[IDIOMA] || FRASES.pt;
 
 function getClient() {
     const raw = process.env.GOOGLE_PROPOSAL_SA_KEY_BASE64;
@@ -59,22 +97,22 @@ async function preparar(chave, comPacote) {
     const valores = {
         // As duas chaves de data, igual ao generator: a frase literal é o que os
         // modelos em português trazem, {{DATA}} é a convenção dos modelos novos.
-        'XX de [mês] de [ano]': '10 de Agosto de 2026',
-        '{{DATA}}': '10 de Agosto de 2026',
+        'XX de [mês] de [ano]': DATA,
+        '{{DATA}}': DATA,
         '{{MARCA}}': MARCA,
         '{{DECISOR}}': MARCA,
         ...Object.fromEntries(codigos.map((c) => [`{{PRECO_${c}}}`, brl(PRECO[c])])),
-        ...(codigos.includes('BB') ? { '{{PALAVRAS_BB}}': '4' } : {}),
-        ...(codigos.includes('BBP') ? { '{{CATALOGO_BBP}}': '250' } : {}),
-        ...(codigos.includes('VM') ? { '{{PLATAFORMAS_VM}}': '7' } : {}),
+        ...(codigos.includes('BB') ? { '{{PALAVRAS_BB}}': String(PALAVRAS) } : {}),
+        ...(codigos.includes('BBP') ? { '{{CATALOGO_BBP}}': String(SKUS) } : {}),
+        ...(codigos.includes('VM') ? { '{{PLATAFORMAS_VM}}': String(PLATAFORMAS) } : {}),
         ...Object.fromEntries(codigos.map((c) => [`{{CANAIS_${c}}}`, CANAIS[c]])),
         ...(codigos.length > 1
             ? { '{{CANAIS_COMBO}}': [...new Set(codigos.flatMap((c) => CANAIS[c].split(' + ')))].join(' + ') }
             : {}),
         ...(codigos.length > 1
             ? {
-                '{{TOTAL_DE}}': comPacote ? `De ${brl(soma)}` : brl(soma),
-                '{{TOTAL_POR}}': comPacote ? `Por: ${brl(soma - 1500)}` : '',
+                '{{TOTAL_DE}}': comPacote ? `${T.de}${brl(soma)}` : brl(soma),
+                '{{TOTAL_POR}}': comPacote ? `${T.por}${brl(soma - 1500)}` : '',
             }
             : {}),
     };
@@ -120,30 +158,32 @@ for (const [chave, { docId }] of Object.entries(MODELOS)) {
         const checagens = [
             ['sem placeholder', !/\{\{[A-Z_]+\}\}|XXX/.test(txt)],
             ['marca', txt.includes(MARCA)],
-            ['data', txt.includes('10 de Agosto de 2026')],
+            ['data', txt.includes(DATA)],
             ['caixas', caixas === 5 * codigos.length],
             ['cab+rod', cab === 1 && rod === 1],
             // Só nos combos o título do produto é texto numerado. Nos bases ele
             // é item de lista, e o número é renderizado pela lista — não existe
             // no texto do parágrafo.
             ...(codigos.length > 1 ? [['títulos produto', conta(/^\d+\.\s/gm) === codigos.length]] : []),
-            ['itens comerciais', conta(/^\d+ - Prote/gm) === codigos.length],
-            ['condições 1x', conta(/^Condi..es Comerciais$/gm) === 1],
-            ['setup', /Setup: 01 mensalidade/.test(txt)],
+            // Conta item numerado que NÃO é o do combo — funciona em qualquer
+            // idioma, sem depender de como "Proteção" foi traduzido.
+            ['itens comerciais', conta(/^\d+ - (?!Combo)/gm) === codigos.length],
+            ['condições 1x', conta(F.condicoes) === 1],
+            ['setup', txt.includes(F.setup)],
             ...codigos.map((c) => [`preço ${c}`, txt.includes(brl(PRECO[c]))]),
-            ...(codigos.includes('BB') ? [['palavras', /Até 4 palavras/.test(txt)]] : []),
-            ...(codigos.includes('BBP') ? [['skus', /Até 250 SKUs/.test(txt)]] : []),
-            ...(codigos.includes('VM') ? [['plataformas', /Até 7 marketplaces/.test(txt)]] : []),
+            ...(codigos.includes('BB') ? [['palavras', txt.includes(F.palavras(PALAVRAS))]] : []),
+            ...(codigos.includes('BBP') ? [['skus', txt.includes(F.skus(SKUS))]] : []),
+            ...(codigos.includes('VM') ? [['plataformas', txt.includes(F.marketplaces(PLATAFORMAS))]] : []),
             ['pacote', codigos.length > 1
-                ? txt.includes(comPacote ? `De ${brl(soma)}` : brl(soma))
-                : !/TOTAL_|De R\$/.test(txt)],
+                ? txt.includes(comPacote ? `${T.de}${brl(soma)}` : brl(soma))
+                : !new RegExp(`TOTAL_|${T.de.trim()}\s*R\$`).test(txt)],
             // O combo é item próprio e numerado, não uma linha solta no fim.
             ['item combo', codigos.length > 1 ? conta(/^\d+ - Combo:/gm) === 1 : !/ - Combo:/.test(txt)],
             // Canais: cada produto traz o seu, e o combo a união sem repetir.
             ...codigos.map((c) => [`canais ${c}`, txt.includes(CANAIS[c])]),
             ...(codigos.length > 1 ? [['canais combo',
-                txt.includes(`Plataformas: ${[...new Set(codigos.flatMap((c) => CANAIS[c].split(' + ')))].join(' + ')}`)]] : []),
-            ['condição 1x', conta(/^Condição de pagamento/gm) === 1],
+                txt.includes(`${T.plataformas} ${[...new Set(codigos.flatMap((c) => CANAIS[c].split(' + ')))].join(' + ')}`)]] : []),
+            ['condição 1x', conta(F.pagamento) === 1],
             // Só os combos são uniformizados: os bases são os documentos que o
             // time já usava, e misturar 10pt com 11pt é como eles vieram.
             // Restilizá-los seria mexer no que foi aprovado.

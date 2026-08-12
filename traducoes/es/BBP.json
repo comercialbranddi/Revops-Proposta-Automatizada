@@ -1,0 +1,216 @@
+{
+  "idioma": "es",
+  "produto": "BBP",
+  "fonte": "1VcqZiITQnPhMdFhceOtYVPCXVuwY8lrXFSE848TOxL8",
+  "_instrucao": "Preencha \"traducao\". Deixar vazio = manter o texto em português no documento final. Placeholders {{...}} devem sobreviver.",
+  "pares": [
+    {
+      "original": "São Paulo, XX de [mês] de [ano].",
+      "traducao": "São Paulo, Brasil, {{DATA}}."
+    },
+    {
+      "original": "Para: {{MARCA}}",
+      "traducao": "Para: {{MARCA}}"
+    },
+    {
+      "original": "Prezados,",
+      "traducao": "Estimados,"
+    },
+    {
+      "original": "Apresentamos nossa proposta comercial para prestação de serviços especializados em monitoramento da marca {{MARCA}} no ambiente digital, visando proteger seus direitos de propriedade intelectual. Este serviço será executado pela Branddi, aliando a tecnologia de ponta da nossa ferramenta e a expertise para combater o desvio de clientela e maximizar seus esforços de construção de marca.",
+      "traducao": "Presentamos nuestra propuesta comercial para la prestación de servicios especializados en el monitoreo de la marca {{MARCA}} en el entorno digital, con el objetivo de proteger sus derechos de propiedad intelectual. Este servicio será ejecutado por Branddi, combinando la tecnología de punta de nuestra herramienta y la experiencia necesaria para combatir el desvío de clientes y maximizar sus esfuerzos de construcción de marca."
+    },
+    {
+      "original": "Nossas Proteções",
+      "traducao": "Nuestras Protecciones"
+    },
+    {
+      "original": "Buy Box Protection ",
+      "traducao": "Buy Box Protection "
+    },
+    {
+      "original": "O serviço de Buy Box Protection da Branddi é voltado à governança da conversão dos produtos da marca no {{CANAIS_BBP}}, atuando sobre a dinâmica do Buy Box para reduzir o desvio de vendas para sellers não autorizados e garantir maior previsibilidade de performance para a Loja Oficial.",
+      "traducao": "El servicio de Buy Box Protection de Branddi está orientado a la gobernanza de la conversión de los productos de la marca en {{CANAIS_BBP}}, actuando sobre la dinámica del Buy Box para reducir el desvío de ventas hacia sellers no autorizados y garantizar mayor previsibilidad de desempeño para la Tienda Oficial."
+    },
+    {
+      "original": "Diferente de abordagens focadas exclusivamente em preço, o Buy Box Protection tem como objetivo oferecer visibilidade, controle e inteligência sobre quem disputa a posição de compra dos produtos da marca, permitindo atuação estratégica e alinhada às políticas comerciais e de canal.",
+      "traducao": "A diferencia de enfoques centrados exclusivamente en el precio, Buy Box Protection tiene como objetivo ofrecer visibilidad, control e inteligencia sobre quién disputa la posición de compra de los productos de la marca, permitiendo una actuación estratégica y alineada con las políticas comerciales y de canal."
+    },
+    {
+      "original": "Objetivos",
+      "traducao": "Objetivos"
+    },
+    {
+      "original": "Proteção da conversão da marca: Reduzir o desvio de vendas para sellers não autorizados dentro do Buy Box.",
+      "traducao": "Protección de la conversión de la marca: reducir el desvío de ventas hacia sellers no autorizados dentro del Buy Box."
+    },
+    {
+      "original": "Governança do canal marketplace: Garantir maior controle sobre quem disputa a posição de compra dos produtos da marca.",
+      "traducao": "Gobernanza del canal marketplace: garantizar mayor control sobre quién disputa la posición de compra de los productos de la marca."
+    },
+    {
+      "original": "Preservação de margem e política comercial: Evitar guerras de preço desnecessárias e desalinhadas à estratégia da marca.",
+      "traducao": "Preservación del margen y de la política comercial: evitar guerras de precios innecesarias y desalineadas con la estrategia de la marca."
+    },
+    {
+      "original": "Melhoria da experiência do consumidor: Reduzir confusão no momento da compra e riscos reputacionais.",
+      "traducao": "Mejora de la experiencia del consumidor: reducir la confusión en el momento de la compra y los riesgos reputacionales."
+    },
+    {
+      "original": "Previsibilidade de performance: Apoiar a tomada de decisão com dados claros sobre a dinâmica do Buy Box.",
+      "traducao": "Previsibilidad de desempeño: apoyar la toma de decisiones con datos claros sobre la dinámica del Buy Box."
+    },
+    {
+      "original": "Especificações",
+      "traducao": "Especificaciones"
+    },
+    {
+      "original": "Marca a ser monitorada:",
+      "traducao": "Marca a ser monitoreada:"
+    },
+    {
+      "original": "{{MARCA}}",
+      "traducao": "{{MARCA}}"
+    },
+    {
+      "original": "Plataformas Monitoradas: ",
+      "traducao": "Plataformas Monitoreadas: "
+    },
+    {
+      "original": "{{CANAIS_BBP}}",
+      "traducao": "{{CANAIS_BBP}}"
+    },
+    {
+      "original": "Frequência do Monitoramento: ",
+      "traducao": "Frecuencia del Monitoreo: "
+    },
+    {
+      "original": "Diário",
+      "traducao": "Diario"
+    },
+    {
+      "original": "Aspectos do Monitoramento:",
+      "traducao": "Aspectos del Monitoreo:"
+    },
+    {
+      "original": "Identificar:",
+      "traducao": "Identificar:"
+    },
+    {
+      "original": "Sellers que disputam o Buy Box dos produtos da marca;",
+      "traducao": "Sellers que disputan el Buy Box de los productos de la marca;"
+    },
+    {
+      "original": "Posição da Loja Oficial no Buy Box;",
+      "traducao": "Posición de la Tienda Oficial en el Buy Box;"
+    },
+    {
+      "original": "Reincidência e padrões de disputa no Buy Box;",
+      "traducao": "Reincidencia y patrones de disputa en el Buy Box;"
+    },
+    {
+      "original": "Informações associadas aos sellers (perfil, histórico, relevância).",
+      "traducao": "Informaciones asociadas a los sellers (perfil, historial, relevancia)."
+    },
+    {
+      "original": "Classificação das ocorrências com base em critérios de relevância e comportamento comercial, realizada pela equipe especializada da Branddi.",
+      "traducao": "Clasificación de las incidencias con base en criterios de relevancia y comportamiento comercial, realizada por el equipo especializado de Branddi."
+    },
+    {
+      "original": "Entregáveis ",
+      "traducao": "Entregables "
+    },
+    {
+      "original": "Setup (Onboarding):",
+      "traducao": "Setup (Onboarding):"
+    },
+    {
+      "original": "Definição do portfólio de SKUs monitorados;",
+      "traducao": "Definición del portafolio de SKUs monitoreados;"
+    },
+    {
+      "original": "Configuração dos robôs de monitoramento do Buy Box;",
+      "traducao": "Configuración de los robots de monitoreo del Buy Box;"
+    },
+    {
+      "original": "Alinhamento de critérios de análise e priorização;",
+      "traducao": "Alineación de criterios de análisis y priorización;"
+    },
+    {
+      "original": "Integração com políticas comerciais da marca.",
+      "traducao": "Integración con las políticas comerciales de la marca."
+    },
+    {
+      "original": "Relatório semanal: Enviado por e-mail relatório com situação das ocorrências que estão sendo tratadas. O cliente poderá customizar este relatório dentre as informações disponíveis pelo monitoramento.",
+      "traducao": "Informe semanal: se envía por correo electrónico un informe con la situación de las incidencias que se están tratando. El cliente podrá personalizar este informe entre las informaciones disponibles del monitoreo."
+    },
+    {
+      "original": "Formas de atuação:",
+      "traducao": "Formas de actuación:"
+    },
+    {
+      "original": "Apoio à identificação de sellers não autorizados;",
+      "traducao": "Apoyo en la identificación de sellers no autorizados;"
+    },
+    {
+      "original": "Cruzamento das informações coletadas com bases fornecidas pelo cliente;",
+      "traducao": "Cruce de las informaciones recolectadas con bases proporcionadas por el cliente;"
+    },
+    {
+      "original": "Suporte à atuação comercial da marca junto aos canais e parceiros.",
+      "traducao": "Soporte a la actuación comercial de la marca ante canales y socios."
+    },
+    {
+      "original": "Reunião mensal: Apresentação dos principais achados; Discussão de cenários e oportunidades de melhoria; Recomendações estratégicas de governança do Buy Box.",
+      "traducao": "Reunión mensual: presentación de los principales hallazgos; discusión de escenarios y oportunidades de mejora; recomendaciones estratégicas de gobernanza del Buy Box."
+    },
+    {
+      "original": "Proposta Comercial ",
+      "traducao": "Propuesta Comercial "
+    },
+    {
+      "original": "1 - Proteção Buy Box Protection",
+      "traducao": "1 - Protección Buy Box Protection"
+    },
+    {
+      "original": "Proposta: {{PRECO_BBP}}  ",
+      "traducao": "Propuesta: {{PRECO_BBP}}  "
+    },
+    {
+      "original": "Até {{CATALOGO_BBP}} SKUs",
+      "traducao": "Hasta {{CATALOGO_BBP}} SKUs"
+    },
+    {
+      "original": "Condições Comerciais",
+      "traducao": "Condiciones Comerciales"
+    },
+    {
+      "original": "Setup: 01 mensalidade",
+      "traducao": "Setup: 01 mensualidad"
+    },
+    {
+      "original": "Limite de denúncias/mediações: Sem limite.",
+      "traducao": "Límite de denuncias/mediaciones: Sin límite."
+    },
+    {
+      "original": "Prazo para início do monitoramento: 3 dias úteis.",
+      "traducao": "Plazo para inicio del monitoreo: 3 días hábiles."
+    },
+    {
+      "original": "Condição de pagamento: Mensal - D+30 da emissão da NF",
+      "traducao": "Condición de pago: Mensual - D+30 de la emisión de la factura"
+    },
+    {
+      "original": "Duração do contrato:  Contrato sem fidelidade, com aviso prévio de 60 dias para cancelamento sem multa",
+      "traducao": "Duración del contrato: Contrato sin permanencia, con aviso previo de 60 días para cancelación sin multa"
+    },
+    {
+      "original": "Proposta Válida por 15 dias",
+      "traducao": "Propuesta válida por 15 días"
+    },
+    {
+      "original": "Branddi – Combata o uso indevido da sua marca e maximize seus resultados",
+      "traducao": "Branddi – Combata el uso indebido de su marca y maximice sus resultados"
+    }
+  ]
+}

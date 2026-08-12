@@ -83,6 +83,11 @@ const LIMPO = {
     // Sem zerar o idioma, um cenário herdaria o do anterior e o teste mentiria:
     // depois do cenário em inglês, todos os seguintes rodariam em inglês.
     [IDIOMA_FIELD]: '',
+    // "Produto Principal" é o fallback de quando "Serviço oferecido" está
+    // vazio. Precisa estar AQUI, e não só nos campos de um cenário: o snapshot
+    // que restaura o card é montado a partir das chaves do LIMPO, então um
+    // campo limpo fora dele seria apagado do card de vez.
+    [F.PRODUTO_PRINCIPAL]: null,
 };
 
 const CENARIOS = [
@@ -168,16 +173,37 @@ const CENARIOS = [
         espera: { gera: true, contem: ['Mercado Livre'], naoContem: ['Amazon'] },
     },
     // ─── Idioma ─────────────────────────────────────────────────────
-    // Enquanto en/es não tiverem modelo, o esperado é NÃO gerar. Quando
-    // tiverem, estes dois cenários viram "gera: true" com nome /_en_/ — e é
-    // por isso que eles conferem o nome do arquivo, não só a nota.
+    // Desde 11/08/2026 os três idiomas têm os 15 modelos, então o esperado
+    // passou a ser GERAR. Cada cenário confere três coisas de uma vez: que o
+    // arquivo levou o sufixo do idioma no nome, que o texto saiu no idioma
+    // certo, e — o que mais importa — que o preço saiu com o sufixo daquele
+    // idioma. Esse último pega a regressão silenciosa: se a camada de
+    // TEXTOS_POR_IDIOMA quebrar, o documento continua em inglês mas o preço
+    // volta a dizer "/mês", e só uma asserção assim percebe.
     {
         nome: 'card completo pedindo inglês',
         campos: {
             [F.SERVICO_OFERECIDO]: `${OPT.BB}`, [P.BB]: 8000, [PALAVRAS_BB_FIELD]: 3,
             [IDIOMA_FIELD]: IDIOMA_OPT.en,
         },
-        espera: { gera: false, nota: /inglês.*não existe modelo|não existe modelo.*inglês/i },
+        espera: {
+            gera: true, nome: /_BB_en_/,
+            contem: ['R$ 8.000/month', 'Keywords: up to 3 keywords', 'Commercial Terms'],
+            naoContem: ['/mês', 'Condições Comerciais'],
+        },
+    },
+    {
+        nome: 'combo em inglês leva From/To no total',
+        campos: {
+            [F.SERVICO_OFERECIDO]: `${OPT.BB},${OPT.GD}`, [P.BB]: 8000, [P.GD]: 9000,
+            [PALAVRAS_BB_FIELD]: 3, [VALOR_PACOTE_FIELD]: 15000,
+            [IDIOMA_FIELD]: IDIOMA_OPT.en,
+        },
+        espera: {
+            gera: true, nome: /_BB\+GD_en_/,
+            contem: ['From: R$ 17.000/month', 'To: R$ 15.000/month'],
+            naoContem: ['De R$', 'Por: R$'],
+        },
     },
     {
         nome: 'card completo pedindo espanhol',
@@ -185,7 +211,32 @@ const CENARIOS = [
             [F.SERVICO_OFERECIDO]: `${OPT.BB},${OPT.GD}`, [P.BB]: 8000, [P.GD]: 9000,
             [PALAVRAS_BB_FIELD]: 3, [IDIOMA_FIELD]: IDIOMA_OPT.es,
         },
-        espera: { gera: false, nota: /espanhol/i },
+        espera: {
+            gera: true, nome: /_BB\+GD_es_/,
+            contem: ['R$ 8.000/mes', 'Condiciones Comerciales', 'Palabras clave'],
+            naoContem: ['/mês', 'Condições Comerciais'],
+        },
+    },
+    // O caminho de "não há modelo neste idioma" continua existindo e ainda
+    // precisa funcionar — só que agora a única forma de alcançá-lo é uma
+    // COMBINAÇÃO sem modelo, não um idioma inteiro. Sem este cenário, aquele
+    // ramo do generator fica sem cobertura nenhuma.
+    {
+        nome: 'produto nenhum identificável avisa por nota',
+        campos: { [F.SERVICO_OFERECIDO]: '', [P.BB]: 8000 },
+        espera: { gera: false, nota: /não tem produto identificável|Preencha um dos dois/i },
+    },
+    // O fallback pro "Produto Principal" quando "Serviço oferecido" está vazio
+    // não tinha cobertura nenhuma, e é o caso em que a automação tem mais
+    // chance de escolher o modelo errado sem ninguém ver — por isso ele avisa
+    // na nota. Agora que o LIMPO zera esse campo, dá pra testá-lo isolado.
+    {
+        nome: 'sem Serviço oferecido, cai no Produto Principal',
+        campos: {
+            [F.PRODUTO_PRINCIPAL]: 756, // BB
+            [P.BB]: 8000, [PALAVRAS_BB_FIELD]: 3,
+        },
+        espera: { gera: true, nome: /_BB_\d{4}-\d{2}-\d{2}_deal/ },
     },
     // O campo é novo: a maioria esmagadora dos cards está com ele vazio. Se o
     // default de português quebrar, tudo para de gerar — este é o cenário que

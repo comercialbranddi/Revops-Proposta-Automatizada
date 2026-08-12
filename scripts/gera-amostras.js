@@ -15,7 +15,10 @@
  */
 import 'dotenv/config';
 import { JWT } from 'google-auth-library';
-import { templatesDoIdioma, PROPOSAL_OUTPUT_FOLDER_ID, PRODUCT_CASCADE_ORDER, IDIOMA_PADRAO } from '../src/config/proposal.js';
+import {
+    templatesDoIdioma, PROPOSAL_OUTPUT_FOLDER_ID, PRODUCT_CASCADE_ORDER, IDIOMA_PADRAO,
+    textosDoIdioma, canaisDoDeal, labelCanalVmComContagem,
+} from '../src/config/proposal.js';
 import { idiomaDaLinhaDeComando, avisoDeIdioma } from './_idioma.js';
 
 const LIMPAR = process.argv.includes('--limpar');
@@ -32,12 +35,20 @@ const MARCA = 'Cliente Exemplo';
 const PRECO = { BB: 7900, BBP: 9900, GD: 6000, VM: 4900 };
 const PALAVRAS = 3, SKUS = 150, PLATAFORMAS = 3;
 
-const brl = (n) => `R$ ${n.toLocaleString('pt-BR')}/mês`;
+// A amostra tem que sair EXATAMENTE como a proposta real sairia, senão ela não
+// valida nada — por isso reusa as mesmas strings por idioma que o generator
+// usa, em vez de montar as suas.
+const T = textosDoIdioma(IDIOMA);
+const brl = (n) => `R$ ${n.toLocaleString('pt-BR')}${T.porMes}`;
 const TZ = 'America/Sao_Paulo';
+const DATA_LOCALE = { pt: 'pt-BR', en: 'en-US', es: 'es-ES' };
 function dataBR() {
-    const p = Object.fromEntries(new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, day: '2-digit', month: 'long', year: 'numeric' })
+    const locale = DATA_LOCALE[IDIOMA] || DATA_LOCALE[IDIOMA_PADRAO];
+    const p = Object.fromEntries(new Intl.DateTimeFormat(locale, { timeZone: TZ, day: '2-digit', month: 'long', year: 'numeric' })
         .formatToParts(new Date()).map((x) => [x.type, x.value]));
-    return `${p.day} de ${p.month.charAt(0).toUpperCase() + p.month.slice(1)} de ${p.year}`;
+    const mes = p.month.charAt(0).toUpperCase() + p.month.slice(1);
+    if (IDIOMA === 'en') return `${mes} ${Number(p.day)}, ${p.year}`;
+    return `${p.day} de ${mes} de ${p.year}`;
 }
 
 function getClient() {
@@ -98,7 +109,18 @@ for (const [chave, { docId, label }] of Object.entries(MODELOS)) {
         ...(codigos.includes('BB') ? { '{{PALAVRAS_BB}}': String(PALAVRAS) } : {}),
         ...(codigos.includes('BBP') ? { '{{CATALOGO_BBP}}': String(SKUS) } : {}),
         ...(codigos.includes('VM') ? { '{{PLATAFORMAS_VM}}': String(PLATAFORMAS) } : {}),
-        ...(combo ? { '{{TOTAL_DE}}': `De ${brl(soma)}`, '{{TOTAL_POR}}': `Por: ${brl(fechado)}` } : {}),
+        ...(combo ? { '{{TOTAL_DE}}': `${T.de}${brl(soma)}`, '{{TOTAL_POR}}': `${T.por}${brl(fechado)}` } : {}),
+        // Canal: sem isto a amostra saía com {{CANAIS_BB}} cru no documento.
+        // Campo vazio cai no padrão do produto, que é o caso mais comum.
+        ...Object.fromEntries(codigos.map((c) => {
+            const labels = canaisDoDeal({}, c, IDIOMA).map((l) => (
+                c === 'VM' && l === labelCanalVmComContagem(IDIOMA)
+                    ? `${T.ate} ${PLATAFORMAS} ${l.charAt(0).toLowerCase()}${l.slice(1)}`
+                    : l
+            ));
+            return [`{{CANAIS_${c}}}`, labels.join(' + ')];
+        })),
+        ...(combo ? { '{{CANAIS_COMBO}}': [...new Set(codigos.flatMap((c) => canaisDoDeal({}, c, IDIOMA)))].join(' + ') } : {}),
     };
 
     const nome = `${PREFIXO}${chave}${combo ? ` (${brl(soma)} → ${brl(fechado)})` : ''}`;

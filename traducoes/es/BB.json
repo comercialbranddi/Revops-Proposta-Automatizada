@@ -1,0 +1,224 @@
+{
+  "idioma": "es",
+  "produto": "BB",
+  "fonte": "1HCk8jYDW3TeGMkw_XsIrUY95wZIM4-JdAWq6zBo-Q2Y",
+  "_instrucao": "Preencha \"traducao\". Deixar vazio = manter o texto em português no documento final. Placeholders {{...}} devem sobreviver.",
+  "pares": [
+    {
+      "original": "São Paulo, XX de [mês] de [ano].",
+      "traducao": "São Paulo, Brasil, {{DATA}}."
+    },
+    {
+      "original": "Para: {{MARCA}}",
+      "traducao": "Para: {{MARCA}}"
+    },
+    {
+      "original": "Prezados,",
+      "traducao": "Estimados,"
+    },
+    {
+      "original": "Apresentamos nossa proposta comercial para prestação de serviços especializados em monitoramento da marca {{MARCA}} no ambiente digital, visando proteger seus direitos de propriedade intelectual. Este serviço será executado pela Branddi, aliando a tecnologia de ponta da nossa ferramenta e a expertise para combater o desvio de clientela e maximizar seus esforços de construção de marca.",
+      "traducao": "Presentamos nuestra propuesta comercial para la prestación de servicios especializados en el monitoreo de la marca {{MARCA}} en el entorno digital, con el objetivo de proteger sus derechos de propiedad intelectual. Este servicio será ejecutado por Branddi, combinando la tecnología de punta de nuestra herramienta y la experiencia necesaria para combatir el desvío de clientes y maximizar sus esfuerzos de construcción de marca."
+    },
+    {
+      "original": "Nossas Proteções",
+      "traducao": "Nuestras Protecciones"
+    },
+    {
+      "original": "Brand Bidding",
+      "traducao": "Brand Bidding"
+    },
+    {
+      "original": "Através do monitoramento de marca no Google, nosso objetivo é localizar e informar quais outras marcas, entidades ou empresas, concorrentes ou não, estão utilizando a marca  {{MARCA}} como palavra de busca para anunciar marcas, produtos e serviços.",
+      "traducao": "A través del monitoreo de marca en Google, nuestro objetivo es localizar e informar qué otras marcas, entidades o empresas, competidoras o no, están utilizando la marca {{MARCA}} como palabra de búsqueda para anunciar marcas, productos y servicios."
+    },
+    {
+      "original": "Ao identificarmos anunciantes realizando estas práticas com sua marca, executamos o serviço de assessoria jurídica que contempla a redação, envio e acompanhamento de notificações extrajudiciais com o objetivo de desestimular o uso ilícito da marca e fornecer subsídios para eventual proposição de ação judicial.",
+      "traducao": "Al identificar anunciantes realizando estas prácticas con su marca, ejecutamos el servicio de asesoría jurídica que contempla la redacción, envío y seguimiento de notificaciones extrajudiciales con el objetivo de desincentivar el uso ilícito de la marca y proporcionar fundamentos para una eventual interposición de acción judicial."
+    },
+    {
+      "original": "Atualmente os tribunais brasileiros reconhecem que a utilização de marcas registradas de terceiros para o desvio de clientela por meio de links patrocinados, constitui prática de concorrência desleal e pode gerar a obrigação de abstenção de uso e o dever de indenizar.",
+      "traducao": "Actualmente, los tribunales brasileños reconocen que la utilización de marcas registradas de terceros para el desvío de clientes por medio de enlaces patrocinados constituye una práctica de competencia desleal y puede generar la obligación de abstención de uso y el deber de indemnizar."
+    },
+    {
+      "original": "Portanto, a conduta de utilização de marca de terceiros em links patrocinados pode constituir prática de concorrência desleal, uma vez que tem o potencial de desviar clientela de forma ilícita, bem como gerar confusão entre os consumidores.",
+      "traducao": "Por lo tanto, la conducta de utilizar marcas de terceros en enlaces patrocinados puede constituir una práctica de competencia desleal, ya que tiene el potencial de desviar clientes de forma ilícita, así como generar confusión entre los consumidores."
+    },
+    {
+      "original": "Especificações",
+      "traducao": "Especificaciones"
+    },
+    {
+      "original": "Marca a ser monitorada:",
+      "traducao": "Marca a ser monitoreada:"
+    },
+    {
+      "original": "{{MARCA}}",
+      "traducao": "{{MARCA}}"
+    },
+    {
+      "original": "Plataforma(s) Monitorada(s): ",
+      "traducao": "Plataforma(s) Monitoreada(s): "
+    },
+    {
+      "original": "{{CANAIS_BB}}",
+      "traducao": "{{CANAIS_BB}}"
+    },
+    {
+      "original": "Frequência do Monitoramento: ",
+      "traducao": "Frecuencia del Monitoreo: "
+    },
+    {
+      "original": "Diária, em horários diversos.",
+      "traducao": "Diaria, en horarios diversos."
+    },
+    {
+      "original": "Aspectos do Monitoramento",
+      "traducao": "Aspectos del Monitoreo"
+    },
+    {
+      "original": "Serão monitoradas e capturadas as seguintes informações de cada anúncio encontrado nos resultados de busca:",
+      "traducao": "Se monitorearán y capturarán las siguientes informaciones de cada anuncio encontrado en los resultados de búsqueda:"
+    },
+    {
+      "original": "Palavra monitorada",
+      "traducao": "Palabra monitoreada"
+    },
+    {
+      "original": "Data do monitoramento",
+      "traducao": "Fecha del monitoreo"
+    },
+    {
+      "original": "Geolocalização",
+      "traducao": "Geolocalización"
+    },
+    {
+      "original": "Tipo de ambiente – desktop / mobile",
+      "traducao": "Tipo de entorno – desktop / móvil"
+    },
+    {
+      "original": "Posição do anúncio em tela",
+      "traducao": "Posición del anuncio en pantalla"
+    },
+    {
+      "original": "Título do anúncio",
+      "traducao": "Título del anuncio"
+    },
+    {
+      "original": "Link do anúncio",
+      "traducao": "Enlace del anuncio"
+    },
+    {
+      "original": "Link de resultado do site de busca",
+      "traducao": "Enlace de resultado del buscador"
+    },
+    {
+      "original": "Marca anunciada",
+      "traducao": "Marca anunciada"
+    },
+    {
+      "original": "Domínio exibido no anúncio",
+      "traducao": "Dominio mostrado en el anuncio"
+    },
+    {
+      "original": "Link apresentado no anúncio",
+      "traducao": "Enlace presentado en el anuncio"
+    },
+    {
+      "original": "Descrição apresentada no anúncio",
+      "traducao": "Descripción presentada en el anuncio"
+    },
+    {
+      "original": "Captura de tela da evidência da busca efetuada",
+      "traducao": "Captura de pantalla de la evidencia de la búsqueda realizada"
+    },
+    {
+      "original": "Entregáveis",
+      "traducao": "Entregables"
+    },
+    {
+      "original": "Relatório diário: as informações do monitoramento serão entregues diariamente no período da manhã, via e-mail, no formato de relatório PDF anexado ao e-mail.",
+      "traducao": "Informe diario: las informaciones del monitoreo se entregarán diariamente por la mañana, vía correo electrónico, en formato de informe PDF adjunto."
+    },
+    {
+      "original": "Triagem semanal: Envio semanal relacionando as violações identificadas para o cliente aprovar a atuação. Nenhuma notificação ou denúncia será realizada sem aprovação expressa do cliente para cada um dos links",
+      "traducao": "Revisión semanal: envío semanal relacionando las violaciones identificadas para que el cliente apruebe la actuación. Ninguna notificación o denuncia se realizará sin la aprobación expresa del cliente para cada uno de los enlaces"
+    },
+    {
+      "original": "Formas de atuação:",
+      "traducao": "Formas de actuación:"
+    },
+    {
+      "original": "Envio de Notificações: ",
+      "traducao": "Envío de Notificaciones: "
+    },
+    {
+      "original": "Envio de avisos de violação de marca para os infratores, buscando uma solução amistosa. ",
+      "traducao": "Envío de avisos de violación de marca a los infractores, buscando una solución amistosa. "
+    },
+    {
+      "original": "Denúncia: ",
+      "traducao": "Denuncia: "
+    },
+    {
+      "original": "No caso de ocorrências classificadas como Suspeita de Fraude ou Violação de Marca, protocolamos as denúncias na plataforma pedindo a remoção dos referidos conteúdos;",
+      "traducao": "En casos clasificados como Sospecha de Fraude o Violación de Marca, protocolamos las denuncias en la plataforma solicitando la eliminación de dichos contenidos;"
+    },
+    {
+      "original": "No caso de ocorrências de Suspeita de Fraude, onde o agressor cria um site com fins fraudulentos, protocolamos a denúncia junto ao serviço de hospedagem do respectivo site",
+      "traducao": "En el caso de incidencias de Sospecha de Fraude, donde el infractor crea un sitio web con fines fraudulentos, protocolamos la denuncia ante el servicio de alojamiento (hosting) del sitio correspondiente"
+    },
+    {
+      "original": "Reunião mensal: onde apresentamos relatório das violações por canal, taxa de sucesso e impacto financeiro estimado e as oportunidades identificadas para aprimorar o ambiente de proteção de marca",
+      "traducao": "Reunión mensual: donde presentamos el informe de violaciones por canal, tasa de éxito, impacto financiero estimado y las oportunidades identificadas para mejorar el entorno de protección de la marca"
+    },
+    {
+      "original": "Proposta Comercial ",
+      "traducao": "Propuesta Comercial "
+    },
+    {
+      "original": "1 - Proteção Brand Bidding",
+      "traducao": "1 - Protección Brand Bidding"
+    },
+    {
+      "original": "Proposta: {{PRECO_BB}}  ",
+      "traducao": "Propuesta: {{PRECO_BB}}  "
+    },
+    {
+      "original": "Palavras-chave: Até {{PALAVRAS_BB}} palavras.",
+      "traducao": "Palabras clave: hasta {{PALAVRAS_BB}} palabras."
+    },
+    {
+      "original": "Condições Comerciais",
+      "traducao": "Condiciones Comerciales"
+    },
+    {
+      "original": "Setup: 01 mensalidade",
+      "traducao": "Setup: 01 mensualidad"
+    },
+    {
+      "original": "Limite de denúncias/mediações: Sem limite.",
+      "traducao": "Límite de denuncias/mediaciones: Sin límite."
+    },
+    {
+      "original": "Prazo para início do monitoramento: 3 dias úteis.",
+      "traducao": "Plazo para inicio del monitoreo: 3 días hábiles."
+    },
+    {
+      "original": "Condição de pagamento: Mensal - D+30 da emissão da NF",
+      "traducao": "Condición de pago: Mensual - D+30 de la emisión de la factura"
+    },
+    {
+      "original": "Duração do contrato:  Contrato sem fidelidade, com aviso prévio de 60 dias para cancelamento sem multa",
+      "traducao": "Duración del contrato: Contrato sin permanencia, con aviso previo de 60 días para cancelación sin multa"
+    },
+    {
+      "original": "Proposta Válida por 15 dias",
+      "traducao": "Propuesta válida por 15 días"
+    },
+    {
+      "original": "Branddi – Combata o uso indevido da sua marca e maximize seus resultados",
+      "traducao": "Branddi – Combata el uso indebido de su marca y maximice sus resultados"
+    }
+  ]
+}
