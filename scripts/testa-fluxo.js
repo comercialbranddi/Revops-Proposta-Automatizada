@@ -43,9 +43,13 @@ const LOCAL = process.argv.includes('--local');
 
 // IDs das opções dos campos de canal (ver CANAIS_OPTION_TO_LABEL na config).
 const CANAL = {
-    BB: { google: 1592, shopping: 1593, bing: 1594, amazonAds: 1595 },
+    // Loja de aplicativos já foi 1603, sob GD — foi a primeira aposta de que
+    // era canal de Golpes Digitais. As propostas de App Store que o time enviou
+    // mostraram que é canal de BRAND BIDDING, e a opção foi recriada sob BB em
+    // 12/08/2026. O id 1603 não existe mais no Pipedrive.
+    BB: { google: 1592, shopping: 1593, bing: 1594, amazonAds: 1595, appStore: 1609 },
     BBP: { ml: 1596, amazon: 1597, marketplaces: 1598 },
-    GD: { google: 1599, meta: 1600, tld: 1601, marketplaces: 1602, apps: 1603 },
+    GD: { google: 1599, meta: 1600, tld: 1601, marketplaces: 1602 },
     VM: { marketplaces: 1604, shopping: 1605 },
 };
 
@@ -57,7 +61,23 @@ const OPT = { BB: 152, BBP: 549, GD: 153, VM: 154 };
 const IDIOMA_OPT = { pt: 1588, en: 1589, es: 1590 };
 
 const pd = async (p, o) => (await (await fetch(`https://api.pipedrive.com/v1${p}${p.includes('?') ? '&' : '?'}api_token=${T}`, o)).json());
-const put = (d) => pd(`/deals/${ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+/**
+ * Grava campos no card e RECLAMA se o Pipedrive recusar.
+ *
+ * O PUT é tudo-ou-nada: um único valor inválido — uma opção de multi-select que
+ * foi removida do campo, por exemplo — faz a chamada inteira voltar
+ * `success: false` e NENHUM dos outros campos é aplicado. O cenário então roda
+ * com os valores do cenário anterior e falha por um motivo que não tem nada a
+ * ver com o que ele testa. Foi o que escondeu, por dias, que o cenário de Bing
+ * era impossível de montar pela API.
+ */
+async function put(d) {
+    const res = await pd(`/deals/${ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+    if (res?.success === false) {
+        console.log(`   ⚠️  Pipedrive RECUSOU o update — nenhum campo foi aplicado: ${JSON.stringify(res.error || res).slice(0, 160)}`);
+    }
+    return res;
+}
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 const notas = async () => ((await pd(`/notes?deal_id=${ID}&limit=100`)).data || []);
 
@@ -142,15 +162,32 @@ const CENARIOS = [
         espera: { gera: true, nome: /_BB_/, contem: ['Google Search Ads + Bing'] },
     },
     {
-        nome: 'Bing ainda em "Serviço oferecido"',
-        campos: { [F.SERVICO_OFERECIDO]: `${OPT.BB},416`, [P.BB]: 8000, [PALAVRAS_BB_FIELD]: 3 },
-        espera: { gera: false, nota: /"Bing" agora é canal: marque em "Canais BB"/i },
+        // Serviço que na verdade é canal, ainda marcado em "Serviço oferecido".
+        //
+        // Este cenário era com Bing (opção 416) e nunca teve como passar: a
+        // opção foi REMOVIDA do campo, e o Pipedrive recusa o PUT inteiro que
+        // tenta gravá-la — o card ficava só com BB e a nota saía sem aviso
+        // nenhum. Os 7 cards antigos que ainda carregam 416 existem, mas não dá
+        // pra reproduzi-los pela API.
+        //
+        // APP (415) continua selecionável e percorre exatamente o mesmo caminho
+        // (SERVICO_QUE_VIROU_CANAL), então é ele quem cobre a regra aqui.
+        //
+        // A expectativa também mudou de "não gera" pra "gera parcial": o card
+        // sai com o Brand Bidding pronto e a nota dizendo o que fazer, em vez
+        // de deixar o closer montar tudo à mão.
+        nome: 'APP ainda em "Serviço oferecido"',
+        campos: { [F.SERVICO_OFERECIDO]: `${OPT.BB},415`, [P.BB]: 8000, [PALAVRAS_BB_FIELD]: 3 },
+        espera: { gera: true, nome: /_BB_/, nota: /APP.*canal de monitoramento.*não está marcado no card/is },
     },
     {
-        nome: 'GD com loja de aplicativos',
-        campos: { [F.SERVICO_OFERECIDO]: `${OPT.GD}`, [P.GD]: 9000,
-            [C.GD]: `${CANAL.GD.google},${CANAL.GD.meta},${CANAL.GD.apps}` },
-        espera: { gera: true, nome: /_GD_/, contem: ['Lojas de aplicativos (Apple Store e Play Store)'] },
+        // Loja de aplicativos como canal de BB. A frente inteira (sufixo no
+        // título, linha de palavras-chave, nota) está em testa-app.js; aqui só
+        // se confere que a caixa de plataforma recebe o canal, igual aos outros.
+        nome: 'BB com App Store no canal',
+        campos: { [F.SERVICO_OFERECIDO]: `${OPT.BB}`, [P.BB]: 8000, [PALAVRAS_BB_FIELD]: 3,
+            [C.BB]: `${CANAL.BB.google},${CANAL.BB.appStore}` },
+        espera: { gera: true, nome: /_BB_/, contem: ['Google Search Ads + App Store (ASA e Play Store)'] },
     },
     {
         nome: 'BBP com Amazon somado',
@@ -353,6 +390,8 @@ async function preparar(c) {
 }
 
 const falhas = [];
+// Cenários cuja nota o dedupe engoliu — não são falha, são não-verificados.
+const suprimidas = [];
 try {
     for (const c of CENARIOS) {
         const antes = await preparar(c);
@@ -376,9 +415,19 @@ try {
                 for (const s of c.espera.naoContem || []) if (info.txt.includes(s)) problemas.push(`não devia ter "${s}"`);
                 if (/\{\{[A-Z_]+\}\}/.test(info.txt)) problemas.push('placeholder solto');
             }
-        } else {
-            if (link) problemas.push(`gerou quando não devia: ${link.slice(-12)}`);
-            if (c.espera.nota && !novas.some((n) => c.espera.nota.test(n))) problemas.push(`nota esperada não veio (veio: ${novas.join(' | ').slice(0, 80) || 'nenhuma'})`);
+        } else if (link) {
+            problemas.push(`gerou quando não devia: ${link.slice(-12)}`);
+        }
+
+        // A nota vale nos DOIS ramos. Esta checagem só rodava no "não gera", e
+        // cenário que gera parcial — proposta sai, nota diz o que ficou de fora
+        // — passava sem ninguém ler a nota, que é justamente o que separa uma
+        // proposta incompleta avisada de uma incompleta calada.
+        if (c.espera.nota) {
+            if (!novas.length) suprimidas.push(c.nome);
+            else if (!novas.some((n) => c.espera.nota.test(n))) {
+                problemas.push(`nota esperada não veio (veio: ${novas.join(' | ').slice(0, 80)})`);
+            }
         }
 
         if (problemas.length) falhas.push(`${c.nome}: ${problemas.join('; ')}`);
@@ -390,4 +439,14 @@ try {
     console.log('\ncard restaurado ao estado inicial');
 }
 
+// Nota nenhuma postada não é o mesmo que nota errada: o generator não repete a
+// mesma mensagem em 5 min, então numa segunda rodada seguida o cenário fica sem
+// o que conferir. Antes isso entrava como FALHA e mandava caçar bug que não
+// existe — agora aparece separado, dizendo que o cenário não foi verificado.
+if (suprimidas.length) {
+    console.log(`\n⚠️  ${suprimidas.length} cenário(s) sem nota nova — dedupe de 5 min, NÃO foram verificados:`);
+    console.log(`   ${suprimidas.join(', ')}`);
+    console.log('   espere 5 minutos e rode de novo pra cobrir esses.');
+}
 console.log(falhas.length ? `\n❌ ${falhas.length} cenário(s) com problema` : '\n✅ todos os cenários passaram');
+process.exitCode = falhas.length ? 1 : 0;

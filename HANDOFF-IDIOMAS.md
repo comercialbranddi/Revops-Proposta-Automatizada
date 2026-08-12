@@ -221,13 +221,21 @@ em `_amostras para validação` no Drive, nomeadas `AMOSTRA (en) — …` e
 | `testa-modelos` (15 modelos, conteúdo e estrutura) | 15/15 | 15/15 | 15/15 |
 | `audit-templates` (combos no padrão dos bases) | 11/11 | 11/11 | 11/11 |
 | paridade de placeholders com o português | — | ✅ | ✅ |
-| `testa-fluxo --local` (19 cenários, ponta a ponta) | 17/19 ¹ | | |
+| `testa-fluxo --local` (19 cenários, ponta a ponta) | 19/19 ¹ | | |
+| `testa-app` (12 cenários de App Store) | 12/12 | | |
 
-¹ Os 2 vermelhos são anteriores a esta frente: testam Bing em "Serviço
-oferecido" e a loja de aplicativos em "Canais GD", opções que o commit
-`33b2744` removeu do Pipedrive sem atualizar os cenários. Deixados visíveis de
-propósito — apagá-los esconderia que **APP continua selecionável como serviço
-mas ficou sem canal de destino**.
+¹ Eram 17/19 até 12/08/2026. Os 2 vermelhos testavam Bing em "Serviço
+oferecido" e a loja de aplicativos em "Canais GD" — opções que o `33b2744`
+removeu do Pipedrive sem atualizar os cenários. Ficaram visíveis de propósito,
+porque apagá-los esconderia que **APP continuava selecionável como serviço mas
+sem canal de destino**.
+
+Isso foi resolvido: **loja de aplicativos virou canal de Brand Bidding** (opção
+1609 em "Canais BB"). A evidência veio das propostas de App Store que o time
+enviou pra Jusbrasil — são a proposta de BB com a caixa de plataforma trocada,
+o canal no título e sem a linha de palavras-chave. O cenário de Bing passou a
+esperar geração parcial (é o comportamento desde a mudança de "gera o que tem
+modelo"), e o de "Canais GD" virou "BB com App Store no canal".
 
 As asserções da `testa-modelos` valem nos três idiomas desde 11/08/2026: o que
 ela espera ler sai dos mesmos helpers que o generator usa. Antes eram strings em
@@ -327,9 +335,20 @@ checagens de conteúdo do `testa-modelos.js` continuam em português, então
 
 Uma decisão recente mostrou que **nem todo item de "Serviço oferecido" é
 produto**. Bing e APP eram tratados como serviços sem modelo e bloqueavam a
-geração; na verdade são **canais de monitoramento** e viraram campo
-(`Canais BB`, `Canais GD`). A evidência veio dos documentos: a linha
-"Plataforma(s) Monitorada(s)" tem 18 valores distintos nas propostas reais.
+geração; na verdade são **canais de monitoramento** de Brand Bidding e viraram
+opção em `Canais BB`. A evidência veio dos documentos: a linha "Plataforma(s)
+Monitorada(s)" tem 18 valores distintos nas propostas reais.
 
-Se algo parecido aparecer na tradução — um termo que parece produto mas é
-canal, idioma ou região — vale checar nos documentos antes de criar modelo novo.
+O caminho até essa conclusão custou duas tentativas erradas, e a lição está no
+**onde** se procurou:
+
+1. Loja de aplicativos foi cadastrada como canal de **GD** (opção 1603) — chute,
+   sem documento que sustentasse. Revertido no `33b2744`.
+2. Depois voltou a ser tratada como produto sem modelo, com a justificativa de
+   que "não existe texto de APP em lugar nenhum". Essa varredura cobriu os 33
+   arquivos da pasta de modelos — e proposta enviada a cliente não mora lá. As
+   duas propostas de App Store da Jusbrasil existiam o tempo todo.
+
+Se algo parecido aparecer na tradução — um termo que parece produto mas é canal,
+idioma ou região — procure nas **propostas assinadas e enviadas**, não só na
+pasta de modelos, antes de concluir que o texto não existe.
