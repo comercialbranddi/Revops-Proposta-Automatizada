@@ -198,11 +198,29 @@ for (const [chave, { docId }] of Object.entries(MODELOS)) {
             ...(codigos.length > 1 ? [['canais combo',
                 txt.includes(`${T.plataformas} ${[...new Set(codigos.flatMap((c) => CANAIS[c].split(' + ')))].join(' + ')}`)]] : []),
             ['condição 1x', conta(F.pagamento) === 1],
-            // Só os combos são uniformizados: os bases são os documentos que o
-            // time já usava, e misturar 10pt com 11pt é como eles vieram.
-            // Restilizá-los seria mexer no que foi aprovado.
-            ...(codigos.length > 1 ? [['corpo 10pt', paras.every((p) => (p.paragraphStyle?.namedStyleType || '').startsWith('HEADING')
-                || (p.elements || []).every((e) => !e.textRun?.content?.trim() || e.textRun.textStyle?.fontSize?.magnitude === 10))]] : []),
+            // Fonte. Esta checagem substituiu um "corpo 10pt" que exigia o
+            // contrário do que o comercial quer: ele achatava o combo em 10pt e
+            // dava por bom, enquanto o modelo que o time usa varia de tamanho e
+            // de peso de propósito (feedback de 12/08/2026).
+            //
+            // E o que estava passando batido era pior. Os 11 combos saíam com
+            // ZERO run em Montserrat — o monta-combos copiava a fonte do base e
+            // a API descartava, porque weightedFontFamily não estava em
+            // `fields`. O documento inteiro caía no padrão do arquivo, Arial/12.
+            // Nenhuma bateria olhava tipografia, então onze modelos rodaram na
+            // fonte errada até alguém do comercial reparar.
+            ['fonte única', (() => {
+                const fam = new Set();
+                for (const p of paras) for (const e of p.elements || []) {
+                    if (e.textRun?.content?.trim()) fam.add(e.textRun.textStyle?.weightedFontFamily?.fontFamily || '(herdada)');
+                }
+                return fam.size === 1 && !fam.has('(herdada)');
+            })()],
+            // O item da Proposta Comercial vem colado: "Proposta: R$ X" numa
+            // linha só, e a linha seguinte logo abaixo. Ficar solto foi a
+            // primeira coisa que o comercial reclamou.
+            ['preço não fica solto', !linhas.some((l) => l.trim() === T.precoLinha.trim())
+                || conta(new RegExp(`^${T.precoLinha}\\s*$`, 'gm')) === (codigos.length > 1 ? 1 : 0)],
         ];
         const ruins = checagens.filter(([, ok]) => !ok).map(([n]) => n);
         if (ruins.length) falhas.push(`${chave}: ${ruins.join(', ')}`);
