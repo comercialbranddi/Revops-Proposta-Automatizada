@@ -32,7 +32,7 @@ import {
     PROPOSAL_DEAL_FIELDS as F, PRODUCT_PRICE_FIELDS as P, CATALOGO_BBP_FIELD,
     PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD, VALOR_PACOTE_FIELD, CANAIS_FIELDS as C,
     CANAL_BB_APP_STORE_ID, linhasBBDoIdioma, SUFIXO_TITULO_APP_STORE,
-    ENVIO_PROPOSTA_STAGE_ID,
+    ENVIO_PROPOSTA_STAGE_ID, textosDoIdioma,
 } from '../src/config/proposal.js';
 
 const T = process.env.PIPEDRIVE_API_TOKEN;
@@ -41,6 +41,7 @@ const OPT = { BB: 152, BBP: 549, GD: 153, VM: 154, APP: 415, NOVOS: 697 };
 const GOOGLE_ADS = 1592;
 const APP_STORE = CANAL_BB_APP_STORE_ID;
 const L = linhasBBDoIdioma('pt');
+const TEXTOS = textosDoIdioma('pt');
 
 const pd = async (p, o) => (await (await fetch(`https://api.pipedrive.com/v1${p}${p.includes('?') ? '&' : '?'}api_token=${T}`, o)).json());
 const put = (d) => pd(`/deals/${ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
@@ -121,10 +122,26 @@ const CENARIOS = [
       gera: '_BB_', sufixo: false, palavras: true, plataforma: 'Google Search Ads + App Store (ASA e Play Store)' },
     { nome: 'BB, App Store, sem palavras', servicos: [OPT.BB], canais: [APP_STORE], campos: { [PALAVRAS_BB_FIELD]: null },
       gera: '_BB_', sufixo: true, palavras: false },
+    // Os 8 modelos que contêm BB, todos com App Store como canal único. Em
+    // combo há mais o que dar errado: o sufixo pode aparecer duas vezes, a
+    // remoção da linha de palavras-chave pode levar junto a de outro produto, e
+    // a linha de união do combo pode não incluir o canal de BB. Por isso cada
+    // um passa por aqui, e não só um representante.
+    { nome: 'BB+BBP, canal App Store',    servicos: [OPT.BB, OPT.BBP], canais: [APP_STORE],
+      gera: '_BB+BBP_', sufixo: true, palavras: false, combo: ['App Store (ASA e Play Store)', 'Mercado Livre'] },
     { nome: 'BB+GD, canal App Store',     servicos: [OPT.BB, OPT.GD], canais: [APP_STORE],
-      gera: '_BB+GD_', sufixo: true, palavras: false },
+      gera: '_BB+GD_', sufixo: true, palavras: false, combo: ['App Store (ASA e Play Store)', 'Google'] },
+    { nome: 'BB+VM, canal App Store',     servicos: [OPT.BB, OPT.VM], canais: [APP_STORE],
+      gera: '_BB+VM_', sufixo: true, palavras: false, combo: ['App Store (ASA e Play Store)', 'marketplaces'] },
+    { nome: 'BB+BBP+GD, App Store',       servicos: [OPT.BB, OPT.BBP, OPT.GD], canais: [APP_STORE],
+      gera: '_BB+BBP+GD_', sufixo: true, palavras: false, combo: ['App Store (ASA e Play Store)', 'Mercado Livre', 'Google'] },
+    { nome: 'BB+BBP+VM, App Store',       servicos: [OPT.BB, OPT.BBP, OPT.VM], canais: [APP_STORE],
+      gera: '_BB+BBP+VM_', sufixo: true, palavras: false, combo: ['App Store (ASA e Play Store)', 'Mercado Livre', 'marketplaces'] },
+    { nome: 'BB+GD+VM, App Store',        servicos: [OPT.BB, OPT.GD, OPT.VM], canais: [APP_STORE],
+      gera: '_BB+GD+VM_', sufixo: true, palavras: false, combo: ['App Store (ASA e Play Store)', 'Google', 'marketplaces'] },
     { nome: 'BB+BBP+GD+VM, App Store',    servicos: [OPT.BB, OPT.BBP, OPT.GD, OPT.VM], canais: [APP_STORE],
-      gera: '_BB+BBP+GD+VM_', sufixo: true, palavras: false },
+      gera: '_BB+BBP+GD+VM_', sufixo: true, palavras: false,
+      combo: ['App Store (ASA e Play Store)', 'Mercado Livre', 'Google', 'marketplaces'] },
 
     // ── 2. estado legado: "APP" ainda em Serviço oferecido ──
     { nome: 'APP sozinho',                servicos: [OPT.APP], canais: [],
@@ -236,10 +253,27 @@ try {
             const linhas = await linhasDoDoc(docId);
             if (!linhas) problemas.push('não consegui ler o conteúdo do documento');
             else {
-                temSufixo = linhas.some((l) => l.includes(`${L.titulo}${SUFIXO_TITULO_APP_STORE}`));
+                // Uma vez, não "pelo menos uma": em combo o título de BB não
+                // pode ganhar o sufixo em dois lugares.
+                const vezes = linhas.filter((l) => l.includes(`${L.titulo}${SUFIXO_TITULO_APP_STORE}`)).length;
+                temSufixo = vezes > 0;
                 temPalavras = linhas.some((l) => l.startsWith(L.palavras));
                 if (c.sufixo != null && temSufixo !== c.sufixo) problemas.push(`sufixo no título: esperava ${c.sufixo}`);
+                if (c.sufixo && vezes !== 1) problemas.push(`sufixo aparece ${vezes}x (esperava 1)`);
                 if (c.palavras != null && temPalavras !== c.palavras) problemas.push(`linha de palavras-chave: esperava ${c.palavras}`);
+
+                // A linha de união do combo. CUIDADO: em BB+GD e BB+VM existem
+                // DUAS linhas "Plataformas:" — a do produto, dentro do item
+                // comercial ({{CANAIS_GD}}), e a do combo ({{CANAIS_COMBO}}),
+                // que vem por último. Pegar a primeira acusa falsamente "combo
+                // sem App Store" em 6 dos 8 modelos com BB.
+                if (c.combo) {
+                    const uniao = linhas.filter((l) => l.startsWith(`${TEXTOS.plataformas} `)).at(-1);
+                    if (!uniao) problemas.push(`sem linha "${TEXTOS.plataformas}" do combo`);
+                    else for (const canal of c.combo) {
+                        if (!uniao.includes(canal)) problemas.push(`união do combo sem "${canal}": ${uniao.slice(0, 70)}`);
+                    }
+                }
                 if (c.palavras === false && linhas.some((l) => l.includes('{{PALAVRAS_BB}}'))) problemas.push('placeholder de palavras vazou');
                 if (c.plataforma && !linhas.some((l) => l === c.plataforma)) problemas.push(`caixa de plataforma: esperava "${c.plataforma}"`);
                 if (linhas.some((l) => /\{\{[A-Z_]+\}\}/.test(l))) problemas.push('placeholder solto no documento');
