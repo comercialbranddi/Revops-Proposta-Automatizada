@@ -61,7 +61,23 @@ const OPT = { BB: 152, BBP: 549, GD: 153, VM: 154 };
 const IDIOMA_OPT = { pt: 1588, en: 1589, es: 1590 };
 
 const pd = async (p, o) => (await (await fetch(`https://api.pipedrive.com/v1${p}${p.includes('?') ? '&' : '?'}api_token=${T}`, o)).json());
-const put = (d) => pd(`/deals/${ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+/**
+ * Grava campos no card e RECLAMA se o Pipedrive recusar.
+ *
+ * O PUT é tudo-ou-nada: um único valor inválido — uma opção de multi-select que
+ * foi removida do campo, por exemplo — faz a chamada inteira voltar
+ * `success: false` e NENHUM dos outros campos é aplicado. O cenário então roda
+ * com os valores do cenário anterior e falha por um motivo que não tem nada a
+ * ver com o que ele testa. Foi o que escondeu, por dias, que o cenário de Bing
+ * era impossível de montar pela API.
+ */
+async function put(d) {
+    const res = await pd(`/deals/${ID}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) });
+    if (res?.success === false) {
+        console.log(`   ⚠️  Pipedrive RECUSOU o update — nenhum campo foi aplicado: ${JSON.stringify(res.error || res).slice(0, 160)}`);
+    }
+    return res;
+}
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 const notas = async () => ((await pd(`/notes?deal_id=${ID}&limit=100`)).data || []);
 
@@ -146,12 +162,23 @@ const CENARIOS = [
         espera: { gera: true, nome: /_BB_/, contem: ['Google Search Ads + Bing'] },
     },
     {
-        // A expectativa aqui era "não gera". Mudou com a geração parcial: um
-        // card BB + Bing agora sai com o Brand Bidding pronto e a nota dizendo
-        // o que fazer, em vez de deixar o closer montar tudo à mão.
-        nome: 'Bing ainda em "Serviço oferecido"',
-        campos: { [F.SERVICO_OFERECIDO]: `${OPT.BB},416`, [P.BB]: 8000, [PALAVRAS_BB_FIELD]: 3 },
-        espera: { gera: true, nome: /_BB_/, nota: /Bing.*canal de monitoramento.*não está marcado no card/is },
+        // Serviço que na verdade é canal, ainda marcado em "Serviço oferecido".
+        //
+        // Este cenário era com Bing (opção 416) e nunca teve como passar: a
+        // opção foi REMOVIDA do campo, e o Pipedrive recusa o PUT inteiro que
+        // tenta gravá-la — o card ficava só com BB e a nota saía sem aviso
+        // nenhum. Os 7 cards antigos que ainda carregam 416 existem, mas não dá
+        // pra reproduzi-los pela API.
+        //
+        // APP (415) continua selecionável e percorre exatamente o mesmo caminho
+        // (SERVICO_QUE_VIROU_CANAL), então é ele quem cobre a regra aqui.
+        //
+        // A expectativa também mudou de "não gera" pra "gera parcial": o card
+        // sai com o Brand Bidding pronto e a nota dizendo o que fazer, em vez
+        // de deixar o closer montar tudo à mão.
+        nome: 'APP ainda em "Serviço oferecido"',
+        campos: { [F.SERVICO_OFERECIDO]: `${OPT.BB},415`, [P.BB]: 8000, [PALAVRAS_BB_FIELD]: 3 },
+        espera: { gera: true, nome: /_BB_/, nota: /APP.*canal de monitoramento.*não está marcado no card/is },
     },
     {
         // Loja de aplicativos como canal de BB. A frente inteira (sufixo no
