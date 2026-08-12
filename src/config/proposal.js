@@ -40,18 +40,17 @@ export const SERVICO_OFERECIDO_OPTION_TO_CODE = {
 };
 
 // Opções do campo que não têm modelo — não existe proposta escrita pra elas em
-// lugar nenhum (procurei nos 33 arquivos da pasta "Modelo Propostas" em
-// 11/08/2026: zero ocorrência). Ficam mapeadas só pra conseguir NOMEAR o que
-// está fora do fluxo na nota do card; antes eram descartadas em silêncio e um
-// deal "BB + Bing" virava proposta só de BB.
+// lugar nenhum. Ficam mapeadas só pra conseguir NOMEAR o que está fora do fluxo
+// na nota do card; antes eram descartadas em silêncio e um deal "BB + Bing"
+// virava proposta só de BB.
 export const SERVICO_OFERECIDO_SEM_TEMPLATE = {
     415: 'APP',
     416: 'Bing',
     697: 'Novos Termos',
 };
 
-// Duas dessas opções não são serviço, são CANAL de um produto que já existe —
-// e agora têm campo próprio. Uso real (57.771 negócios varridos em 11/08/2026):
+// Estas opções não são serviço, são CANAL de um produto que já existe — e agora
+// têm campo próprio. Uso real (57.771 negócios varridos em 11/08/2026):
 // APP 18 cards, Bing 7, os dois pela última vez em 28/07/2026. Pouco, mas vivo.
 //
 // Continuam bloqueando a geração de propósito: gerar ignorando produziria uma
@@ -62,8 +61,22 @@ export const SERVICO_OFERECIDO_SEM_TEMPLATE = {
 // marcar. O mapeamento fica porque um card antigo ainda pode carregar o id 416
 // gravado (o Pipedrive limpou a maioria, mas não todos), e nesse caso a nota
 // ainda explica o que fazer em vez de dizer só "sem modelo".
+//
+// APP entrou aqui em 12/08/2026, e a evidência veio das propostas de App Store
+// que o time enviou pra Jusbrasil (29/04 e 30/07/2026): são a proposta de Brand
+// Bidding com a caixa "Plataforma(s) Monitorada(s)" trocada. Mesmo texto de
+// proteções, mesmos entregáveis, mesmas condições. Antes disso APP ficava em
+// SERVICO_OFERECIDO_SEM_TEMPLATE puro, e um card "BB + APP" gerava proposta de
+// BB com um aviso pedindo pra escrever o bloco de APP à mão — bloco que não
+// existia escrito em lugar nenhum.
+//
+// `produto` é o código do produto dono do canal. Sem ele a nota mandava marcar
+// o canal e desmarcar o serviço, mas não dizia pra marcar o produto — num card
+// só com "APP" o closer seguia a instrução ao pé da letra e ficava com o card
+// vazio, sem proposta e sem entender por quê.
 export const SERVICO_QUE_VIROU_CANAL = {
-    416: { canal: 'Bing', campo: 'Canais BB' },
+    415: { canal: 'App Store (ASA e Play Store)', canalId: 1609, campo: 'Canais BB', produto: 'BB' },
+    416: { canal: 'Bing', canalId: 1594, campo: 'Canais BB', produto: 'BB' },
 };
 
 /**
@@ -275,12 +288,24 @@ export const CANAIS_FIELDS = {
 
 export const CANAIS_OPTION_TO_LABEL = {
     1592: 'Google Search Ads', 1593: 'Google Shopping', 1594: 'Bing', 1595: 'Amazon Ads',
+    1609: 'App Store (ASA e Play Store)',
     1596: 'Mercado Livre', 1597: 'Amazon', 1598: 'Marketplaces',
     1599: 'Google', 1600: 'Meta (Facebook e Instagram)', 1601: "TLD's (Domínios)",
     1602: 'Marketplaces',
     1604: 'Marketplaces monitorados simultaneamente', 1605: 'Google Shopping',
     1606: 'Amazon', 1607: 'Mercado Livre',
 };
+
+// Loja de aplicativos é o único canal que muda o FORMATO da proposta, e não só
+// a caixa de plataforma. Comparando as duas propostas de App Store da Jusbrasil
+// com a de Brand Bidding padrão (assinada em 02/03/2026), a diferença é:
+//   1. a caixa "Plataforma(s) Monitorada(s)" — que já vem de {{CANAIS_BB}};
+//   2. o título vira "1 - Proteção Brand Bidding- App Store";
+//   3. a linha "Palavras-chave: Até N palavras." não existe.
+// Todo o resto é idêntico, palavra por palavra.
+//
+// O rótulo é o do time ("ASA" = Apple Search Ads), não uma invenção nossa.
+export const CANAL_BB_APP_STORE_ID = 1609;
 
 // Usado quando o campo do card está vazio — mantém o que o modelo dizia antes,
 // então não preencher nunca piora a proposta. Por isso canal não é obrigatório.
@@ -325,6 +350,26 @@ export function canaisDoDeal(deal, code, idioma = IDIOMA_PADRAO) {
         .map((id) => rotulo(Number(id.trim())))
         .filter(Boolean);
     return labels.length ? labels : (CANAIS_PADRAO[code] || []);
+}
+
+/** Os ids de canal marcados no card pra esse produto (vazio = campo em branco). */
+export function canaisIdsDoDeal(deal, code) {
+    const bruto = deal?.[CANAIS_FIELDS[code]];
+    if (!bruto) return [];
+    return String(bruto).split(',').map((id) => Number(id.trim())).filter(Number.isFinite);
+}
+
+/**
+ * True quando App Store é o ÚNICO canal de Brand Bidding do card.
+ *
+ * "Único" importa: num card "Google Search Ads + App Store" a venda ainda tem a
+ * parte de buscador, então as palavras-chave continuam valendo e o título não
+ * deve dizer que a proposta é de loja de aplicativos. Só quando App Store está
+ * sozinho a proposta assume o formato das duas que o time enviou.
+ */
+export function bbSoAppStore(deal) {
+    const ids = canaisIdsDoDeal(deal, 'BB');
+    return ids.length === 1 && ids[0] === CANAL_BB_APP_STORE_ID;
 }
 
 // Valor fechado do pacote, usado no bloco "De R$ X / Por: R$ Y" das propostas
@@ -404,24 +449,52 @@ export function secoesDoIdioma(idioma) {
     return SECOES_POR_IDIOMA[idioma] || SECOES_POR_IDIOMA[IDIOMA_PADRAO];
 }
 
+// Duas linhas do bloco de Brand Bidding que a proposta de App Store trata
+// diferente. São texto EXATO do modelo, não expressão: o título é procurado
+// literalmente pra ganhar o sufixo, e a linha de palavras-chave é procurada
+// pelo começo pra ser apagada inteira.
+//
+// Se o texto do modelo mudar, isto silenciosamente para de casar — a bateria
+// testa-modelos.js confere que as duas linhas existem em cada modelo com BB.
+export const LINHAS_BB_POR_IDIOMA = {
+    pt: { titulo: 'Proteção Brand Bidding',  palavras: 'Palavras-chave:' },
+    en: { titulo: 'Brand Bidding Protection', palavras: 'Keywords:' },
+    es: { titulo: 'Protección Brand Bidding', palavras: 'Palabras clave:' },
+};
+
+export function linhasBBDoIdioma(idioma) {
+    return LINHAS_BB_POR_IDIOMA[idioma] || LINHAS_BB_POR_IDIOMA[IDIOMA_PADRAO];
+}
+
+// O sufixo que o título ganha quando a venda é só de loja de aplicativos. O
+// time escreve "1 - Proteção Brand Bidding- App Store" (sem espaço antes do
+// hífen); aqui sai com espaço, que é o certo e não muda o sentido.
+export const SUFIXO_TITULO_APP_STORE = ' - App Store';
+
 // Rótulo de canal por idioma. Só o que DIFERE do português entra aqui; o que
 // faltar cai no rótulo em português, que é o comportamento certo pra nome
 // próprio — "Google Search Ads", "Mercado Livre" e "Amazon" não se traduzem.
+//
+// Havia tradução pro id 1603 ("Lojas de aplicativos"), que foi a primeira
+// tentativa de encaixar loja de aplicativos como canal de GD. A opção saiu do
+// Pipedrive no 33b2744 mas a tradução ficou — id morto, e canaisDoDeal
+// descartava em silêncio. Removida em 12/08/2026, junto com a entrada certa
+// (1609, sob BB).
 export const CANAIS_LABEL_POR_IDIOMA = {
     en: {
         // "Facebook e Instagram" com "e" é o vazamento de português que a
         // auditoria achou nos documentos antigos em inglês (AUDITORIA §4).
         1600: 'Meta (Facebook and Instagram)',
         1601: "TLD's (Domains)",
-        1603: 'App stores (Apple Store and Play Store)',
         1604: 'marketplaces monitored simultaneously',
+        1609: 'App Store (ASA and Play Store)',
     },
     es: {
         // Em espanhol "Facebook e Instagram" está CERTO — a conjunção vira "e"
         // antes de som de i. Por isso 1600 não entra aqui.
         1601: "TLD's (Dominios)",
-        1603: 'Tiendas de aplicaciones (Apple Store y Play Store)',
         1604: 'marketplaces monitoreados simultáneamente',
+        1609: 'App Store (ASA y Play Store)',
         // A marca chama Mercado Libre fora do Brasil.
         1596: 'Mercado Libre',
         1607: 'Mercado Libre',

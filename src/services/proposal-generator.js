@@ -21,13 +21,17 @@
  * cadastrado ainda, a automação pula e o card segue no fluxo manual.
  */
 import { pdGet, pdPut, pdPost } from './pipedrive.js';
-import { copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl, findOrCreateFolder } from './google-docs-client.js';
+import {
+    copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl, findOrCreateFolder,
+    deleteParagraphsStartingWith,
+} from './google-docs-client.js';
 import {
     PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS, PRICED_PRODUCTS,
     CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD, VALOR_PACOTE_FIELD,
     canaisDoDeal, labelCanalVmComContagem, SERVICO_QUE_VIROU_CANAL, SERVICO_OFERECIDO_SEM_TEMPLATE,
-    getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER,
+    getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER, PRODUCTS,
     idiomaDoDeal, resolveTemplate, IDIOMA_PADRAO, IDIOMA_LABEL, textosDoIdioma,
+    bbSoAppStore, canaisIdsDoDeal, linhasBBDoIdioma, SUFIXO_TITULO_APP_STORE,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
 import supabase from './supabase-client.js';
@@ -287,7 +291,14 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
                     .filter(([, canal]) => canal);
                 const semSaida = semTemplate.filter((rot) => !viraramCanal.some(([r]) => r === rot));
 
-                const acoes = viraramCanal.map(([, v]) => `• marque "${v.canal}" no campo "${v.campo}"`);
+                // Marcar o PRODUTO vem primeiro: sem ele o card fica sem nada em
+                // "Serviço oferecido" e a proposta continua não saindo — só que
+                // agora sem nem uma nota explicando, porque não há mais serviço
+                // sem modelo pra disparar esta mesma checagem.
+                const produtos = [...new Set(viraramCanal.map(([, v]) => v.produto).filter(Boolean))]
+                    .filter((code) => !productCodes.includes(code));
+                const acoes = produtos.map((code) => `• marque "${PRODUCTS[code].label}" em "Serviço oferecido"`);
+                acoes.push(...viraramCanal.map(([, v]) => `• marque "${v.canal}" no campo "${v.campo}"`));
                 if (viraramCanal.length) {
                     acoes.push(`• desmarque ${viraramCanal.map(([rot]) => rot).join(' e ')} de "Serviço oferecido"`);
                 }
@@ -382,10 +393,17 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         const catalogoBBP = productCodes.includes('BBP') ? deal[CATALOGO_BBP_FIELD] : null;
         if (productCodes.includes('BBP') && !isPreenchido(catalogoBBP)) missingFields.push('Catálogo BBP (SKUs)');
 
+        // Venda de Brand Bidding só em loja de aplicativos: a proposta muda de
+        // forma. As duas que o time enviou não têm linha de palavras-chave e
+        // levam o canal no título. Ver CANAL_BB_APP_STORE_ID na config.
+        const soAppStore = productCodes.includes('BB') && bbSoAppStore(deal);
+
         // Mesma ideia pro bloco de BB ("Até XX palavras"): o modelo trazia 3
         // fixo, mas as propostas reais saem com 2 ou 3 conforme a negociação.
+        // Em App Store não se contrata por palavra, então o campo deixa de ser
+        // exigido — e nesse caso a linha inteira sai do documento, mais abaixo.
         const palavrasBB = productCodes.includes('BB') ? deal[PALAVRAS_BB_FIELD] : null;
-        if (productCodes.includes('BB') && !isPreenchido(palavrasBB)) missingFields.push('Palavras-chave BB (qtd)');
+        if (productCodes.includes('BB') && !soAppStore && !isPreenchido(palavrasBB)) missingFields.push('Palavras-chave BB (qtd)');
 
         // E no VM ("Até N marketplaces monitorados simultaneamente").
         const plataformasVM = productCodes.includes('VM') ? deal[PLATAFORMAS_VM_FIELD] : null;
@@ -469,9 +487,15 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         // seguro: replacePlaceholders só descarta valor null, e a chave que não
         // existir no documento vira um replaceAllText sem ocorrência.
         const dataProposta = formatDate(new Date(), idioma);
+        // O título do bloco de BB não é placeholder — é a frase do modelo, e
+        // ganha o canal no fim só quando a venda é de loja de aplicativos. Um
+        // replaceAllText só varre o documento uma vez, então a substituição
+        // conter o próprio texto procurado não faz laço.
+        const linhasBB = linhasBBDoIdioma(idioma);
         await replacePlaceholders(copyId, {
             'XX de [mês] de [ano]': dataProposta,
             '{{DATA}}': dataProposta,
+            [linhasBB.titulo]: soAppStore ? `${linhasBB.titulo}${SUFIXO_TITULO_APP_STORE}` : null,
             '{{MARCA}}': orgName,
             '{{DECISOR}}': orgName,
             // Number() evita "150.0" virar texto no documento.
@@ -484,6 +508,16 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             '{{TOTAL_POR}}': totalPor,
             ...priceReplacements,
         });
+
+        // "Palavras-chave: Até N palavras." não existe na proposta de loja de
+        // aplicativos — some a linha inteira, não só o número. Falhar aqui não
+        // pode custar a proposta: o pior caso é uma linha a mais num documento
+        // que o closer revisa antes de enviar.
+        if (soAppStore) {
+            await deleteParagraphsStartingWith(copyId, linhasBB.palavras).catch((err) => {
+                log.warn(`deal #${dealId}: não removi a linha de palavras-chave — ${err.message}`);
+            });
+        }
 
         await shareWithDomain(copyId).catch((err) => {
             log.warn(`shareWithDomain falhou (não bloqueante): ${err.message}`);
@@ -521,15 +555,32 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         const origemAviso = origem === 'principal'
             ? `\n\nAtenção: o produto foi deduzido do campo "Produto Principal" porque "Serviço oferecido" está vazio. Confira se ${templateKey} é mesmo o que foi vendido.`
             : '';
-        // Servico vendido sem modelo: a proposta saiu, mas incompleta. O aviso
-        // fica na MESMA nota do link — em nota separada corre o risco de o
-        // closer ler so a do link e mandar faltando um bloco.
-        // Serviço vendido sem modelo: a proposta saiu, mas incompleta. O aviso
-        // fica na MESMA nota do link — em nota separada corre o risco de o
-        // closer ler só a do link e mandar faltando um bloco.
-        const faltaAviso = semTemplate.length
-            ? `\n\nAtenção: esta proposta NÃO cobre ${semTemplate.join(' e ')}, que não tem modelo automatizado. Acrescente esse bloco à mão antes de enviar.`
-            : '';
+        // Serviço vendido sem modelo: a proposta saiu, mas pode estar
+        // incompleta. O aviso fica na MESMA nota do link — em nota separada
+        // corre o risco de o closer ler só a do link e mandar faltando um bloco.
+        //
+        // Os três casos pedem ações diferentes, e antes todos recebiam o mesmo
+        // "escreva esse bloco à mão". Pra o que virou canal isso é errado: ou já
+        // está no documento (canal marcado) ou basta marcar o canal — mandar
+        // escrever à mão faria o closer duplicar o que a proposta já diz.
+        const canalDe = (id) => [SERVICO_OFERECIDO_SEM_TEMPLATE[id], SERVICO_QUE_VIROU_CANAL[id]];
+        const viraramCanal = idsSemTemplate.map(canalDe).filter(([, v]) => v);
+        const marcado = ([, v]) => canaisIdsDoDeal(deal, v.produto).includes(v.canalId);
+        const pendentes = viraramCanal.filter((x) => !marcado(x));
+        const cobertos = viraramCanal.filter(marcado);
+        const semSaida = semTemplate.filter((rot) => !viraramCanal.some(([r]) => r === rot));
+
+        const avisos = [];
+        if (pendentes.length) {
+            avisos.push(`Atenção: ${pendentes.map(([rot]) => rot).join(' e ')} não é serviço separado, é canal de monitoramento — e o canal não está marcado no card, então esta proposta não cobre. Marque ${pendentes.map(([, v]) => `"${v.canal}" em "${v.campo}"`).join(' e ')}, limpe o campo "Link Proposta" e a proposta é gerada de novo, completa.`);
+        }
+        if (cobertos.length) {
+            avisos.push(`Obs.: ${cobertos.map(([rot]) => rot).join(' e ')} já está coberto — o canal está marcado no card e aparece na proposta. Pode desmarcar de "Serviço oferecido".`);
+        }
+        if (semSaida.length) {
+            avisos.push(`Atenção: esta proposta NÃO cobre ${semSaida.join(' e ')}, que não tem modelo automatizado. Acrescente esse bloco à mão antes de enviar.`);
+        }
+        const faltaAviso = avisos.length ? `\n\n${avisos.join('\n\n')}` : '';
         await postNote(dealId, `Proposta gerada automaticamente (piloto) — revisar conteúdo antes de enviar.\n${docUrl}${origemAviso}${faltaAviso}`);
 
         log.info(`✅ Proposta gerada pro deal #${dealId} (${templateKey}, ${idioma}): ${docUrl}`);

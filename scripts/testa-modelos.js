@@ -24,7 +24,7 @@ import 'dotenv/config';
 import { JWT } from 'google-auth-library';
 import {
     templatesDoIdioma, PROPOSAL_OUTPUT_FOLDER_ID, PRODUCT_CASCADE_ORDER,
-    textosDoIdioma, canaisDoDeal, labelCanalVmComContagem,
+    textosDoIdioma, canaisDoDeal, labelCanalVmComContagem, linhasBBDoIdioma,
 } from '../src/config/proposal.js';
 import { idiomaDaLinhaDeComando, avisoDeIdioma } from './_idioma.js';
 
@@ -76,6 +76,10 @@ const FRASES = {
           palavras: (n) => `hasta ${n} palabras`, skus: (n) => `Hasta ${n} SKUs`, marketplaces: (n) => `Hasta ${n} marketplaces` },
 };
 const F = FRASES[IDIOMA] || FRASES.pt;
+
+// Título do bloco de BB e começo da linha de palavras-chave, no idioma — os
+// mesmos que o generator procura pra montar a proposta de App Store.
+const L = linhasBBDoIdioma(IDIOMA);
 
 function getClient() {
     const raw = process.env.GOOGLE_PROPOSAL_SA_KEY_BASE64;
@@ -172,6 +176,16 @@ for (const [chave, { docId }] of Object.entries(MODELOS)) {
             ['setup', txt.includes(F.setup)],
             ...codigos.map((c) => [`preço ${c}`, txt.includes(brl(PRECO[c]))]),
             ...(codigos.includes('BB') ? [['palavras', txt.includes(F.palavras(PALAVRAS))]] : []),
+            // As duas linhas que a proposta de App Store trata diferente: o
+            // título ganha o sufixo do canal, a de palavras-chave é apagada
+            // inteira. O generator acha as duas por texto LITERAL — se o
+            // comercial reescrever o modelo, isso para de casar calado e a
+            // proposta de loja de aplicativos sai com o título errado e com uma
+            // linha de palavras-chave que não deveria existir.
+            ...(codigos.includes('BB') ? [
+                ['título BB', txt.includes(L.titulo)],
+                ['linha palavras BB', linhas.some((l) => l.startsWith(L.palavras))],
+            ] : []),
             ...(codigos.includes('BBP') ? [['skus', txt.includes(F.skus(SKUS))]] : []),
             ...(codigos.includes('VM') ? [['plataformas', txt.includes(F.marketplaces(PLATAFORMAS))]] : []),
             ['pacote', codigos.length > 1

@@ -134,6 +134,58 @@ export async function replacePlaceholders(docId, replacements) {
     log.info(`✏️  ${requests.length} placeholders substituídos em ${docId}`);
 }
 
+/**
+ * Apaga do documento os parágrafos que começam com algum dos prefixos dados.
+ *
+ * Existe porque replaceAllText não dá conta: trocar o texto por "" deixa o
+ * parágrafo vazio, e uma linha em branco sobrando no meio da Proposta Comercial
+ * é visível. Aqui some a linha inteira, marca de parágrafo junto.
+ *
+ * Os ranges são apagados do fim pro começo — deletar do começo desloca os
+ * índices de tudo que vem depois, e o segundo delete cairia no lugar errado.
+ *
+ * @returns {number} quantos parágrafos foram apagados
+ */
+export async function deleteParagraphsStartingWith(docId, prefixes) {
+    const alvos = (Array.isArray(prefixes) ? prefixes : [prefixes]).filter(Boolean);
+    if (alvos.length === 0) return 0;
+
+    const doc = await (await authedFetch(`https://docs.googleapis.com/v1/documents/${docId}?includeTabsContent=true`)).json();
+    // Os modelos vivem numa aba só, mas um documento pode ter várias e o corpo
+    // clássico (doc.body) some quando includeTabsContent está ligado.
+    const corpos = [
+        ...(doc.body ? [doc.body] : []),
+        ...(doc.tabs || []).map((t) => t.documentTab?.body).filter(Boolean),
+    ];
+
+    const ranges = [];
+    for (const corpo of corpos) {
+        for (const el of corpo.content || []) {
+            if (!el.paragraph) continue;
+            const texto = (el.paragraph.elements || [])
+                .map((e) => e.textRun?.content || '')
+                .join('')
+                .trim();
+            if (alvos.some((p) => texto.startsWith(p))) {
+                ranges.push({ startIndex: el.startIndex, endIndex: el.endIndex });
+            }
+        }
+    }
+    if (ranges.length === 0) {
+        log.warn(`nenhum parágrafo começando com ${JSON.stringify(alvos)} em ${docId} — o texto do modelo mudou?`);
+        return 0;
+    }
+
+    ranges.sort((a, b) => b.startIndex - a.startIndex);
+    await authedFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests: ranges.map((range) => ({ deleteContentRange: { range } })) }),
+    });
+    log.info(`🗑️  ${ranges.length} parágrafo(s) removido(s) de ${docId}`);
+    return ranges.length;
+}
+
 /** Garante compartilhamento (domínio branddi.com, mesmo nível dos docs manuais). */
 export async function shareWithDomain(fileId, domain = 'branddi.com', role = 'writer') {
     await authedFetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`, {
