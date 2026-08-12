@@ -56,6 +56,10 @@ const CANAL = {
 const T = process.env.PIPEDRIVE_API_TOKEN;
 const ID = Number(process.env.PROPOSAL_TEST_DEAL_ID);
 const PARADA = 13, FASE = 257;
+// Faz as vezes da proposta que o closer montou à mão e colou no campo. Tem cara
+// de link de documento de propósito: o que a automação olha é se o campo está
+// preenchido com algo que NÃO é a sentinela da trava.
+const LINK_MANUAL = 'https://docs.google.com/document/d/PROPOSTA-FEITA-A-MAO-PELO-CLOSER/edit';
 const OPT = { BB: 152, BBP: 549, GD: 153, VM: 154 };
 // Opções do campo "Idioma da proposta" (ver IDIOMA_OPTION_TO_CODE na config).
 const IDIOMA_OPT = { pt: 1588, en: 1589, es: 1590 };
@@ -160,6 +164,22 @@ const CENARIOS = [
         campos: { [F.SERVICO_OFERECIDO]: `${OPT.BB}`, [P.BB]: 8000, [PALAVRAS_BB_FIELD]: 3,
             [C.BB]: `${CANAL.BB.google},${CANAL.BB.bing}` },
         espera: { gera: true, nome: /_BB_/, contem: ['Google Search Ads + Bing'] },
+    },
+    {
+        // O contrato com o closer: a automação NUNCA substitui proposta que já
+        // está no card. Se ele preferir o processo antigo, monta à mão, cola o
+        // link no campo e a automação sai da frente. Pra gerar outra, limpa o
+        // campo — e é isso que a nota explica, porque é a única forma de ele
+        // descobrir.
+        //
+        // Estava sem teste, sendo a garantia que mais importa aqui: uma
+        // regressão nela sobrescreve proposta negociada, em card de cliente.
+        nome: 'proposta existente NÃO é substituída',
+        campos: {
+            [F.SERVICO_OFERECIDO]: `${OPT.BB}`, [P.BB]: 8000, [PALAVRAS_BB_FIELD]: 3,
+            [F.LINK_PROPOSTA]: LINK_MANUAL,
+        },
+        espera: { mantemLink: LINK_MANUAL, nota: /Proposta já existe.*limpe o campo "Link Proposta"/is },
     },
     {
         // Serviço que na verdade é canal, ainda marcado em "Serviço oferecido".
@@ -401,7 +421,13 @@ try {
         const link = (await pd(`/deals/${ID}`)).data[F.LINK_PROPOSTA] || '';
         const problemas = [];
 
-        if (c.espera.gera) {
+        if (c.espera.mantemLink) {
+            // A garantia mais importante do fluxo: proposta que já existe nunca
+            // é substituída. Vale pro documento que a automação gerou e pro que
+            // o closer montou à mão e colou no campo — a automação não sabe (nem
+            // precisa saber) a diferença: campo preenchido significa "já tem".
+            if (link !== c.espera.mantemLink) problemas.push(`SUBSTITUIU a proposta existente: "${link.slice(0, 60)}"`);
+        } else if (c.espera.gera) {
             const info = link ? await docInfo(link) : null;
             if (!link) problemas.push('não gerou');
             // O campo tem algo que não é link de documento — quase sempre a
