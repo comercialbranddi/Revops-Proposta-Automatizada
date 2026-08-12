@@ -25,6 +25,9 @@ import { todosOsDocIds, PROPOSAL_OUTPUT_FOLDER_ID as ROOT, PROPOSAL_DEAL_FIELDS 
 
 const APPLY = process.argv.includes('--apply');
 const PROTEGIDAS = ['_amostras para validação', '_testes-piloto'];
+// Dentro de _modelos, guarda as versões substituídas. Ver
+// arquiva-modelos-antigos.js — o nome tem que bater com o de lá.
+const PASTA_ARQUIVO = 'Modelo Proposta Padronizado';
 
 function getClient() {
     const raw = process.env.GOOGLE_PROPOSAL_SA_KEY_BASE64;
@@ -73,9 +76,18 @@ const raiz = await listar(ROOT);
 // 1. Temporários soltos na raiz.
 for (const f of raiz.filter((x) => !ehPasta(x) && /^__/.test(x.name))) alvos.push({ ...f, motivo: 'temporário de script' });
 
-// 2. Versões antigas de modelo.
+// 2. Versões antigas de modelo — as que ainda estão SOLTAS em _modelos.
+// O que já foi pra pasta de arquivo não é lixo: é a versão que o comercial
+// viu, guardada de propósito (ver arquiva-modelos-antigos.js). Sem esta
+// exceção a faxina apagaria a pasta inteira, porque nada dentro dela está na
+// config — que é exatamente o critério usado aqui.
 const modelos = raiz.find((f) => ehPasta(f) && f.name === '_modelos');
-if (modelos) for (const f of await listar(modelos.id)) if (!emUso.has(f.id)) alvos.push({ ...f, motivo: 'versão antiga de modelo' });
+if (modelos) {
+    for (const f of await listar(modelos.id)) {
+        if (ehPasta(f) && f.name === PASTA_ARQUIVO) continue;
+        if (!emUso.has(f.id)) alvos.push({ ...f, motivo: 'versão antiga de modelo' });
+    }
+}
 
 // 3. Propostas de teste na pasta do cliente (mantém a vigente).
 for (const pasta of raiz.filter((f) => ehPasta(f) && !PROTEGIDAS.includes(f.name) && f.name !== '_modelos')) {
