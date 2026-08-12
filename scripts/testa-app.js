@@ -19,11 +19,23 @@
  *     os 18 cards do histórico estão. A proposta continua saindo, e o que muda
  *     é a nota: ela diz onde marcar o canal, ou avisa que já está coberto.
  *
- * Roda o generator DIRETO (não pelo webhook), então testa o código local sem
- * depender de deploy.
+ * Dois modos, e a diferença muda o que a bateria PROVA:
  *
- * Uso:
- *   node scripts/testa-app.js
+ *   node scripts/testa-app.js              chama o generator DIRETO. Quem gera
+ *                                          é o código deste diretório — valida
+ *                                          alteração antes de publicar, e roda
+ *                                          em ~3 min.
+ *
+ *   node scripts/testa-app.js --webhook    move o card pra fase de verdade e
+ *                                          deixa o Pipedrive chamar a Vercel.
+ *                                          Quem gera é a versão PUBLICADA. É o
+ *                                          único modo que responde "está
+ *                                          rodando certo no card?" — e não
+ *                                          enxerga o que ainda não subiu.
+ *
+ * No modo local o card fica ESTACIONADO fora da fase o tempo todo, senão cada
+ * update dispara o webhook e a versão publicada gera em paralelo, disputando a
+ * trava. No modo webhook é o contrário: a entrada na fase é o próprio disparo.
  */
 import 'dotenv/config';
 import { JWT } from 'google-auth-library';
@@ -35,8 +47,12 @@ import {
     ENVIO_PROPOSTA_STAGE_ID, textosDoIdioma,
 } from '../src/config/proposal.js';
 
+const WEBHOOK = process.argv.includes('--webhook');
 const T = process.env.PIPEDRIVE_API_TOKEN;
 const ID = Number(process.env.PROPOSAL_TEST_DEAL_ID);
+// Fase neutra onde o card espera entre cenários. No modo webhook a volta pra
+// ENVIO_PROPOSTA_STAGE_ID é o que dispara a geração.
+const PARADA = 13;
 const OPT = { BB: 152, BBP: 549, GD: 153, VM: 154, APP: 415, NOVOS: 697 };
 const GOOGLE_ADS = 1592;
 const APP_STORE = CANAL_BB_APP_STORE_ID;
@@ -192,14 +208,40 @@ async function estacionaForaDaFase() {
     console.log(`card estacionado em "${outra.name}" (#${outra.id}) — webhook de produção fora do caminho\n`);
     return inicial.stage_id;
 }
+// No modo webhook o card também sai da fase entre cenários, mas por outro
+// motivo: a ENTRADA nela é o disparo, e só conta como entrada quem estava fora.
 const faseOriginal = await estacionaForaDaFase();
 
+/** Dispara a geração do jeito do modo escolhido e devolve quando o link chegar. */
+async function dispara() {
+    if (!WEBHOOK) {
+        await generateProposalForDeal(ID, { notifyOnEntry: true });
+        return;
+    }
+    // Quem gera é a Vercel. Entre o PUT e o documento pronto passam o webhook,
+    // a cópia no Drive e a gravação do link — daí a espera bem mais longa que
+    // no modo local, onde a chamada já volta com tudo feito.
+    await put({ stage_id: ENVIO_PROPOSTA_STAGE_ID });
+    for (let i = 0; i < 25; i++) {
+        await espera(3000);
+        const v = (await pd(`/deals/${ID}`)).data[F.LINK_PROPOSTA] || '';
+        if (v.startsWith('http')) return;
+    }
+}
+
 const falhas = [];
+console.log(WEBHOOK
+    ? '>>> modo WEBHOOK — quem gera é a versão PUBLICADA na Vercel\n'
+    : '>>> modo LOCAL — quem gera é o código deste diretório\n');
 console.log('cenário                         gerou   título       palavras   nota');
 console.log('─'.repeat(88));
 
 try {
     for (const c of CENARIOS) {
+        // No modo webhook o cenário anterior deixou o card DENTRO da fase.
+        // Montar os campos ali dispararia a geração antes da hora, com estado
+        // meio trocado — e o cenário mediria a mistura dos dois.
+        if (WEBHOOK) { await put({ stage_id: PARADA }); await espera(2000); }
         await put({
             ...COMPLETO, ...(c.campos || {}),
             [C.BB]: (c.canais || []).join(','),
@@ -209,7 +251,7 @@ try {
         const problemas = [];
         if (!await limpaLink()) problemas.push('não consegui zerar o "Link Proposta" antes de gerar');
         const antes = await notas();
-        await generateProposalForDeal(ID, { notifyOnEntry: true });
+        await dispara();
 
         // O campo pode estar com a sentinela da trava ("gerando proposta") se a
         // geração ainda não fechou. Sentinela não é documento — esperar aqui
