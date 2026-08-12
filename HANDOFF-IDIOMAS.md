@@ -211,13 +211,28 @@ português.
 em `_amostras para validação` no Drive, nomeadas `AMOSTRA (en) — …` e
 `AMOSTRA (es) — …`; as em português seguem intactas ao lado.
 
-**As asserções da `testa-modelos.js`** continuam em português, então
-`--idioma=en` acusa 15 falhas que são das asserções, não dos modelos. O que é
-agnóstico de idioma (placeholders, caixas, cabeçalho/rodapé, headings) passa.
-Traduzi-las só vale depois do texto validado.
-
 **A moeda** segue em reais nos três idiomas — decisão comercial não tomada, ver
 `AUDITORIA-IDIOMAS.md` §3. O sufixo, esse já é por idioma (`/month`, `/mes`).
+
+### O que está verificado
+
+| bateria | pt | en | es |
+|---|---|---|---|
+| `testa-modelos` (15 modelos, conteúdo e estrutura) | 15/15 | 15/15 | 15/15 |
+| `audit-templates` (combos no padrão dos bases) | 11/11 | 11/11 | 11/11 |
+| paridade de placeholders com o português | — | ✅ | ✅ |
+| `testa-fluxo --local` (19 cenários, ponta a ponta) | 17/19 ¹ | | |
+
+¹ Os 2 vermelhos são anteriores a esta frente: testam Bing em "Serviço
+oferecido" e a loja de aplicativos em "Canais GD", opções que o commit
+`33b2744` removeu do Pipedrive sem atualizar os cenários. Deixados visíveis de
+propósito — apagá-los esconderia que **APP continua selecionável como serviço
+mas ficou sem canal de destino**.
+
+As asserções da `testa-modelos` valem nos três idiomas desde 11/08/2026: o que
+ela espera ler sai dos mesmos helpers que o generator usa. Antes eram strings em
+português duplicadas no script, e `--idioma=en` acusava 15 falhas com os modelos
+certos.
 
 **A auditoria foi feita em 11/08/2026 — ver `AUDITORIA-IDIOMAS.md`.** Ela achou
 um bloqueio anterior a qualquer tradução: os documentos em inglês vendem
