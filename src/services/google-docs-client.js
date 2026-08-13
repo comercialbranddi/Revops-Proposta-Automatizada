@@ -186,6 +186,108 @@ export async function deleteParagraphsStartingWith(docId, prefixes) {
     return ranges.length;
 }
 
+/**
+ * Troca um parágrafo por várias linhas, cada uma com rótulo normal e valor em
+ * negrito.
+ *
+ * Serve pra escada de preço do Brand Bidding: o modelo traz uma linha só
+ * ("Palavras-chave: Até N palavras.") e a proposta em faixas precisa de uma
+ * linha por faixa. replaceAllText não resolve — ele troca texto dentro do
+ * parágrafo, não cria parágrafos.
+ *
+ * O estilo não é inventado: sai dos DOIS runs do parágrafo que está sendo
+ * trocado, que já é "rótulo normal + valor em negrito". Assim as linhas novas
+ * herdam fonte, tamanho e cor do modelo, sem nada codificado aqui — foi
+ * justamente estilo escrito na mão que deixou os combos em Arial.
+ *
+ * @param {string} docId
+ * @param {string} prefixo  começo do parágrafo a substituir
+ * @param {Array<{rotulo: string, valor: string}>} linhas
+ * @returns {number} quantas linhas foram escritas (0 = parágrafo não encontrado)
+ */
+export async function replaceParagraphWithLines(docId, prefixo, linhas) {
+    if (!linhas?.length) return 0;
+
+    const doc = await (await authedFetch(`https://docs.googleapis.com/v1/documents/${docId}?includeTabsContent=true`)).json();
+    const corpos = [
+        ...(doc.body ? [doc.body] : []),
+        ...(doc.tabs || []).map((t) => t.documentTab?.body).filter(Boolean),
+    ];
+
+    let alvo = null;
+    for (const corpo of corpos) {
+        for (const el of corpo.content || []) {
+            if (!el.paragraph) continue;
+            const runs = (el.paragraph.elements || []).filter((e) => e.textRun);
+            const texto = runs.map((e) => e.textRun.content).join('').replace(/\n/g, '');
+            if (texto.trim().startsWith(prefixo)) {
+                alvo = { el, runs, keepWithNext: el.paragraph.paragraphStyle?.keepWithNext === true };
+                break;
+            }
+        }
+        if (alvo) break;
+    }
+    if (!alvo) {
+        log.warn(`parágrafo começando com "${prefixo}" não encontrado em ${docId} — o modelo mudou?`);
+        return 0;
+    }
+
+    // Estilo do rótulo e do valor, lidos do próprio parágrafo. Se ele tiver um
+    // run só, os dois saem iguais e o negrito é aplicado por cima.
+    const comTexto = alvo.runs.filter((e) => e.textRun.content.replace(/\n/g, '').length);
+    const estiloRotulo = { ...(comTexto[0]?.textRun.textStyle || {}), bold: false };
+    const estiloValor = { ...(comTexto[comTexto.length - 1]?.textRun.textStyle || comTexto[0]?.textRun.textStyle || {}), bold: true };
+
+    const inicio = alvo.el.startIndex;
+    const fimTexto = alvo.el.endIndex - 1;   // preserva a marca de parágrafo
+
+    // Apaga o conteúdo e escreve tudo de uma vez. O "\n" entre as linhas cria
+    // parágrafos novos, que herdam o estilo de parágrafo do original — é por
+    // isso que o recuo e o alinhamento continuam batendo com o resto da seção.
+    const texto = linhas.map((l) => `${l.rotulo}${l.valor}`).join('\n');
+    await authedFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            requests: [
+                ...(fimTexto > inicio ? [{ deleteContentRange: { range: { startIndex: inicio, endIndex: fimTexto } } }] : []),
+                { insertText: { location: { index: inicio }, text: texto } },
+            ],
+        }),
+    });
+
+    // Estilos numa segunda passada: os índices só são conhecidos depois que o
+    // texto existe, e são calculados a partir do início, que não se moveu.
+    const requests = [];
+    let off = inicio;
+    for (const [i, l] of linhas.entries()) {
+        const fimLinha = off + l.rotulo.length + l.valor.length;
+        if (l.rotulo.length) requests.push({ updateTextStyle: { range: { startIndex: off, endIndex: off + l.rotulo.length }, textStyle: estiloRotulo, fields: '*' } });
+        if (l.valor.length) requests.push({ updateTextStyle: { range: { startIndex: off + l.rotulo.length, endIndex: fimLinha }, textStyle: estiloValor, fields: '*' } });
+
+        // Parágrafo criado nasce SEM keepWithNext, e a escada é justamente um
+        // bloco que não pode ser partido: sem isto o documento volta a quebrar
+        // a página entre duas faixas de preço. As linhas do meio prendem a
+        // seguinte; a última herda o que o parágrafo original tinha, porque
+        // depois dela vem o mesmo que vinha antes.
+        requests.push({
+            updateParagraphStyle: {
+                range: { startIndex: off, endIndex: fimLinha + 1 },
+                paragraphStyle: { keepWithNext: i < linhas.length - 1 ? true : alvo.keepWithNext },
+                fields: 'keepWithNext',
+            },
+        });
+        off = fimLinha + 1;   // +1 pela quebra de parágrafo
+    }
+    if (requests.length) {
+        await authedFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requests }),
+        });
+    }
+    log.info(`📐 ${linhas.length} linha(s) no lugar de "${prefixo}…" em ${docId}`);
+    return linhas.length;
+}
+
 /** Garante compartilhamento (domínio branddi.com, mesmo nível dos docs manuais). */
 export async function shareWithDomain(fileId, domain = 'branddi.com', role = 'writer') {
     await authedFetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`, {

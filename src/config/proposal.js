@@ -267,6 +267,53 @@ export const CATALOGO_BBP_FIELD = '730d76b0c20d2ab3a62665569899646b9cad143d';
 // BBP. Campo criado via API em 10/08/2026.
 export const PALAVRAS_BB_FIELD = '0d5efa1df20cbf097c23364d5ea69124f6c126ac';
 
+// ─── Faixas de preço do Brand Bidding ───────────────────────────────
+// Parte das propostas de BB não tem preço único: tem escada por quantidade de
+// palavras-chave. A primeira que apareceu foi a da Hotmilhas, em 13/08/2026:
+//
+//     Proposta:
+//     Até 10 palavras-chave: R$ 24.900/mês
+//     Até 20 palavras-chave: R$ 34.900/mês
+//     Até 30 palavras-chave: R$ 42.900/mês
+//
+// A FAIXA 1 são os campos que já existiam — PALAVRAS_BB_FIELD e o preço de BB.
+// Só as faixas 2 e 3 ganharam campo (via API, 13/08/2026), e as duas são
+// OPCIONAIS: escada é exceção, não regra. Card sem elas gera com preço único e
+// a linha "Palavras-chave: Até N palavras.", exatamente como sempre gerou.
+//
+// Três faixas porque é o que a única proposta real usa. Se aparecer uma com
+// quatro, o caminho é acrescentar um par aqui — o resto do código não conta
+// faixas, percorre a lista.
+export const FAIXAS_BB_FIELDS = [
+    { qtd: '39b216ad3018c93298bc322eed75727c96f05d5f', preco: '012cab9fadd1009b9d5abe8f32174e74473e1c5d' },
+    { qtd: '4222fd021b4bde29d365cac259ef2134ebdd88f3', preco: '5a879c7502a72d1fcb9b5ce08a0254060ad2a1c0' },
+];
+
+/**
+ * As faixas de preço de BB do card, da menor pra maior — sempre com a faixa 1
+ * (campos antigos) na frente.
+ *
+ * Devolve também o que está pela metade: quantidade sem preço, ou preço sem
+ * quantidade. Quem chama precisa barrar esses casos, senão a proposta sai com
+ * uma linha faltando valor e ninguém percebe.
+ */
+export function faixasBBDoDeal(deal) {
+    const num = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+    const pares = [
+        { qtd: num(deal?.[PALAVRAS_BB_FIELD]), preco: num(deal?.[PRODUCT_PRICE_FIELDS.BB]), rotulo: 'faixa 1' },
+        ...FAIXAS_BB_FIELDS.map((f, i) => ({ qtd: num(deal?.[f.qtd]), preco: num(deal?.[f.preco]), rotulo: `faixa ${i + 2}` })),
+    ];
+    // Faixa em branco é faixa não usada — some sem reclamar. Só as tocadas
+    // pela metade viram pendência.
+    const usadas = pares.filter((p) => p.qtd != null || p.preco != null);
+    return {
+        faixas: usadas,
+        incompletas: usadas.filter((p) => !(p.qtd > 0) || !(p.preco > 0)).map((p) => p.rotulo),
+        // Uma faixa só é o preço único de sempre; duas ou mais viram escada.
+        escada: usadas.length > 1,
+    };
+}
+
 // Quantidade de marketplaces monitorados — só o bloco de VM cita ("Até N
 // marketplaces monitorados simultaneamente"), em dois pontos do documento.
 // Campo criado via API em 10/08/2026.
@@ -470,6 +517,26 @@ export function linhasBBDoIdioma(idioma) {
 // time escreve "1 - Proteção Brand Bidding- App Store" (sem espaço antes do
 // hífen); aqui sai com espaço, que é o certo e não muda o sentido.
 export const SUFIXO_TITULO_APP_STORE = ' - App Store';
+
+// A linha de cada faixa de preço de BB. O texto foi escolhido pela Jessica em
+// 13/08/2026 entre as duas formas que aparecem nas propostas reais: "palavras-
+// chave" (Hotmilhas) e "termos" (123Milhas). Venceu "palavras-chave", que é
+// como o campo do card se chama — quem preenche vê a mesma palavra dos dois
+// lados.
+//
+// O rótulo sai normal e o valor em negrito, que é o padrão de TODA linha de
+// rótulo do modelo ("Setup:", "Limite de denúncias:", "Prazo para início:").
+// A proposta da Hotmilhas traz a linha inteira em negrito; seguir o modelo
+// mantém o documento coerente consigo mesmo.
+export const LINHA_FAIXA_POR_IDIOMA = {
+    pt: (qtd) => `Até ${qtd} palavras-chave: `,
+    en: (qtd) => `Up to ${qtd} keywords: `,
+    es: (qtd) => `Hasta ${qtd} palabras clave: `,
+};
+
+export function linhaFaixaDoIdioma(idioma = IDIOMA_PADRAO) {
+    return LINHA_FAIXA_POR_IDIOMA[idioma] || LINHA_FAIXA_POR_IDIOMA[IDIOMA_PADRAO];
+}
 
 // Rótulo de canal por idioma. Só o que DIFERE do português entra aqui; o que
 // faltar cai no rótulo em português, que é o comportamento certo pra nome
