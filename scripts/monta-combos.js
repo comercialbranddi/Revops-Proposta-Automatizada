@@ -343,18 +343,22 @@ function pedidosPara(bloco, em, tabId, comQuebra = true) {
     let off = em;
     for (const r of bloco.runs) {
         if (r.text.length) {
-            // weightedFontFamily PRECISA estar em fields. Sem ele, a fonte
-            // copiada do base era enviada e descartada em silêncio pela API —
-            // os 11 combos ficaram sem fonte própria e caíram no padrão do
-            // documento, que é Arial/12, enquanto os 4 bases estão em
-            // Montserrat. Documento inteiro na fonte errada, e nenhuma bateria
-            // pegava porque nenhuma olhava tipografia.
+            // fields: '*' — copia o estilo do base inteiro, e não uma lista de
+            // campos escolhidos a dedo.
             //
-            // fontSize continua listado de propósito: quando o run do base NÃO
-            // tem tamanho próprio, mandar o campo sem valor limpa o tamanho e
-            // devolve o parágrafo ao estilo nomeado — que é exatamente como o
-            // base se comporta.
-            requests.push({ updateTextStyle: { range: { startIndex: off, endIndex: off + r.text.length, ...t }, textStyle: r.textStyle, fields: 'bold,italic,fontSize,foregroundColor,weightedFontFamily' } });
+            // A lista era 'bold,italic,fontSize,foregroundColor'. Tudo que não
+            // estava nela era enviado e descartado em silêncio pela API: os 11
+            // combos perderam a FONTE (ficaram em Arial, com os bases em
+            // Montserrat), o RISCADO do "01 mensalidade", o SUBLINHADO de
+            // "Aviso de Violação:" e o SOBRESCRITO. Nada disso deu erro.
+            //
+            // Acrescentar weightedFontFamily à lista consertou só a fonte e
+            // deixou os outros três de pé — o comercial achou o riscado no dia
+            // seguinte. O defeito não era o campo faltando, era enumerar
+            // campos: qualquer marcação que o time use amanhã cairia igual.
+            // Com '*', o que não está no estilo do base volta ao padrão, que é
+            // justamente "ficar igual ao base".
+            requests.push({ updateTextStyle: { range: { startIndex: off, endIndex: off + r.text.length, ...t }, textStyle: r.textStyle, fields: '*' } });
         }
         off += r.text.length;
     }
