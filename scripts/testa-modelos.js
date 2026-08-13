@@ -95,6 +95,49 @@ async function api(url, opts = {}) {
     return res;
 }
 
+/**
+ * As marcações de texto que um documento usa — negrito, riscado, sublinhado,
+ * sobrescrito, fonte, tamanho, cor.
+ *
+ * Serve pra checar que o combo não perdeu marcação do base. O monta-combos
+ * copia o estilo do base e manda pra API, que descarta em silêncio o que não
+ * estiver em `fields` — foi assim que os 11 combos ficaram sem a fonte, sem o
+ * riscado do "01 mensalidade", sem o sublinhado e sem o sobrescrito, sem um
+ * erro sequer. Contar não adianta (o combo repete blocos); o que importa é se
+ * a marcação APARECE.
+ */
+function marcacoes(paras) {
+    const usadas = new Set();
+    for (const p of paras) {
+        for (const e of p.elements || []) {
+            if (!e.textRun?.content?.trim()) continue;
+            for (const [prop, valor] of Object.entries(e.textRun.textStyle || {})) {
+                // Padrão gravado explicitamente não é marcação. `bold: false` é
+                // óbvio; `baselineOffset: 'NONE'` menos — ele aparece em todos
+                // os quatro bases e não há um sobrescrito sequer nos
+                // documentos. Contá-lo fazia a checagem acusar os 11 combos
+                // depois de o defeito real já estar corrigido.
+                if (valor === false || valor === 'NONE') continue;
+                usadas.add(prop);
+            }
+        }
+    }
+    return usadas;
+}
+
+/** Percorre o corpo (inclusive dentro das caixas) e devolve os parágrafos. */
+function parasDoDoc(doc) {
+    const tab = doc.tabs?.[0]?.documentTab || doc;
+    const out = [];
+    (function walk(ct) {
+        for (const el of ct || []) {
+            if (el.paragraph) out.push(el.paragraph);
+            if (el.table) for (const r of el.table.tableRows || []) for (const c of r.tableCells || []) walk(c.content);
+        }
+    })(tab.body.content);
+    return out;
+}
+
 async function preparar(chave, comPacote) {
     const codigos = PRODUCT_CASCADE_ORDER.filter((c) => chave.split('+').includes(c));
     const soma = codigos.reduce((n, c) => n + PRECO[c], 0);
@@ -121,6 +164,16 @@ async function preparar(chave, comPacote) {
             : {}),
     };
     return { codigos, soma, valores };
+}
+
+// Marcações de cada base, lidas uma vez. O combo é conferido contra a UNIÃO
+// das dos produtos que ele contém: tudo que o base marca, o combo tem que
+// marcar também.
+const MARCAS_BASE = {};
+for (const code of PRODUCT_CASCADE_ORDER) {
+    const t = MODELOS[code];
+    if (!t) continue;
+    MARCAS_BASE[code] = marcacoes(parasDoDoc(await (await api(`https://docs.googleapis.com/v1/documents/${t.docId}?includeTabsContent=true`)).json()));
 }
 
 const falhas = [];
@@ -216,6 +269,17 @@ for (const [chave, { docId }] of Object.entries(MODELOS)) {
                 }
                 return fam.size === 1 && !fam.has('(herdada)');
             })()],
+            // Nenhuma marcação do base pode sumir no combo. Esta é a checagem
+            // geral que as duas anteriores ("fonte única" e esta) deveriam ter
+            // sido desde o começo: enumerar defeito por defeito deixou passar o
+            // riscado, o sublinhado e o sobrescrito depois que a fonte foi
+            // consertada.
+            ...(codigos.length > 1 ? [(() => {
+                const doCombo = marcacoes(paras);
+                const esperadas = new Set(codigos.flatMap((c) => [...(MARCAS_BASE[c] || [])]));
+                const faltando = [...esperadas].filter((m) => !doCombo.has(m));
+                return [faltando.length ? `sem ${faltando.join('/')}` : 'marcações do base', !faltando.length];
+            })()] : []),
             // O item da Proposta Comercial vem colado: "Proposta: R$ X" numa
             // linha só, e a linha seguinte logo abaixo. Ficar solto foi a
             // primeira coisa que o comercial reclamou.
