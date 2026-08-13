@@ -44,13 +44,25 @@ const api = async (p, o) => {
     return b;
 };
 
-// Só o que ESTE projeto criou. "Link Proposta" entra porque é o campo que o
-// closer abre pra pegar o documento — deixá-lo no Closer separaria justamente
-// o que ele mais usa do resto.
+// Só o que ESTE projeto criou, NA ORDEM EM QUE DEVE APARECER no card.
+//
+// A ordem é por PRODUTO, não por tipo de campo: o closer preenche uma venda de
+// cada vez, e ter preço, quantidade e canal do mesmo produto juntos é o que
+// evita rolar a tela três vezes pra fechar um card. As faixas de BB vêm logo
+// abaixo do preço de BB, que é o que elas substituem quando existem.
+//
+// "Link Proposta" entra no grupo porque é o campo que o closer abre pra pegar
+// o documento — deixá-lo no Closer separaria justamente o que ele mais usa.
+// Fica por último: é resultado, não preenchimento.
 const CHAVES = [
-    ...Object.values(P), CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD,
-    VALOR_PACOTE_FIELD, IDIOMA_FIELD, ...Object.values(C),
-    ...FAIXAS_BB_FIELDS.flatMap((f) => [f.qtd, f.preco]), F.LINK_PROPOSTA,
+    PALAVRAS_BB_FIELD, P.BB,
+    FAIXAS_BB_FIELDS[0].qtd, FAIXAS_BB_FIELDS[0].preco,
+    FAIXAS_BB_FIELDS[1].qtd, FAIXAS_BB_FIELDS[1].preco,
+    C.BB,
+    P.BBP, CATALOGO_BBP_FIELD, C.BBP,
+    P.GD, C.GD,
+    P.VM, PLATAFORMAS_VM_FIELD, C.VM,
+    IDIOMA_FIELD, VALOR_PACOTE_FIELD, F.LINK_PROPOSTA,
 ];
 
 const campos = (await api('/dealFields?limit=500')).data;
@@ -122,4 +134,31 @@ for (const c of alvos) {
     console.log(`✏️  ${c.name.padEnd(36)} ${patch.group_id ? '→ Proposta' : ''} ${patch.show_in_pipelines ? '· só Vendas' : ''}`);
 }
 console.log(`\n✅ ${movidos} movido(s)${SEM_ESCOPO ? '' : `, ${escopados} restrito(s) ao funil de Vendas`}`);
-console.log('\nA ORDEM dentro do grupo não sai por API — arraste em Configurações → Campos de dados.');
+
+// ── ordem ────────────────────────────────────────────────────────────
+// order_nr é somente leitura na prática: o PUT devolve 200 e mantém o valor
+// antigo, em v1 e em v2, campo a campo ou em lote. Mas a ordem NÃO é imutável:
+// campo que ENTRA no grupo vai pro topo. Então tirar e devolver, na sequência
+// inversa da desejada, deixa o grupo na ordem certa — o último a entrar é o
+// primeiro da tela.
+const ordemAtual = async () => (await api('/dealFields?limit=500')).data
+    .filter((c) => c.group_id === grupo.id)
+    .sort((a, b) => Number(a.order_nr) - Number(b.order_nr))
+    .map((c) => c.key);
+
+const desejada = alvos.map((c) => c.key);
+if (JSON.stringify(await ordemAtual()) === JSON.stringify(desejada)) {
+    console.log('✅ ordem na tela já está certa');
+} else {
+    console.log('\nreordenando (sai do grupo e volta, do último pro primeiro)…');
+    const outroGrupo = (await api('/fieldGroups/deal')).data.find((g) => g.id !== grupo.id).id;
+    for (const c of [...alvos].reverse()) {
+        await api(`/dealFields/${c.id}`, { method: 'PUT', body: JSON.stringify({ group_id: outroGrupo }) });
+        await api(`/dealFields/${c.id}`, { method: 'PUT', body: JSON.stringify({ group_id: grupo.id }) });
+    }
+    const final = await ordemAtual();
+    const bateu = JSON.stringify(final) === JSON.stringify(desejada);
+    console.log(bateu ? '\n✅ ordem na tela:' : '\n⚠️  ordem saiu diferente do pedido:');
+    const porChave = Object.fromEntries(alvos.map((c) => [c.key, c.name]));
+    for (const k of final) console.log(`   ${porChave[k] || k}`);
+}
