@@ -23,7 +23,7 @@
 import { pdGet, pdPut, pdPost } from './pipedrive.js';
 import {
     copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl, findOrCreateFolder,
-    deleteParagraphsStartingWith,
+    deleteParagraphsStartingWith, replaceParagraphWithLines,
 } from './google-docs-client.js';
 import {
     PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS, PRICED_PRODUCTS,
@@ -32,6 +32,7 @@ import {
     getProductByPrincipalOptionId, parseServicoOferecido, PRODUCT_CASCADE_ORDER, PRODUCTS,
     idiomaDoDeal, resolveTemplate, IDIOMA_PADRAO, IDIOMA_LABEL, textosDoIdioma,
     bbSoAppStore, canaisIdsDoDeal, linhasBBDoIdioma, SUFIXO_TITULO_APP_STORE,
+    faixasBBDoDeal, linhaFaixaDoIdioma,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
 import supabase from './supabase-client.js';
@@ -405,6 +406,18 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         const palavrasBB = productCodes.includes('BB') ? deal[PALAVRAS_BB_FIELD] : null;
         if (productCodes.includes('BB') && !soAppStore && !isPreenchido(palavrasBB)) missingFields.push('Palavras-chave BB (qtd)');
 
+        // Escada de preço do BB: em vez de um preço, uma linha por faixa de
+        // quantidade de palavras-chave. É EXCEÇÃO — a maioria das propostas tem
+        // preço único, e card sem faixa 2 preenchida nem passa por aqui.
+        //
+        // Faixa preenchida pela metade é o erro provável: o closer põe a
+        // quantidade e esquece o preço. Gerar assim produziria uma linha sem
+        // valor no documento, que é pior do que não gerar.
+        const faixasBB = productCodes.includes('BB') ? faixasBBDoDeal(deal) : { faixas: [], incompletas: [], escada: false };
+        if (faixasBB.escada && faixasBB.incompletas.length) {
+            missingFields.push(`preço e quantidade das faixas de BB (${faixasBB.incompletas.join(', ')} pela metade)`);
+        }
+
         // E no VM ("Até N marketplaces monitorados simultaneamente").
         const plataformasVM = productCodes.includes('VM') ? deal[PLATAFORMAS_VM_FIELD] : null;
         if (productCodes.includes('VM') && !isPreenchido(plataformasVM)) missingFields.push('Plataformas VM (qtd)');
@@ -508,6 +521,25 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             '{{TOTAL_POR}}': totalPor,
             ...priceReplacements,
         });
+
+        // Escada de preço: a linha "Palavras-chave: Até N palavras." dá lugar a
+        // uma linha por faixa. Vem ANTES do bloco de App Store porque as duas
+        // mexem no mesmo parágrafo — e as duas juntas não fazem sentido: quem
+        // vende loja de aplicativos não cobra por palavra-chave.
+        if (faixasBB.escada) {
+            const rotulo = linhaFaixaDoIdioma(idioma);
+            const linhas = faixasBB.faixas
+                .slice()
+                .sort((a, b) => a.qtd - b.qtd)
+                .map((f) => ({ rotulo: rotulo(f.qtd), valor: formatBRL(f.preco, idioma) }));
+            await replaceParagraphWithLines(copyId, linhasBB.palavras, linhas).catch((err) => {
+                log.warn(`deal #${dealId}: não montei a escada de preço — ${err.message}`);
+            });
+            // Com escada, "Proposta:" abre a lista e não leva valor: o preço de
+            // cada faixa está nas linhas abaixo. Sem isto o preço da faixa 1
+            // apareceria duas vezes.
+            await replacePlaceholders(copyId, { [`${textos.precoLinha} ${formatBRL(deal[PRODUCT_PRICE_FIELDS.BB], idioma)}`]: `${textos.precoLinha}` });
+        }
 
         // "Palavras-chave: Até N palavras." não existe na proposta de loja de
         // aplicativos — some a linha inteira, não só o número. Falhar aqui não
