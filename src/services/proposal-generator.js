@@ -413,10 +413,11 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         // Faixa preenchida pela metade é o erro provável: o closer põe a
         // quantidade e esquece o preço. Gerar assim produziria uma linha sem
         // valor no documento, que é pior do que não gerar.
+        // A pendência entra pelo NOME do campo, e na frente da lista: a nota é
+        // deduplicada pelos 60 primeiros caracteres, então detalhe que chega
+        // depois disso não distingue uma pendência da outra.
         const faixasBB = productCodes.includes('BB') ? faixasBBDoDeal(deal) : { faixas: [], incompletas: [], escada: false };
-        if (faixasBB.escada && faixasBB.incompletas.length) {
-            missingFields.push(`preço e quantidade das faixas de BB (${faixasBB.incompletas.join(', ')} pela metade)`);
-        }
+        if (faixasBB.escada && faixasBB.incompletas.length) missingFields.unshift(...faixasBB.incompletas);
 
         // E no VM ("Até N marketplaces monitorados simultaneamente").
         const plataformasVM = productCodes.includes('VM') ? deal[PLATAFORMAS_VM_FIELD] : null;
@@ -608,6 +609,13 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         }
         if (cobertos.length) {
             avisos.push(`Obs.: ${cobertos.map(([rot]) => rot).join(' e ')} já está coberto — o canal está marcado no card e aparece na proposta. Pode desmarcar de "Serviço oferecido".`);
+        }
+        // Campo preenchido que não faz nada é pior do que campo vazio: o closer
+        // acha que negociou o valor e a proposta sai sem ele, calada. O bloco
+        // "De … / Por: …" só existe nos 11 modelos combinados — no de produto
+        // único não há onde colocar, os marcadores nem estão lá.
+        if (isPreenchido(valorPacote) && productCodes.length <= 1) {
+            avisos.push(`Obs.: "Valor fechado do pacote" está preenchido (${formatBRL(valorPacote, idioma)}) mas NÃO foi usado nesta proposta. Ele vale só quando há dois ou mais serviços em "Serviço oferecido", que é quando a proposta ganha o bloco "De … / Por: …". Com um produto só, o valor sai do preço do próprio produto.`);
         }
         if (semSaida.length) {
             avisos.push(`Atenção: esta proposta NÃO cobre ${semSaida.join(' e ')}, que não tem modelo automatizado. Acrescente esse bloco à mão antes de enviar.`);

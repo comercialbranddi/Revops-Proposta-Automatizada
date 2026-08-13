@@ -94,12 +94,28 @@ const CENARIOS = [
         [FAIXAS_BB_FIELDS[0].qtd]: 20, [FAIXAS_BB_FIELDS[0].preco]: 34900 },
       espera: ['Até 10 palavras-chave: R$ 24.900/mês', 'Até 20 palavras-chave: R$ 34.900/mês', 'Proposta: R$ 9.900/mês'],
       naoEspera: ['Palavras-chave: Até 10 palavras.'] },
+    // "Valor fechado do pacote" só entra em proposta com 2+ serviços — é lá que
+    // existe o bloco "De … / Por: …". Num card de produto único ele era
+    // ignorado EM SILÊNCIO, e o closer achava que tinha negociado o valor.
+    { nome: 'pacote em produto único avisa', gera: true,
+      campos: { [F.SERVICO_OFERECIDO]: '152', [P.BB]: 7000, [PALAVRAS_BB_FIELD]: 10, [VALOR_PACOTE_FIELD]: 20000 },
+      espera: ['Proposta: R$ 7.000/mês'],
+      nota: /Valor fechado do pacote.*NÃO foi usado/is },
+    { nome: 'pacote em combo NÃO avisa', gera: true,
+      campos: { [F.SERVICO_OFERECIDO]: '152,153', [P.BB]: 7000, [P.GD]: 9000, [PALAVRAS_BB_FIELD]: 10, [VALOR_PACOTE_FIELD]: 14000 },
+      espera: ['De R$ 16.000/mês', 'Por: R$ 14.000/mês'],
+      semNota: /NÃO foi usado/ },
     { nome: 'faixa pela metade (só qtd)', gera: false,
       campos: { [F.SERVICO_OFERECIDO]: '152', [P.BB]: 24900, [PALAVRAS_BB_FIELD]: 10, [FAIXAS_BB_FIELDS[0].qtd]: 20 },
-      nota: /faixas de BB/ },
+      nota: /BB faixa 2 - preço/ },
+    // Faixa 3 de propósito, e metade oposta à do cenário acima: as duas notas
+    // precisam ser DIFERENTES nos 60 primeiros caracteres, que é o trecho que
+    // postNoteOnce compara. Com "faixa N pela metade" no fim da frase elas
+    // saíam iguais nesse trecho e uma engolia a outra — o cenário passava sem
+    // que nada fosse conferido. Por isso a nota agora nomeia o campo.
     { nome: 'faixa pela metade (só preço)', gera: false,
-      campos: { [F.SERVICO_OFERECIDO]: '152', [P.BB]: 24900, [PALAVRAS_BB_FIELD]: 10, [FAIXAS_BB_FIELDS[0].preco]: 34900 },
-      nota: /faixas de BB/ },
+      campos: { [F.SERVICO_OFERECIDO]: '152', [P.BB]: 24900, [PALAVRAS_BB_FIELD]: 10, [FAIXAS_BB_FIELDS[1].preco]: 42900 },
+      nota: /BB faixa 3 - palavras-chave/ },
     { nome: 'sem faixa (controle)', gera: true,
       campos: { [F.SERVICO_OFERECIDO]: '152', [P.BB]: 7900, [PALAVRAS_BB_FIELD]: 3 },
       espera: ['Proposta: R$ 7.900/mês', 'Palavras-chave: Até 3 palavras.'],
@@ -124,7 +140,15 @@ try {
         const probs = [];
         if (c.gera && !link.startsWith('http')) probs.push('não gerou');
         if (!c.gera && link.startsWith('http')) probs.push('gerou quando não devia');
-        if (!c.gera && c.nota && novas.length && !novas.some((n) => c.nota.test(n))) probs.push(`nota não disse ${c.nota}`);
+        // A nota vale nos dois casos: cenário que GERA também precisa avisar o
+        // que ficou de fora — foi o silêncio que deixou o valor do pacote ser
+        // ignorado sem ninguém notar.
+        if (novas.length) {
+            if (c.nota && !novas.some((n) => c.nota.test(n))) probs.push(`nota não disse ${c.nota}`);
+            if (c.semNota && novas.some((n) => c.semNota.test(n))) probs.push(`nota disse o que não devia (${c.semNota})`);
+        } else if (c.nota) {
+            probs.push('nota esperada não veio (nenhuma nota nova — dedupe de 5 min?)');
+        }
 
         if (c.gera && link.startsWith('http')) {
             const linhas = await linhasDoDoc(link);

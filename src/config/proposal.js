@@ -299,16 +299,33 @@ export const FAIXAS_BB_FIELDS = [
  */
 export function faixasBBDoDeal(deal) {
     const num = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+    // `nomeQtd`/`nomePreco` são os rótulos EXATOS dos campos no Pipedrive. A
+    // nota de pendência cita o campo pelo nome que o closer vê na tela, em vez
+    // de dizer "faixa 2 pela metade" e deixá-lo procurar qual metade.
     const pares = [
-        { qtd: num(deal?.[PALAVRAS_BB_FIELD]), preco: num(deal?.[PRODUCT_PRICE_FIELDS.BB]), rotulo: 'faixa 1' },
-        ...FAIXAS_BB_FIELDS.map((f, i) => ({ qtd: num(deal?.[f.qtd]), preco: num(deal?.[f.preco]), rotulo: `faixa ${i + 2}` })),
+        {
+            qtd: num(deal?.[PALAVRAS_BB_FIELD]), preco: num(deal?.[PRODUCT_PRICE_FIELDS.BB]),
+            nomeQtd: 'Palavras-chave BB (qtd)', nomePreco: 'Preço BB',
+        },
+        ...FAIXAS_BB_FIELDS.map((f, i) => ({
+            qtd: num(deal?.[f.qtd]), preco: num(deal?.[f.preco]),
+            nomeQtd: `BB faixa ${i + 2} - palavras-chave (qtd)`, nomePreco: `BB faixa ${i + 2} - preço`,
+        })),
     ];
     // Faixa em branco é faixa não usada — some sem reclamar. Só as tocadas
     // pela metade viram pendência.
     const usadas = pares.filter((p) => p.qtd != null || p.preco != null);
     return {
         faixas: usadas,
-        incompletas: usadas.filter((p) => !(p.qtd > 0) || !(p.preco > 0)).map((p) => p.rotulo),
+        // Nomes dos campos que faltam, não "faixa N pela metade". Além de dizer
+        // ao closer onde clicar, faz a nota de cada faixa começar diferente —
+        // postNoteOnce compara os 60 primeiros caracteres, e com o texto antigo
+        // as pendências de faixa 2 e de faixa 3 saíam idênticas nesse trecho e
+        // uma engolia a outra.
+        incompletas: usadas.flatMap((p) => [
+            ...(p.qtd > 0 ? [] : [p.nomeQtd]),
+            ...(p.preco > 0 ? [] : [p.nomePreco]),
+        ]),
         // Uma faixa só é o preço único de sempre; duas ou mais viram escada.
         escada: usadas.length > 1,
     };
