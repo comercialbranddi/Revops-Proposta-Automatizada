@@ -331,6 +331,94 @@ export function faixasBBDoDeal(deal) {
     };
 }
 
+// ─── Faixas de preço do Buy Box Protection ──────────────────────────
+// Mesma ideia da escada do BB (ver FAIXAS_BB_FIELDS acima), com duas
+// diferenças pedidas pela Jessica em 14/08/2026: 4 faixas com preço (não 3),
+// e uma 5ª faixa SEM preço numérico — "Acima de 200 SKUs: Sob Consulta".
+//
+// A FAIXA 1 são os campos que já existiam — CATALOGO_BBP_FIELD e o preço de
+// BBP. As faixas 2, 3 e 4 são campo novo (via API, 14/08/2026), e as três são
+// OPCIONAIS: card sem elas gera com preço único, exatamente como sempre.
+export const FAIXAS_BBP_FIELDS = [
+    { qtd: '776d4e0493ef1a535f619f98216e76bc24dd2b06', preco: 'e1e2f26ad0db098de914e8259de3ab1fa5470353' }, // faixa 2
+    { qtd: 'e1e70f631c0b4db55b4c91172aa5ed1546254167', preco: 'f1729108caa7368ac23498e25bfd9a7441064b58' }, // faixa 3
+    { qtd: 'c2fd3dae1df1d5af28997bb53a03d8aeca291479', preco: '18f5ea6a2d5a376d5e03c2b801e684925c371f65' }, // faixa 4
+];
+
+// "Tem faixa Sob Consulta?" (sim/não, tipo `set`, mesmo padrão de "Persona é
+// decisor?"). Se marcado, a proposta ganha uma última linha sem preço:
+// "Acima de <qtd da faixa mais alta> SKUs: Sob consulta" — o texto é montado
+// em código, não digitado, pra não variar de card pra card.
+export const SOB_CONSULTA_BBP_FIELD = 'b3785205878173b540868075d2f7a1131022af9a';
+
+// A opção "Sim" do campo Sob Consulta, pra checar se está marcada sem
+// depender do rótulo (mesma cautela do resto do arquivo com campos `set`).
+export const SOB_CONSULTA_BBP_OPTION_SIM = 1614;
+
+/**
+ * As faixas de preço de BBP do card, da menor pra maior — sempre com a
+ * faixa 1 (campos antigos) na frente. Mesma forma de `faixasBBDoDeal`;
+ * ver lá para o porquê de cada detalhe (pendência pela metade, nomes dos
+ * campos na nota, etc.) — não repetido aqui.
+ */
+export function faixasBBPDoDeal(deal) {
+    const num = (v) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+    const pares = [
+        {
+            qtd: num(deal?.[CATALOGO_BBP_FIELD]), preco: num(deal?.[PRODUCT_PRICE_FIELDS.BBP]),
+            nomeQtd: 'Catálogo BBP (SKUs)', nomePreco: 'Preço BBP',
+        },
+        ...FAIXAS_BBP_FIELDS.map((f, i) => ({
+            qtd: num(deal?.[f.qtd]), preco: num(deal?.[f.preco]),
+            nomeQtd: `BBP faixa ${i + 2} - SKUs (qtd)`, nomePreco: `BBP faixa ${i + 2} - preço`,
+        })),
+    ];
+    const usadas = pares.filter((p) => p.qtd != null || p.preco != null);
+    const sobConsultaBruto = String(deal?.[SOB_CONSULTA_BBP_FIELD] ?? '');
+    const sobConsulta = SOB_CONSULTA_BBP_OPTION_SIM != null
+        && sobConsultaBruto.split(',').includes(String(SOB_CONSULTA_BBP_OPTION_SIM));
+    return {
+        faixas: usadas,
+        incompletas: usadas.flatMap((p) => [
+            ...(p.qtd > 0 ? [] : [p.nomeQtd]),
+            ...(p.preco > 0 ? [] : [p.nomePreco]),
+        ]),
+        // Sob Consulta só faz sentido junto de escada — sem faixa nenhuma não
+        // há "faixa mais alta" pra servir de teto da linha final.
+        escada: usadas.length > 1,
+        sobConsulta: usadas.length > 1 && sobConsulta,
+    };
+}
+
+// Rótulo de cada faixa de BBP, por idioma. Diferente do BB: a primeira faixa
+// é "Até N", as do meio são "Entre <teto anterior + 1> e N" (não repetem
+// "Até"), e a última (Sob Consulta) não tem preço — o texto dela é fixo.
+export const ROTULO_FAIXA_BBP_POR_IDIOMA = {
+    pt: { primeira: (qtd) => `Até ${qtd} SKUs: `, entre: (de, ate) => `Entre ${de} e ${ate} SKUs: `, acima: (qtd) => `Acima de ${qtd} SKUs: `, semPreco: 'Sob consulta' },
+    en: { primeira: (qtd) => `Up to ${qtd} SKUs: `, entre: (de, ate) => `Between ${de} and ${ate} SKUs: `, acima: (qtd) => `Above ${qtd} SKUs: `, semPreco: 'Upon request' },
+    es: { primeira: (qtd) => `Hasta ${qtd} SKUs: `, entre: (de, ate) => `Entre ${de} y ${ate} SKUs: `, acima: (qtd) => `Más de ${qtd} SKUs: `, semPreco: 'Bajo consulta' },
+};
+
+export function rotuloFaixaBBPDoIdioma(idioma = IDIOMA_PADRAO) {
+    return ROTULO_FAIXA_BBP_POR_IDIOMA[idioma] || ROTULO_FAIXA_BBP_POR_IDIOMA[IDIOMA_PADRAO];
+}
+
+// Texto EXATO do parágrafo que a escada substitui — com o placeholder ainda
+// por dentro, não o número já preenchido. Diferente do BB ("Palavras-chave:",
+// que sobra intacto mesmo depois do número entrar), aqui a linha é só isto,
+// então o generator precisa pular a substituição normal de {{CATALOGO_BBP}}
+// quando há escada — senão o prefixo vira "Até 30 SKUs" e alguma outra linha
+// do documento que também comece com "Até" poderia colidir.
+export const PREFIXO_CATALOGO_BBP_POR_IDIOMA = {
+    pt: 'Até {{CATALOGO_BBP}} SKUs',
+    en: 'Up to {{CATALOGO_BBP}} SKUs',
+    es: 'Hasta {{CATALOGO_BBP}} SKUs',
+};
+
+export function prefixoCatalogoBBPDoIdioma(idioma = IDIOMA_PADRAO) {
+    return PREFIXO_CATALOGO_BBP_POR_IDIOMA[idioma] || PREFIXO_CATALOGO_BBP_POR_IDIOMA[IDIOMA_PADRAO];
+}
+
 // Quantidade de marketplaces monitorados — só o bloco de VM cita ("Até N
 // marketplaces monitorados simultaneamente"), em dois pontos do documento.
 // Campo criado via API em 10/08/2026.

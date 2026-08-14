@@ -33,6 +33,7 @@ import {
     idiomaDoDeal, resolveTemplate, IDIOMA_PADRAO, IDIOMA_LABEL, textosDoIdioma,
     bbSoAppStore, canaisIdsDoDeal, linhasBBDoIdioma, SUFIXO_TITULO_APP_STORE,
     faixasBBDoDeal, linhaFaixaDoIdioma,
+    faixasBBPDoDeal, rotuloFaixaBBPDoIdioma, prefixoCatalogoBBPDoIdioma,
 } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
 import supabase from './supabase-client.js';
@@ -419,6 +420,12 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
         const faixasBB = productCodes.includes('BB') ? faixasBBDoDeal(deal) : { faixas: [], incompletas: [], escada: false };
         if (faixasBB.escada && faixasBB.incompletas.length) missingFields.unshift(...faixasBB.incompletas);
 
+        // Mesma escada, agora pro BBP — a diferença é que ela tem 4 faixas
+        // (não 3) e uma 5ª linha sem preço ("Sob Consulta"), ver
+        // faixasBBPDoDeal para o formato exato.
+        const faixasBBP = productCodes.includes('BBP') ? faixasBBPDoDeal(deal) : { faixas: [], incompletas: [], escada: false, sobConsulta: false };
+        if (faixasBBP.escada && faixasBBP.incompletas.length) missingFields.unshift(...faixasBBP.incompletas);
+
         // E no VM ("Até N marketplaces monitorados simultaneamente").
         const plataformasVM = productCodes.includes('VM') ? deal[PLATAFORMAS_VM_FIELD] : null;
         if (productCodes.includes('VM') && !isPreenchido(plataformasVM)) missingFields.push('Plataformas VM (qtd)');
@@ -512,8 +519,14 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             [linhasBB.titulo]: soAppStore ? `${linhasBB.titulo}${SUFIXO_TITULO_APP_STORE}` : null,
             '{{MARCA}}': orgName,
             '{{DECISOR}}': orgName,
-            // Number() evita "150.0" virar texto no documento.
-            '{{CATALOGO_BBP}}': catalogoBBP != null ? String(Number(catalogoBBP)) : null,
+            // Number() evita "150.0" virar texto no documento. Com escada, o
+            // placeholder fica de fora de propósito: o parágrafo inteiro vai
+            // ser trocado pela escada mais abaixo, e o prefixo que a troca
+            // procura é o texto ainda com "{{CATALOGO_BBP}}" dentro — se
+            // substituíssemos aqui, o prefixo virava "Até 30 SKUs" e podia
+            // colidir com outra linha do documento que também comece com
+            // "Até"/"Up to"/"Hasta".
+            '{{CATALOGO_BBP}}': (!faixasBBP.escada && catalogoBBP != null) ? String(Number(catalogoBBP)) : null,
             '{{PALAVRAS_BB}}': palavrasBB != null ? String(Number(palavrasBB)) : null,
             '{{PLATAFORMAS_VM}}': plataformasVM != null ? String(Number(plataformasVM)) : null,
             ...Object.fromEntries(productCodes.map((code) => [`{{CANAIS_${code}}}`, canaisPorProduto[code].join(' + ')])),
@@ -540,6 +553,29 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             // cada faixa está nas linhas abaixo. Sem isto o preço da faixa 1
             // apareceria duas vezes.
             await replacePlaceholders(copyId, { [`${textos.precoLinha} ${formatBRL(deal[PRODUCT_PRICE_FIELDS.BB], idioma)}`]: `${textos.precoLinha}` });
+        }
+
+        // Escada de preço do BBP: "Até {{CATALOGO_BBP}} SKUs" dá lugar a uma
+        // linha por faixa (rótulo "Até N" na primeira, "Entre X e Y" nas do
+        // meio), e — se marcado — uma última linha sem preço ("Sob
+        // Consulta"), usando a faixa mais alta como teto.
+        if (faixasBBP.escada) {
+            const rotulo = rotuloFaixaBBPDoIdioma(idioma);
+            const ordenadas = faixasBBP.faixas.slice().sort((a, b) => a.qtd - b.qtd);
+            const linhas = ordenadas.map((f, i) => ({
+                rotulo: i === 0 ? rotulo.primeira(f.qtd) : rotulo.entre(ordenadas[i - 1].qtd + 1, f.qtd),
+                valor: formatBRL(f.preco, idioma),
+            }));
+            if (faixasBBP.sobConsulta) {
+                const teto = ordenadas[ordenadas.length - 1].qtd;
+                linhas.push({ rotulo: rotulo.acima(teto), valor: rotulo.semPreco });
+            }
+            await replaceParagraphWithLines(copyId, prefixoCatalogoBBPDoIdioma(idioma), linhas).catch((err) => {
+                log.warn(`deal #${dealId}: não montei a escada de preço do BBP — ${err.message}`);
+            });
+            // Mesmo ajuste do BB: com escada, "Proposta:" abre a lista sem
+            // valor — o preço de cada faixa já está nas linhas abaixo.
+            await replacePlaceholders(copyId, { [`${textos.precoLinha} ${formatBRL(deal[PRODUCT_PRICE_FIELDS.BBP], idioma)}`]: `${textos.precoLinha}` });
         }
 
         // "Palavras-chave: Até N palavras." não existe na proposta de loja de
