@@ -5,9 +5,14 @@
  * escada de BBP: 4 faixas com preço (não 3), e uma 5ª linha sem preço
  * numérico ("Sob Consulta") controlada por um campo separado, sim/não.
  *
+ * Formato atualizado em 17/08/2026 (pedido da Jessica, olhando uma proposta
+ * real editada pelo time): cada faixa é "Proposta: R$ X/mês  -  Até N SKUs" —
+ * sempre "Até", nunca "Entre X e Y" (isso existiu numa versão anterior e foi
+ * tirado por não ser como o time escreve à mão).
+ *
  * O que cada cenário protege:
- *   · 4 faixas — a escada monta em ordem, com o rótulo mudando de forma
- *     ("Até N" na primeira, "Entre X e Y" nas do meio);
+ *   · 4 faixas — a escada monta em ordem, cada linha com "Proposta:" própria
+ *     e sempre "Até N SKUs" (nunca "Entre X e Y");
  *   · Sob Consulta — a última linha usa a faixa mais alta como teto e não
  *     tem preço; sem faixa nenhuma, marcar Sob Consulta não faz nada (não
  *     existe "faixa mais alta" pra servir de teto);
@@ -51,6 +56,7 @@ async function linhasDoDoc(link) {
                 out.push({
                     txt: runs.map((e) => e.textRun.content).join('').replace(/\n/g, '').trim(),
                     negrito: runs.filter((e) => e.textRun.content.trim()).map((e) => !!e.textRun.textStyle?.bold),
+                    riscado: runs.filter((e) => e.textRun.content.trim()).map((e) => !!e.textRun.textStyle?.strikethrough),
                     fontes: [...new Set(runs.filter((e) => e.textRun.content.trim()).map((e) => e.textRun.textStyle?.weightedFontFamily?.fontFamily || '(herdada)'))],
                     keep: el.paragraph.paragraphStyle?.keepWithNext === true,
                 });
@@ -79,20 +85,29 @@ const CENARIOS = [
         [FAIXAS_BBP_FIELDS[0].qtd]: 50, [FAIXAS_BBP_FIELDS[0].preco]: 12900,
         [FAIXAS_BBP_FIELDS[1].qtd]: 100, [FAIXAS_BBP_FIELDS[1].preco]: 16900,
         [FAIXAS_BBP_FIELDS[2].qtd]: 200, [FAIXAS_BBP_FIELDS[2].preco]: 19900 },
-      espera: ['Até 25 SKUs: R$ 8.900/mês', 'Entre 26 e 50 SKUs: R$ 12.900/mês', 'Entre 51 e 100 SKUs: R$ 16.900/mês', 'Entre 101 e 200 SKUs: R$ 19.900/mês'],
-      naoEspera: ['Proposta: R$ 8.900/mês', 'Sob consulta'] },
+      espera: ['Proposta: R$ 8.900/mês  -  Até 25 SKUs', 'Proposta: R$ 12.900/mês  -  Até 50 SKUs', 'Proposta: R$ 16.900/mês  -  Até 100 SKUs', 'Proposta: R$ 19.900/mês  -  Até 200 SKUs'],
+      naoEspera: ['Entre ', 'Sob consulta'] },
     { nome: 'BBP com Sob Consulta', gera: true,
       campos: { [F.SERVICO_OFERECIDO]: '549', [P.BBP]: 8900, [CATALOGO_BBP_FIELD]: 25,
         [FAIXAS_BBP_FIELDS[0].qtd]: 50, [FAIXAS_BBP_FIELDS[0].preco]: 12900,
         [FAIXAS_BBP_FIELDS[1].qtd]: 100, [FAIXAS_BBP_FIELDS[1].preco]: 16900,
         [FAIXAS_BBP_FIELDS[2].qtd]: 200, [FAIXAS_BBP_FIELDS[2].preco]: 19900,
         [SOB_CONSULTA_BBP_FIELD]: String(SOB_CONSULTA_BBP_OPTION_SIM) },
-      espera: ['Entre 101 e 200 SKUs: R$ 19.900/mês', 'Acima de 200 SKUs: Sob consulta'] },
+      espera: ['Proposta: R$ 19.900/mês  -  Até 200 SKUs', 'Proposta: Sob consulta  -  Acima de 200 SKUs'] },
     { nome: 'BBP+GD com faixas', gera: true,
       campos: { [F.SERVICO_OFERECIDO]: '549,153', [P.BBP]: 8900, [P.GD]: 9900, [CATALOGO_BBP_FIELD]: 25,
         [FAIXAS_BBP_FIELDS[0].qtd]: 50, [FAIXAS_BBP_FIELDS[0].preco]: 12900 },
-      espera: ['Até 25 SKUs: R$ 8.900/mês', 'Entre 26 e 50 SKUs: R$ 12.900/mês', 'Proposta: R$ 9.900/mês'],
-      naoEspera: ['Até {{CATALOGO_BBP}}'] },
+      espera: ['Proposta: R$ 8.900/mês  -  Até 25 SKUs', 'Proposta: R$ 12.900/mês  -  Até 50 SKUs', 'Proposta: R$ 9.900/mês', '2 - Proteção Golpes Digitais'],
+      // "Fraude"/"Fraudes" sozinho aparece em prosa legítima ("Prevenir
+      // Fraudes"), e "Impersonação" também tem uso legítimo em campo técnico
+      // ("Métodos de Impersonação Monitorados:", nas Especificações do GD) —
+      // o que não pode existir é o NOME do produto errado no título/cabeçalho.
+      naoEspera: ['Até {{CATALOGO_BBP}}', 'Entre ', 'Proteção Fraude', 'Impersonação de Marca'] },
+    { nome: 'BBP+GD com desconto (De riscado)', gera: true,
+      campos: { [F.SERVICO_OFERECIDO]: '549,153', [P.BBP]: 8900, [P.GD]: 9900, [CATALOGO_BBP_FIELD]: 25, [VALOR_PACOTE_FIELD]: 15800 },
+      espera: ['De R$ 18.800/mês', 'Por: R$ 15.800/mês'],
+      riscado: 'De R$ 18.800/mês',
+      naoRiscado: 'Por: R$ 15.800/mês' },
     { nome: 'faixa pela metade (só qtd)', gera: false,
       campos: { [F.SERVICO_OFERECIDO]: '549', [P.BBP]: 8900, [CATALOGO_BBP_FIELD]: 25, [FAIXAS_BBP_FIELDS[0].qtd]: 50 },
       nota: /BBP faixa 2 - preço/ },
@@ -137,6 +152,16 @@ try {
             const txt = linhas.map((l) => l.txt);
             for (const e of c.espera || []) if (!txt.includes(e)) probs.push(`faltou "${e}"`);
             for (const e of c.naoEspera || []) if (txt.some((l) => l.includes(e))) probs.push(`não devia ter "${e}"`);
+            if (c.riscado) {
+                const l = linhas.find((x) => x.txt === c.riscado);
+                if (!l) probs.push(`linha "${c.riscado}" não achada pra checar riscado`);
+                else if (!l.riscado.length || l.riscado.some((r) => !r)) probs.push(`linha "${c.riscado}" devia estar toda riscada: ${JSON.stringify(l.riscado)}`);
+            }
+            if (c.naoRiscado) {
+                const l = linhas.find((x) => x.txt === c.naoRiscado);
+                if (!l) probs.push(`linha "${c.naoRiscado}" não achada pra checar riscado`);
+                else if (l.riscado.some((r) => r)) probs.push(`linha "${c.naoRiscado}" não devia estar riscada: ${JSON.stringify(l.riscado)}`);
+            }
         }
 
         if (probs.length) falhas.push(`${c.nome}: ${probs.join('; ')}`);

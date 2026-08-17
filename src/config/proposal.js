@@ -163,17 +163,17 @@ export const PROPOSAL_TEMPLATES = {
         // bases. Cada um nasce como cópia do base do primeiro produto — é o que
         // traz cabeçalho (logo), rodapé, estilos e configuração de página.
         // Mudou um base? Roda o script de novo e os onze se refazem.
-        'BB+BBP': { docId: '1W-GC87bVox1ZQA6NXAhBkYA3R2EH8ybwtNuPr9kAjRY', label: 'Brand Bidding + Buy Box Protection' },
-        'BB+GD':  { docId: '10Iam0oP64O5ZYEYwY4IMjha32NE0wXFfLB7Di1zcCyU', label: 'Brand Bidding + Golpes Digitais' },
-        'BB+VM':  { docId: '1ql8HksmiU0Mc26btdMPz9M-e_jmghy42HJwQgr6FaJI', label: 'Brand Bidding + Violação de Marca' },
-        'BBP+GD': { docId: '1OZ7uydQWOgh2HDAxlAfwlILYkYj_2KHYvPLjdWV_YRs', label: 'Buy Box Protection + Golpes Digitais' },
-        'BBP+VM': { docId: '1pu6F-L6QlB3mbnK7evoSzKuZSqJrE6wR53qSqAwHDDY', label: 'Buy Box Protection + Violação de Marca' },
-        'GD+VM':  { docId: '1qMACBCDpNXjTuJlCmLJucV2dPjzCcjd1moeUHsNUWEE', label: 'Golpes Digitais + Violação de Marca' },
-        'BB+BBP+GD': { docId: '1KlF7snWNCJsj8A5gVXv_tTS5GtXO7TRc9LsiYOduKuE', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais' },
-        'BB+BBP+VM': { docId: '18RpMj7P4vryOqdR7EhYEOGcbnLX12zPCjgA7ytghJB8', label: 'Brand Bidding + Buy Box Protection + Violação de Marca' },
-        'BB+GD+VM':  { docId: '1l0ho0IRj2rUMg0oLFtw2SUjbV9hkmTwzeJReG0JXRS8', label: 'Brand Bidding + Golpes Digitais + Violação de Marca' },
-        'BBP+GD+VM': { docId: '1rAPH8BYDJrrkH4IflWGsa90R4zEG7foLLwkW6SlQH3g', label: 'Buy Box Protection + Golpes Digitais + Violação de Marca' },
-        'BB+BBP+GD+VM': { docId: '1mcdeI6N7MNssCQoeHr_1DzmcurFPeoEzC2RUFjlfsVc', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais + Violação de Marca' },
+        'BB+BBP': { docId: '1yDPQzS9-u5KVgKeYo7QUoPs1cDvpn2jV3BoAhSCTWUE', label: 'Brand Bidding + Buy Box Protection' },
+        'BB+GD':  { docId: '1UIRSAKaw16u-ZVMA2Zat37FfdGXmFmDrQAUW2-4O22c', label: 'Brand Bidding + Golpes Digitais' },
+        'BB+VM':  { docId: '1SHL-NOhQe6tznsoe9LyH5Z-auC6CMgh6Iiyj4WczZrE', label: 'Brand Bidding + Violação de Marca' },
+        'BBP+GD': { docId: '1XoVyxAgHFMhUB1BK2HEw8_6eTGlwRrEdXJv7XnKEphc', label: 'Buy Box Protection + Golpes Digitais' },
+        'BBP+VM': { docId: '19mGSpe1CeSxPOUkG7ldE78hc7WF9ToH-ngvT9rGCe20', label: 'Buy Box Protection + Violação de Marca' },
+        'GD+VM':  { docId: '1cwVbT6tNs2xyc8h7JAT1tjHOWx-R1QwZzbPiBRGLosA', label: 'Golpes Digitais + Violação de Marca' },
+        'BB+BBP+GD': { docId: '1bliDCtohNNk4N36yow-n8-VVqLyaQEzRGlXH5YrWdRQ', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais' },
+        'BB+BBP+VM': { docId: '12Zu1unrnEtZD6zjZzZtYkOu5xewvBKCY4npU92Xbshg', label: 'Brand Bidding + Buy Box Protection + Violação de Marca' },
+        'BB+GD+VM':  { docId: '1sYyt35HguTEH2JXPg2YChPVmX1dFCOh8-1vfYiVPoFc', label: 'Brand Bidding + Golpes Digitais + Violação de Marca' },
+        'BBP+GD+VM': { docId: '1apNwQXtAYpz5dsI9GwEL05iM0UWYCjOe3ljoIl0zObs', label: 'Buy Box Protection + Golpes Digitais + Violação de Marca' },
+        'BB+BBP+GD+VM': { docId: '1kY_0K18VUWY86fcWzQ3lQD0i1M6RufArLvS7EzR38uc', label: 'Brand Bidding + Buy Box Protection + Golpes Digitais + Violação de Marca' },
     },
     // Traduzidos do português em 11/08/2026 por scripts/traduz-bases.js, não
     // importados dos documentos antigos do comercial: aqueles vendiam contrato
@@ -186,17 +186,17 @@ export const PROPOSAL_TEMPLATES = {
         VM:  { docId: '1sWr2iXyl_vSbKGEhVy72tw3n211OOxGb7xH4jAVlkac', label: 'Intellectual Property Infringement' },
         // Montados por monta-combos.js --idioma=en a partir dos quatro acima,
         // igual ao português. Mudou um base? Roda o script de novo.
-        'BB+BBP': { docId: '1exnIpaVtoMnoqQaYadvtpTAkbrjhj9v_Oz1D41Rk4OI', label: 'Brand Bidding + Buy Box Protection' },
-        'BB+GD':  { docId: '1GXMcxf_WyO6iEloZZ-nRUZKA_sxNUEtUVoPuTWj8cZE', label: 'Brand Bidding + Digital Fraud Protection' },
-        'BB+VM':  { docId: '1jZfGwtWqrZom-MIgGvZdb9CMBr-7iIEo4n9AZg2wmrU', label: 'Brand Bidding + Intellectual Property Infringement' },
-        'BBP+GD': { docId: '1cJugdTtqKjDpRthwTzqk46LXe7tPHVl4Pa9rQ6VrZxA', label: 'Buy Box Protection + Digital Fraud Protection' },
-        'BBP+VM': { docId: '1qhh3mGKBrJ38ZHnkbEo-1uSHrVgWK8PO13Hf2DjPymk', label: 'Buy Box Protection + Intellectual Property Infringement' },
-        'GD+VM':  { docId: '1jRhtiKF9ytmelsRlB62POBKy6FR1EZgC3gkakr0Rj9A', label: 'Digital Fraud Protection + Intellectual Property Infringement' },
-        'BB+BBP+GD': { docId: '1RF1pLAVo0gnG9jUU4rhWDWARrqAUltnXzeDFRXmUFPM', label: 'Brand Bidding + Buy Box Protection + Digital Fraud Protection' },
-        'BB+BBP+VM': { docId: '15KBP_I5meKrVpYCk2im5krEx54Yj5_XBfX_HXMLaFgo', label: 'Brand Bidding + Buy Box Protection + Intellectual Property Infringement' },
-        'BB+GD+VM':  { docId: '1TUdwwbnqkYGZqdlUDgBvRjafztoiahXuKfijUiNfEtE', label: 'Brand Bidding + Digital Fraud Protection + Intellectual Property Infringement' },
-        'BBP+GD+VM': { docId: '1EyxTHy2MU8b8E-XOu_8eg4oyHxnJbZkEAhC_TE6zOYU', label: 'Buy Box Protection + Digital Fraud Protection + Intellectual Property Infringement' },
-        'BB+BBP+GD+VM': { docId: '1v2IQpcEU6hpDxrX5rkUnPX7tiHbegJ4plJUQTcFFcx0', label: 'Brand Bidding + Buy Box Protection + Digital Fraud Protection + Intellectual Property Infringement' },
+        'BB+BBP': { docId: '1-lM6KdT1xvx3ohIROS4B8_K9scn-avc02L2jFLS1Joo', label: 'Brand Bidding + Buy Box Protection' },
+        'BB+GD':  { docId: '1fkexxxxwSy_4YiN8lb15QB9uN5whBEQxcni2eKJYWS0', label: 'Brand Bidding + Digital Fraud Protection' },
+        'BB+VM':  { docId: '1945ik2sP9uhkP6dTE5kQwJ0LifH3Leq5GVWvoHsi0Ss', label: 'Brand Bidding + Intellectual Property Infringement' },
+        'BBP+GD': { docId: '1Yyhj4e5LnZhM24T9A0N9UpL8n3yQm46Gh1RIERSRwv8', label: 'Buy Box Protection + Digital Fraud Protection' },
+        'BBP+VM': { docId: '1n7Vc-b9Bmhv_nHXRbozDqjCEug30is9Zjeq9Y-eO790', label: 'Buy Box Protection + Intellectual Property Infringement' },
+        'GD+VM':  { docId: '1KdR3g4R0UBkemtk0_J2o4mnpDJk-5EQ_WUoIFtQtLhA', label: 'Digital Fraud Protection + Intellectual Property Infringement' },
+        'BB+BBP+GD': { docId: '19fGnPkUUJrhrBh2Aly8iklC-hxBojVz_xhwgDSt_2yk', label: 'Brand Bidding + Buy Box Protection + Digital Fraud Protection' },
+        'BB+BBP+VM': { docId: '1a_NgWKyIlRggUv5hMRj7KxqDU4kJbLcF4t1SsH10z-w', label: 'Brand Bidding + Buy Box Protection + Intellectual Property Infringement' },
+        'BB+GD+VM':  { docId: '1-odqeSdLyaYYBboEFZPS0lxfgQdNHbD9xf9VrvKpDkc', label: 'Brand Bidding + Digital Fraud Protection + Intellectual Property Infringement' },
+        'BBP+GD+VM': { docId: '1qqGQ_AfpNCurADsqBzz2Cvggl5BlRrq9sL7gDGb2PVo', label: 'Buy Box Protection + Digital Fraud Protection + Intellectual Property Infringement' },
+        'BB+BBP+GD+VM': { docId: '1iBFKEWwYNmFzkDo23Pskh0Lw94oH5mwL7nCQ4usQbsA', label: 'Brand Bidding + Buy Box Protection + Digital Fraud Protection + Intellectual Property Infringement' },
     },
     // Mesmo caminho do inglês: traduzidos do português, com o vocabulário dos
     // documentos que o comercial já tinha em espanhol ("Nuestras Protecciones",
@@ -207,17 +207,17 @@ export const PROPOSAL_TEMPLATES = {
         GD:  { docId: '1TtiI-o0vzBvj9c2qNIwWv-psA9FEYO0tw2yg9dPyugM', label: 'Protección Fraude' },
         VM:  { docId: '1GWp5h_mMMJID53DnN2-G62BDqoXjxgfTPYgG9ETnKVM', label: 'Violación de Propiedad Intelectual' },
         // Montados por monta-combos.js --idioma=es a partir dos quatro acima.
-        'BB+BBP': { docId: '1Nuzfwi39Kd0z_InyHW0d1tUXO7yEX0im6ZrIbAbWN4c', label: 'Brand Bidding + Buy Box Protection' },
-        'BB+GD':  { docId: '1X67W_ENue1A_mdmdAJaXbhUnhzn1dVCptmY0LQXhCLE', label: 'Brand Bidding + Protección Fraude' },
-        'BB+VM':  { docId: '1M8WIv4MJZ7kDKAqw9d2x6KZJZIZe87gtoaRLhRZJIRQ', label: 'Brand Bidding + Violación de Propiedad Intelectual' },
-        'BBP+GD': { docId: '1x8D-mgFJaYn3uEnVeZyGvg5ldFIuLTYAueV293JWOjY', label: 'Buy Box Protection + Protección Fraude' },
-        'BBP+VM': { docId: '1rjL65jRHSiR1vEdtjmKABYuQYtIl7gvMSJ_BoZPZE7g', label: 'Buy Box Protection + Violación de Propiedad Intelectual' },
-        'GD+VM':  { docId: '1fgn-pw4fZZdQar-t_ZuY5WYi4N3EhMmUzKvHIgRns6g', label: 'Protección Fraude + Violación de Propiedad Intelectual' },
-        'BB+BBP+GD': { docId: '1n6Pld8S91Gu-CDwotcbkpv6VZkqSAzlKAJiIOEyX3L0', label: 'Brand Bidding + Buy Box Protection + Protección Fraude' },
-        'BB+BBP+VM': { docId: '1tAKwdC3gLOpfFsKQpQ5EH5wkY2k8mfjUXGuGPps-yW8', label: 'Brand Bidding + Buy Box Protection + Violación de Propiedad Intelectual' },
-        'BB+GD+VM':  { docId: '1jE6puHU1mx_K4oEyzcACn3m5NtY4UH9fAu9OmVl38TU', label: 'Brand Bidding + Protección Fraude + Violación de Propiedad Intelectual' },
-        'BBP+GD+VM': { docId: '1yqr0MnSMMowRPMkr1PfQNPsxmlD_kFrp3kmPd55Dvu0', label: 'Buy Box Protection + Protección Fraude + Violación de Propiedad Intelectual' },
-        'BB+BBP+GD+VM': { docId: '1C6SJNLkg76JrJ1e6XztQC2SbRlyowhNKZwsLB7v4a-Y', label: 'Brand Bidding + Buy Box Protection + Protección Fraude + Violación de Propiedad Intelectual' },
+        'BB+BBP': { docId: '1rbu9XKJmNLZSFvFwdljKhLx-Gih1b29X1b_cmwMTUXc', label: 'Brand Bidding + Buy Box Protection' },
+        'BB+GD':  { docId: '19fi11C8qkIyCl60AZrgBzDUO06aOHOrafhuy5ikSEzs', label: 'Brand Bidding + Protección Fraude' },
+        'BB+VM':  { docId: '11HV3aemOvApSW-AStD_JSv116wok2k3HgpZev9mk82M', label: 'Brand Bidding + Violación de Propiedad Intelectual' },
+        'BBP+GD': { docId: '1Mh2HJcvkWeJUybDRbA6Ygo5t2BtYo7CoNFwynG2gQis', label: 'Buy Box Protection + Protección Fraude' },
+        'BBP+VM': { docId: '1SS9VUEHZ8sUlhBEjLM0AYjICfPa8rqtyTrzgpEasyTU', label: 'Buy Box Protection + Violación de Propiedad Intelectual' },
+        'GD+VM':  { docId: '1CM-cBy2G3CVn5uxORescFHbpGtv0UJ0r4nrcd6zVeFg', label: 'Protección Fraude + Violación de Propiedad Intelectual' },
+        'BB+BBP+GD': { docId: '10WTQrjAzRIjps9Gv1pmjldVS8mVb3tTxRgbWWx8CPuU', label: 'Brand Bidding + Buy Box Protection + Protección Fraude' },
+        'BB+BBP+VM': { docId: '1ORBImoBhT7_wMNjPK_LuCrX58WjwPs9r57rxcwMGjOs', label: 'Brand Bidding + Buy Box Protection + Violación de Propiedad Intelectual' },
+        'BB+GD+VM':  { docId: '1ZAcUyry_vTjn9Hi83Mxw5AtdXE-JCWQ1uug7eprvZuU', label: 'Brand Bidding + Protección Fraude + Violación de Propiedad Intelectual' },
+        'BBP+GD+VM': { docId: '1Idfyy9Tux7KxCvCc3a-dc1HjJqSzvU_K7TetvHBFZOA', label: 'Buy Box Protection + Protección Fraude + Violación de Propiedad Intelectual' },
+        'BB+BBP+GD+VM': { docId: '1wwMkhDKIzh-Ay-NR5wDvspZFZi2tGu2TCngTYJiP0OE', label: 'Brand Bidding + Buy Box Protection + Protección Fraude + Violación de Propiedad Intelectual' },
     },
 };
 
@@ -390,13 +390,17 @@ export function faixasBBPDoDeal(deal) {
     };
 }
 
-// Rótulo de cada faixa de BBP, por idioma. Diferente do BB: a primeira faixa
-// é "Até N", as do meio são "Entre <teto anterior + 1> e N" (não repetem
-// "Até"), e a última (Sob Consulta) não tem preço — o texto dela é fixo.
+// Rótulo de cada faixa de BBP, por idioma. Formato pedido pela Jessica em
+// 17/08/2026, olhando uma proposta real editada pelo time: TODA faixa usa
+// "Até N" (nunca "Entre X e Y" — a escada antiga tinha isso, foi tirado
+// porque não é como o time escreve à mão) e a linha inteira leva "Proposta:"
+// na frente, igual a linha de preço único ("Proposta: R$ X/mês  -  Até N
+// SKUs"). Sob Consulta segue o mesmo desenho, só troca o preço pelo texto e
+// "Até" por "Acima de".
 export const ROTULO_FAIXA_BBP_POR_IDIOMA = {
-    pt: { primeira: (qtd) => `Até ${qtd} SKUs: `, entre: (de, ate) => `Entre ${de} e ${ate} SKUs: `, acima: (qtd) => `Acima de ${qtd} SKUs: `, semPreco: 'Sob consulta' },
-    en: { primeira: (qtd) => `Up to ${qtd} SKUs: `, entre: (de, ate) => `Between ${de} and ${ate} SKUs: `, acima: (qtd) => `Above ${qtd} SKUs: `, semPreco: 'Upon request' },
-    es: { primeira: (qtd) => `Hasta ${qtd} SKUs: `, entre: (de, ate) => `Entre ${de} y ${ate} SKUs: `, acima: (qtd) => `Más de ${qtd} SKUs: `, semPreco: 'Bajo consulta' },
+    pt: { ate: (qtd) => `Até ${qtd} SKUs`, acima: (qtd) => `Acima de ${qtd} SKUs`, semPreco: 'Sob consulta' },
+    en: { ate: (qtd) => `Up to ${qtd} SKUs`, acima: (qtd) => `Above ${qtd} SKUs`, semPreco: 'Upon request' },
+    es: { ate: (qtd) => `Hasta ${qtd} SKUs`, acima: (qtd) => `Más de ${qtd} SKUs`, semPreco: 'Bajo consulta' },
 };
 
 export function rotuloFaixaBBPDoIdioma(idioma = IDIOMA_PADRAO) {

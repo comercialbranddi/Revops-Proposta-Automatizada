@@ -23,7 +23,7 @@
 import { pdGet, pdPut, pdPost } from './pipedrive.js';
 import {
     copyTemplate, replacePlaceholders, shareWithDomain, getDocUrl, findOrCreateFolder,
-    deleteParagraphsStartingWith, replaceParagraphWithLines,
+    deleteParagraphsStartingWith, replaceParagraphWithLines, riscarParagrafosComecandoCom,
 } from './google-docs-client.js';
 import {
     PROPOSAL_OUTPUT_FOLDER_ID, PROPOSAL_DEAL_FIELDS, PRODUCT_PRICE_FIELDS, PRICED_PRODUCTS,
@@ -534,7 +534,23 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             '{{TOTAL_DE}}': totalDe,
             '{{TOTAL_POR}}': totalPor,
             ...priceReplacements,
+            // Com escada, {{PRECO_BBP}} fica de fora por propósito — a linha
+            // "Proposta: {{PRECO_BBP}}" inteira é apagada mais abaixo (cada
+            // faixa já leva "Proposta:" própria), então substituir aqui só
+            // deixaria uma linha órfã com o preço da faixa 1 sozinho.
+            '{{PRECO_BBP}}': faixasBBP.escada ? null : priceReplacements['{{PRECO_BBP}}'],
         });
+
+        // Combo com desconto: "De R$ X/mês" fica riscado, igual ao que o
+        // time já faz à mão — o preço cheio (sem desconto) some visualmente,
+        // "Por: R$ Y/mês" mostra o valor negociado. Só entra aqui quando há
+        // {{TOTAL_DE}} de fato (2+ produtos e "Valor fechado do pacote"
+        // preenchido); sem desconto a linha nem existe.
+        if (comDesconto) {
+            await riscarParagrafosComecandoCom(copyId, totalDe).catch((err) => {
+                log.warn(`deal #${dealId}: não risquei a linha "De ..." — ${err.message}`);
+            });
+        }
 
         // Escada de preço: a linha "Palavras-chave: Até N palavras." dá lugar a
         // uma linha por faixa. Vem ANTES do bloco de App Store porque as duas
@@ -555,27 +571,29 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
             await replacePlaceholders(copyId, { [`${textos.precoLinha} ${formatBRL(deal[PRODUCT_PRICE_FIELDS.BB], idioma)}`]: `${textos.precoLinha}` });
         }
 
-        // Escada de preço do BBP: "Até {{CATALOGO_BBP}} SKUs" dá lugar a uma
-        // linha por faixa (rótulo "Até N" na primeira, "Entre X e Y" nas do
-        // meio), e — se marcado — uma última linha sem preço ("Sob
-        // Consulta"), usando a faixa mais alta como teto.
+        // Escada de preço do BBP: formato pedido pela Jessica em 17/08/2026,
+        // igual ao que o time já escreve à mão — cada faixa é sua própria
+        // linha "Proposta: R$ X/mês  -  Até N SKUs" (sempre "Até", nunca
+        // "Entre X e Y"). "Até {{CATALOGO_BBP}} SKUs" dá lugar às N linhas, e
+        // a linha "Proposta: {{PRECO_BBP}}" original é apagada — cada faixa
+        // já leva "Proposta:" própria, então a de cima ficaria repetida.
         if (faixasBBP.escada) {
             const rotulo = rotuloFaixaBBPDoIdioma(idioma);
             const ordenadas = faixasBBP.faixas.slice().sort((a, b) => a.qtd - b.qtd);
-            const linhas = ordenadas.map((f, i) => ({
-                rotulo: i === 0 ? rotulo.primeira(f.qtd) : rotulo.entre(ordenadas[i - 1].qtd + 1, f.qtd),
-                valor: formatBRL(f.preco, idioma),
+            const linhas = ordenadas.map((f) => ({
+                rotulo: `${textos.precoLinha} `,
+                valor: `${formatBRL(f.preco, idioma)}  -  ${rotulo.ate(f.qtd)}`,
             }));
             if (faixasBBP.sobConsulta) {
                 const teto = ordenadas[ordenadas.length - 1].qtd;
-                linhas.push({ rotulo: rotulo.acima(teto), valor: rotulo.semPreco });
+                linhas.push({ rotulo: `${textos.precoLinha} `, valor: `${rotulo.semPreco}  -  ${rotulo.acima(teto)}` });
             }
+            await deleteParagraphsStartingWith(copyId, `${textos.precoLinha} {{PRECO_BBP}}`).catch((err) => {
+                log.warn(`deal #${dealId}: não removi a linha "Proposta: {{PRECO_BBP}}" — ${err.message}`);
+            });
             await replaceParagraphWithLines(copyId, prefixoCatalogoBBPDoIdioma(idioma), linhas).catch((err) => {
                 log.warn(`deal #${dealId}: não montei a escada de preço do BBP — ${err.message}`);
             });
-            // Mesmo ajuste do BB: com escada, "Proposta:" abre a lista sem
-            // valor — o preço de cada faixa já está nas linhas abaixo.
-            await replacePlaceholders(copyId, { [`${textos.precoLinha} ${formatBRL(deal[PRODUCT_PRICE_FIELDS.BBP], idioma)}`]: `${textos.precoLinha}` });
         }
 
         // "Palavras-chave: Até N palavras." não existe na proposta de loja de

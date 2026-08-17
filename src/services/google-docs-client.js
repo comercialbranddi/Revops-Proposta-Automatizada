@@ -187,6 +187,58 @@ export async function deleteParagraphsStartingWith(docId, prefixes) {
 }
 
 /**
+ * Aplica riscado (strikethrough) no(s) parágrafo(s) que começam com um dos
+ * prefixos. Usado na linha "De R$ X/mês" do combo com desconto — o preço
+ * cheio fica visualmente cortado, e "Por: R$ Y/mês" (sem riscado, já em
+ * negrito por padrão do modelo) mostra o valor negociado.
+ *
+ * Mesma forma de busca de deleteParagraphsStartingWith — ver lá para o
+ * porquê de varrer body + tabs.
+ *
+ * @returns {number} quantos parágrafos foram riscados
+ */
+export async function riscarParagrafosComecandoCom(docId, prefixes) {
+    const alvos = (Array.isArray(prefixes) ? prefixes : [prefixes]).filter(Boolean);
+    if (alvos.length === 0) return 0;
+
+    const doc = await (await authedFetch(`https://docs.googleapis.com/v1/documents/${docId}?includeTabsContent=true`)).json();
+    const corpos = [
+        ...(doc.body ? [doc.body] : []),
+        ...(doc.tabs || []).map((t) => t.documentTab?.body).filter(Boolean),
+    ];
+
+    const ranges = [];
+    for (const corpo of corpos) {
+        for (const el of corpo.content || []) {
+            if (!el.paragraph) continue;
+            const texto = (el.paragraph.elements || [])
+                .map((e) => e.textRun?.content || '')
+                .join('')
+                .trim();
+            if (alvos.some((p) => texto.startsWith(p))) {
+                ranges.push({ startIndex: el.startIndex, endIndex: el.endIndex - 1 });
+            }
+        }
+    }
+    if (ranges.length === 0) {
+        log.warn(`nenhum parágrafo começando com ${JSON.stringify(alvos)} em ${docId} — o texto do modelo mudou?`);
+        return 0;
+    }
+
+    await authedFetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            requests: ranges.map((range) => ({
+                updateTextStyle: { range, textStyle: { strikethrough: true }, fields: 'strikethrough' },
+            })),
+        }),
+    });
+    log.info(`✂️  ${ranges.length} parágrafo(s) riscado(s) em ${docId}`);
+    return ranges.length;
+}
+
+/**
  * Troca um parágrafo por várias linhas, cada uma com rótulo normal e valor em
  * negrito.
  *
