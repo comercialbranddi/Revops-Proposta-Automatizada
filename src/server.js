@@ -38,10 +38,13 @@ app.get('/p/:slug', async (req, res) => {
             .send('Proposta não encontrada. Confira o link com quem enviou.');
         const { pdGet } = await import('./services/pipedrive.js');
         const deal = (await pdGet(`/deals/${reg.deal_id}`))?.data;
+        const { aceiteDe } = await import('./services/spec-store.js');
         const html = renderProposta({
             deal: { id: reg.deal_id, organizacao: deal?.org_name || deal?.org_id?.name, contato: deal?.person_name || deal?.person_id?.name },
             spec: reg.spec,
             emitidaEm: new Date(reg.registrado_em),
+            slug: reg.slug,
+            aceite: await aceiteDe(reg.slug),
         });
         res.type('text/html; charset=utf-8').send(html);
 

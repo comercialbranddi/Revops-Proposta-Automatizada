@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { generateProposalForDeal } from '../services/proposal-generator.js';
 import { ensureProposalActivity } from '../services/proposal-activity.js';
-import { pdGet, pdPut } from '../services/pipedrive.js';
+import { pdGet, pdPut, pdPost } from '../services/pipedrive.js';
 import {
     SALES_PIPELINE_ID,
     ENVIO_PROPOSTA_STAGE_ID,
@@ -16,7 +16,7 @@ import {
     catalogoDoFormulario,
 } from '../config/proposal.js';
 import { exigeLogin } from '../lib/auth-google.js';
-import { ultimaSpec, salvarSpec, porSlug, marcarGerada, aberturasDoDeal } from '../services/spec-store.js';
+import { ultimaSpec, salvarSpec, porSlug, marcarGerada, aberturasDoDeal, registrarAceite, aceiteDe } from '../services/spec-store.js';
 import { renderProposta } from '../services/render-proposta.js';
 import { closeProposalActivity } from '../services/proposal-activity.js';
 import { getContextLogger } from '../lib/logger.js';
@@ -183,6 +183,59 @@ router.post('/form/:dealId', exigeLogin, async (req, res) => {
         log.error(`form/${dealId} POST: ${err.message}`);
         res.status(500).json({ error: err.message.startsWith('spec ') || err.message.startsWith('sem ')
             ? err.message : 'Não consegui salvar' });
+    }
+});
+
+// ─── Aceite ─────────────────────────────────────────────────────────
+// PÚBLICA: quem aceita é o cliente, que não tem conta aqui. O que limita o
+// alcance é o slug — só chega nesta rota quem recebeu o link. Não é
+// assinatura qualificada, e o texto da página diz isso.
+router.post('/aceite/:slug', async (req, res) => {
+    const { slug } = req.params;
+    const nome = String(req.body?.nome || '').trim();
+    const email = String(req.body?.email || '').trim();
+    const cargo = String(req.body?.cargo || '').trim();
+    if (nome.length < 3) return res.status(400).json({ error: 'informe o nome completo' });
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'informe um e-mail válido' });
+
+    try {
+        const reg = await porSlug(slug);
+        if (!reg) return res.status(404).json({ error: 'proposta não encontrada' });
+
+        const spec = reg.spec || {};
+        const soma = (spec.produtos || []).reduce((t, c) => t + (Number(spec.porProduto?.[c]?.preco) || 0), 0);
+        const valor = Number(spec.pacote) > 0 ? Number(spec.pacote) : soma;
+
+        const { novo, aceite } = await registrarAceite(slug, reg.deal_id, { nome, email, cargo, valor });
+        // Duplo clique, ou alguém reenviando o formulário, não gera dois avisos
+        // no card — o closer receberia a mesma notícia duas vezes.
+        if (!novo) return res.json({ ok: true, jaAceita: true, quando: aceite.quando });
+
+        const url = `${PROPOSAL_FORM_BASE_URL}/p/${slug}`;
+        const quando = new Date(aceite.quando).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+        const reais = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(/ /g, ' ');
+        try {
+            await pdPost('/notes', {
+                deal_id: reg.deal_id,
+                content: [
+                    '<p><b>✅ PROPOSTA ACEITA PELO CLIENTE</b></p>',
+                    `<p><b>${nome}</b>${cargo ? ` — ${cargo}` : ''}<br>${email}</p>`,
+                    `<p>Valor aceito: <b>${reais}/mês</b><br>Em: ${quando}</p>`,
+                    `<p><a href="${url}">${url}</a></p>`,
+                    '<p><i>Aceite comercial declarado na página da proposta. Não é assinatura eletrônica certificada.</i></p>',
+                ].join(''),
+            });
+            log.info(`deal #${reg.deal_id}: aviso de aceite postado no card`);
+        } catch (e) {
+            // O aceite JÁ está registrado. Falhar aqui não pode desfazer isso
+            // nem dizer ao cliente que não deu certo.
+            log.error(`deal #${reg.deal_id}: aceite registrado mas o aviso no card FALHOU — ${e.message}`);
+        }
+
+        res.json({ ok: true, quando: aceite.quando });
+    } catch (err) {
+        log.error(`aceite/${slug}: ${err.message}`);
+        res.status(500).json({ error: 'não consegui registrar o aceite' });
     }
 });
 

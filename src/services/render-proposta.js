@@ -233,6 +233,58 @@ function clausulaAceite(ctx) {
     </tbody></table></div>`;
 }
 
+/**
+ * O aceite. Só aparece quando a proposta tem endereço (slug) — o preview
+ * gerado no formulário não deve oferecer aceite a ninguém.
+ *
+ * É declaração do cliente, não assinatura qualificada: prova intenção e data,
+ * não identidade certificada. O texto do botão diz isso, pra ninguém achar que
+ * assinou contrato ali.
+ */
+function blocoAceite(ctx, vencida) {
+    if (!ctx.slug) return '';
+    if (ctx.aceite) {
+        const q = new Date(ctx.aceite.quando).toLocaleString('pt-BR', { timeZone: TZ, dateStyle: 'short', timeStyle: 'short' });
+        return `<section class="aceito"><h2><span class="idx">✓</span> Proposta aceita</h2>
+      <p>Aceita por <strong>${esc(ctx.aceite.nome)}</strong>${ctx.aceite.cargo ? ` — ${esc(ctx.aceite.cargo)}` : ''}
+      (${esc(ctx.aceite.email)}) em <strong>${esc(q)}</strong>.</p>
+      <p class="fine">A Branddi foi notificada e entrará em contato para a implantação.</p></section>`;
+    }
+    if (vencida) return '';
+    return `<section id="aceite"><h2><span class="idx">✓</span> Aceite</h2>
+    <p class="fine">Ao confirmar, a Branddi é notificada e inicia a implantação em 3 dias úteis. Isto registra o
+    aceite comercial desta proposta; o contrato é formalizado em seguida.</p>
+    <form id="fAceite" class="aceite-form" autocomplete="on">
+      <label>Nome completo<input name="nome" required autocomplete="name"></label>
+      <label>E-mail corporativo<input name="email" type="email" required autocomplete="email"></label>
+      <label>Cargo <span class="opc">(opcional)</span><input name="cargo" autocomplete="organization-title"></label>
+      <button type="submit">Aceitar proposta</button>
+      <p class="msg" id="aceiteMsg" role="status"></p>
+    </form>
+    <script>
+    (function () {
+      var f = document.getElementById('fAceite');
+      f.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        var btn = f.querySelector('button'), msg = document.getElementById('aceiteMsg');
+        btn.disabled = true; btn.textContent = 'Enviando…'; msg.textContent = '';
+        try {
+          var r = await fetch('/api/proposal/aceite/${esc(ctx.slug)}', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome: f.nome.value, email: f.email.value, cargo: f.cargo.value }),
+          });
+          var d = await r.json();
+          if (!r.ok) throw new Error(d.error || 'falhou');
+          location.reload();
+        } catch (err) {
+          msg.textContent = 'Não consegui registrar: ' + err.message + '. Tente de novo ou responda o e-mail do seu contato.';
+          btn.disabled = false; btn.textContent = 'Aceitar proposta';
+        }
+      });
+    })();
+    <\/script></section>`;
+}
+
 // ─── Documento ──────────────────────────────────────────────────────
 
 const CLAUSULAS = [
@@ -250,7 +302,7 @@ const CLAUSULAS = [
  * @param {{deal:{id:number,organizacao:string,contato?:string}, spec:object, emitidaEm?:Date}} args
  * @returns {string} HTML completo
  */
-export function renderProposta({ deal, spec, emitidaEm = new Date() }) {
+export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null, aceite = null }) {
     const codes = produtosOrdenados(spec);
     if (!codes.length) throw new Error('spec sem produtos — nada a renderizar');
     if (!deal?.organizacao) throw new Error('sem organização — o nome vai no corpo da proposta');
@@ -265,7 +317,7 @@ export function renderProposta({ deal, spec, emitidaEm = new Date() }) {
     const soma = codes.reduce((t, c) => t + (Number(spec.porProduto[c]?.preco) || 0), 0);
     const total = Number(spec.pacote) > 0 ? Number(spec.pacote) : soma;
     const meta = { numero: `PC-${deal.id}`, emissao: dataBR(emitidaEm), validade: dataBR(validade) };
-    const ctx = { deal, spec, codes, meta, soma, total };
+    const ctx = { deal, spec, codes, meta, soma, total, slug, aceite };
 
     // Vencida não bloqueia: procurement abre proposta semanas depois, e uma
     // página em branco só gera ligação. Avisa e segue mostrando.
@@ -304,6 +356,7 @@ ${aviso}
 </div>
 <div class="pad">
 ${corpo}
+${blocoAceite(ctx, vencida)}
 </div>
 <footer class="foot">
   <div><b>Branddi</b> — Combata o uso indevido da sua marca e maximize seus resultados</div>
@@ -390,6 +443,24 @@ border-bottom:1px solid #FCD34D;font-size:.84rem}
 .vencida b{color:#78350F}
 @media (prefers-color-scheme:dark){.vencida{background:#3B2E0A;color:#FDE68A;border-bottom-color:#78350F}
 .vencida b{color:#FDE68A}}
+.aceite-form{display:flex;flex-direction:column;gap:.6rem;max-width:26rem;border:1px solid var(--accent);
+padding:1rem;border-radius:3px;background:var(--surface-2)}
+.aceite-form label{display:flex;flex-direction:column;gap:.25rem;font-family:var(--mono);font-size:.62rem;
+letter-spacing:.11em;text-transform:uppercase;color:var(--dim);font-weight:700}
+.aceite-form .opc{text-transform:none;letter-spacing:0;font-weight:400}
+.aceite-form input{font:400 .9rem var(--sans);color:var(--text);background:var(--surface);
+border:1px solid var(--rule);border-radius:3px;padding:.45rem .6rem}
+.aceite-form input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.aceite-form button{font:700 .9rem var(--sans);background:var(--accent);color:#fff;border:0;
+border-radius:3px;padding:.6rem 1.2rem;cursor:pointer;margin-top:.2rem}
+@media (prefers-color-scheme:dark){.aceite-form button{color:#00212B}}
+.aceite-form button:disabled{opacity:.5;cursor:not-allowed}
+.aceite-form .msg{font-size:.8rem;color:var(--alert);margin:0}
+:root{--alert:#DC2626}
+@media (prefers-color-scheme:dark){:root{--alert:#F87171}}
+section.aceito h2{border-bottom-color:var(--accent)}
+section.aceito p strong{color:var(--text)}
 @media print{body{background:#fff;font-size:10pt}.wrap{padding:0}.acoes{display:none}
+#aceite .aceite-form{display:none}
 .sheet{box-shadow:none;border:0;max-width:none}section,.tw{break-inside:avoid}}
 `;

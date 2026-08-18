@@ -207,3 +207,57 @@ export async function aberturasDoDeal(dealId) {
         return { total: 0, primeira: null, ultima: null };
     }
 }
+
+// ─── Aceite ─────────────────────────────────────────────────────────
+// Aba própria, append-only. O aceite é declaração do cliente na página, não
+// assinatura qualificada: prova intenção e data, não identidade certificada.
+// Se a Branddi precisar de valor probatório pleno, o caminho é assinatura
+// eletrônica com certificado — decisão jurídica, não técnica.
+const ABA_ACEITES = 'aceites';
+export const COLUNAS_ACEITES = ['quando', 'slug', 'deal_id', 'nome', 'email', 'cargo', 'valor'];
+
+/** O aceite de uma proposta, ou null. */
+export async function aceiteDe(slug) {
+    try {
+        if (!SHEET_ID || !slug) return null;
+        const res = await authedFetch(`${base()}/values/${ABA_ACEITES}!A2:G1000`);
+        const l = ((await res.json()).values || []).find((v) => v[1] === slug);
+        if (!l) return null;
+        return { quando: l[0], slug: l[1], deal_id: Number(l[2]), nome: l[3], email: l[4], cargo: l[5] || null, valor: l[6] || null };
+    } catch {
+        // Aba ainda não existe = ninguém aceitou nada. Não é erro.
+        return null;
+    }
+}
+
+/**
+ * Registra o aceite. Idempotente pelo slug: a página é pública e um duplo
+ * clique — ou alguém curioso com o link — não pode gerar dois aceites nem dois
+ * avisos no card.
+ *
+ * Devolve { novo: false } quando já havia aceite, com o que já estava lá.
+ */
+export async function registrarAceite(slug, dealId, { nome, email, cargo, valor }) {
+    exigeConfig();
+    const jaTem = await aceiteDe(slug);
+    if (jaTem) return { novo: false, aceite: jaTem };
+
+    const meta = await (await authedFetch(`${base()}?fields=sheets.properties.title`)).json();
+    if (!(meta.sheets || []).some((s) => s.properties?.title === ABA_ACEITES)) {
+        await authedFetch(`${base()}:batchUpdate`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requests: [{ addSheet: { properties: { title: ABA_ACEITES } } }] }),
+        });
+        await authedFetch(`${base()}/values/${ABA_ACEITES}!A1?valueInputOption=RAW`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values: [COLUNAS_ACEITES] }),
+        });
+    }
+    const quando = new Date().toISOString();
+    await authedFetch(`${base()}/values/${ABA_ACEITES}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ values: [[quando, slug, String(dealId), nome, email, cargo || '', String(valor ?? '')]] }),
+    });
+    log.info(`deal #${dealId}: proposta ${slug} ACEITA por ${nome} <${email}>`);
+    return { novo: true, aceite: { quando, slug, deal_id: dealId, nome, email, cargo, valor } };
+}
