@@ -25,6 +25,30 @@ app.use(express.static(PUBLIC_DIR));
 // login, e o back busca o negócio pelo id. Sem sessão, sem estado.
 app.get('/proposta/:dealId', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'proposta.html')));
 
+// A proposta que o cliente abre. PÚBLICA de propósito — ela circula por e-mail
+// e dentro do cliente, e exigir login mataria o uso. O que protege é o slug:
+// 22 caracteres aleatórios, não sequencial, pra ninguém chegar na proposta do
+// vizinho trocando um número.
+app.get('/p/:slug', async (req, res) => {
+    try {
+        const { porSlug } = await import('./services/spec-store.js');
+        const { renderProposta } = await import('./services/render-proposta.js');
+        const reg = await porSlug(req.params.slug);
+        if (!reg) return res.status(404).type('text/plain; charset=utf-8')
+            .send('Proposta não encontrada. Confira o link com quem enviou.');
+        const { pdGet } = await import('./services/pipedrive.js');
+        const deal = (await pdGet(`/deals/${reg.deal_id}`))?.data;
+        res.type('text/html; charset=utf-8').send(renderProposta({
+            deal: { id: reg.deal_id, organizacao: deal?.org_name || deal?.org_id?.name, contato: deal?.person_name || deal?.person_id?.name },
+            spec: reg.spec,
+            emitidaEm: new Date(reg.registrado_em),
+        }));
+    } catch (err) {
+        log.error(`/p/${req.params.slug}: ${err.message}`);
+        res.status(500).type('text/plain; charset=utf-8').send('Não consegui montar a proposta.');
+    }
+});
+
 app.use((err, req, res, next) => {
     log.error(err.stack || err.message);
     res.status(500).json({ error: 'Erro interno' });

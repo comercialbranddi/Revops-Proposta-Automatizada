@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { generateProposalForDeal } from '../services/proposal-generator.js';
 import { ensureProposalActivity } from '../services/proposal-activity.js';
-import { pdGet } from '../services/pipedrive.js';
+import { pdGet, pdPut } from '../services/pipedrive.js';
 import {
     SALES_PIPELINE_ID,
     ENVIO_PROPOSTA_STAGE_ID,
@@ -10,12 +10,15 @@ import {
     PROPOSAL_WEBHOOK_SECRET,
     PROPOSAL_ACTIVITY_ENABLED,
     PROPOSAL_DEAL_FIELDS,
+    PROPOSAL_FORM_BASE_URL,
     parseServicoOferecido,
     idiomaDoDeal,
     catalogoDoFormulario,
 } from '../config/proposal.js';
 import { exigeLogin } from '../lib/auth-google.js';
-import { ultimaSpec, salvarSpec } from '../services/spec-store.js';
+import { ultimaSpec, salvarSpec, porSlug, marcarGerada } from '../services/spec-store.js';
+import { renderProposta } from '../services/render-proposta.js';
+import { closeProposalActivity } from '../services/proposal-activity.js';
 import { getContextLogger } from '../lib/logger.js';
 import { afterResponse } from '../lib/after-response.js';
 
@@ -133,11 +136,34 @@ router.post('/form/:dealId', exigeLogin, async (req, res) => {
     if (!spec || typeof spec !== 'object') return res.status(400).json({ error: 'spec ausente' });
 
     try {
-        const { revisao } = await salvarSpec(dealId, req.usuario, spec);
-        res.json({ revisao });
+        const deal = (await pdGet(`/deals/${dealId}`))?.data;
+        if (!deal) return res.status(404).json({ error: 'Negócio não encontrado' });
+        const dados = { id: dealId, organizacao: deal.org_name || deal.org_id?.name, contato: deal.person_name || deal.person_id?.name };
+
+        // Renderiza ANTES de gravar. Spec que não vira documento é lixo na
+        // planilha e um link quebrado no card — melhor falhar no botão, com o
+        // closer olhando a tela, do que depois.
+        renderProposta({ deal: dados, spec });
+
+        const { revisao, slug } = await salvarSpec(dealId, req.usuario, spec);
+        const url = `${PROPOSAL_FORM_BASE_URL}/p/${slug}`;
+
+        // Daqui pra baixo nada pode derrubar a resposta: a proposta JÁ existe e
+        // já tem endereço. Falha em gravar o link ou fechar a atividade é chata,
+        // não é motivo pra dizer ao closer que não salvou.
+        const avisos = [];
+        try { await pdPut(`/deals/${dealId}`, { [PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA]: url }); }
+        catch (e) { avisos.push('não consegui gravar o link no card'); log.warn(`deal #${dealId}: ${e.message}`); }
+        try { await marcarGerada(dealId, revisao, url); } catch (e) { log.warn(`deal #${dealId}: carimbo — ${e.message}`); }
+        try { await closeProposalActivity(dealId); }
+        catch (e) { avisos.push('não consegui fechar a atividade'); log.warn(`deal #${dealId}: ${e.message}`); }
+
+        log.info(`deal #${dealId}: proposta revisão ${revisao} em ${url}`);
+        res.json({ revisao, url, avisos });
     } catch (err) {
         log.error(`form/${dealId} POST: ${err.message}`);
-        res.status(500).json({ error: 'Não consegui salvar' });
+        res.status(500).json({ error: err.message.startsWith('spec ') || err.message.startsWith('sem ')
+            ? err.message : 'Não consegui salvar' });
     }
 });
 

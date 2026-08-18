@@ -23,6 +23,7 @@
  * funil), é aceitável; se um dia deixar de ser, isto vira tabela de verdade
  * sem mudar quem chama.
  */
+import { randomBytes } from 'node:crypto';
 import { authedFetch } from './google-docs-client.js';
 import { getContextLogger } from '../lib/logger.js';
 
@@ -32,7 +33,7 @@ const SHEET_ID = process.env.PROPOSAL_SPEC_SHEET_ID || null;
 const ABA = 'specs';
 
 // A ordem é contrato: mudou aqui, muda em lerLinha() e nas escritas.
-export const COLUNAS = ['registrado_em', 'deal_id', 'revisao', 'criado_por', 'doc_url', 'gerado_em', 'spec_json'];
+export const COLUNAS = ['registrado_em', 'deal_id', 'revisao', 'criado_por', 'doc_url', 'gerado_em', 'spec_json', 'slug'];
 
 const base = () => `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}`;
 
@@ -42,17 +43,18 @@ function exigeConfig() {
 
 async function lerTudo() {
     exigeConfig();
-    const res = await authedFetch(`${base()}/values/${ABA}!A2:G?majorDimension=ROWS`);
+    const res = await authedFetch(`${base()}/values/${ABA}!A2:H?majorDimension=ROWS`);
     const { values = [] } = await res.json();
     return values;
 }
 
 function lerLinha(v, i) {
-    const [registrado_em, deal_id, revisao, criado_por, doc_url, gerado_em, spec_json] = v;
+    const [registrado_em, deal_id, revisao, criado_por, doc_url, gerado_em, spec_json, slug] = v;
     let spec = null;
     try { spec = spec_json ? JSON.parse(spec_json) : null; } catch { spec = null; }
     // linha da planilha: +2 porque a 1 é cabeçalho e o array começa em 0.
-    return { linha: i + 2, registrado_em, deal_id: Number(deal_id), revisao: Number(revisao), criado_por, doc_url: doc_url || null, gerado_em: gerado_em || null, spec };
+    return { linha: i + 2, registrado_em, deal_id: Number(deal_id), revisao: Number(revisao), criado_por,
+        doc_url: doc_url || null, gerado_em: gerado_em || null, spec, slug: slug || null };
 }
 
 /** Garante a aba e o cabeçalho. Idempotente — roda no primeiro uso. */
@@ -67,7 +69,7 @@ export async function ensureSheet() {
         });
         log.info(`aba "${ABA}" criada`);
     }
-    const primeira = await (await authedFetch(`${base()}/values/${ABA}!A1:G1`)).json();
+    const primeira = await (await authedFetch(`${base()}/values/${ABA}!A1:H1`)).json();
     if (!primeira.values?.length) {
         await authedFetch(`${base()}/values/${ABA}!A1?valueInputOption=RAW`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -84,18 +86,43 @@ export async function ultimaSpec(dealId) {
     return linhas.reduce((a, b) => (b.revisao >= a.revisao ? b : a));
 }
 
-/** Grava um envio novo. Devolve { revisao, linha }. */
+/**
+ * O endereço público da proposta. Aleatório e longo em vez de sequencial: o
+ * link circula por e-mail e dentro do cliente, e /p/3 deixaria adivinhar a
+ * proposta do vizinho. 16 bytes = 22 caracteres, não é adivinhável na força.
+ */
+function novoSlug() {
+    return randomBytes(16).toString('base64url');
+}
+
+/** Grava um envio novo. Devolve { revisao, slug }. */
 export async function salvarSpec(dealId, criadoPor, spec) {
     await ensureSheet();
     const anterior = await ultimaSpec(dealId);
     const revisao = (anterior?.revisao || 0) + 1;
-    const linha = [new Date().toISOString(), String(dealId), String(revisao), criadoPor, '', '', JSON.stringify(spec)];
+    const slug = novoSlug();
+    const linha = [new Date().toISOString(), String(dealId), String(revisao), criadoPor, '', '', JSON.stringify(spec), slug];
     await authedFetch(`${base()}/values/${ABA}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ values: [linha] }),
     });
     log.info(`deal #${dealId}: spec revisão ${revisao} gravada por ${criadoPor}`);
-    return { revisao };
+    return { revisao, slug };
+}
+
+/**
+ * A proposta de um slug — é o que a página pública abre.
+ *
+ * Devolve o SPEC congelado, não um HTML congelado: preço, escopo e modalidade
+ * são exatamente os do envio, e é isso que precisa ser imutável. O texto dos
+ * blocos é lido na hora, então uma correção de redação alcança propostas já
+ * enviadas. É o trato certo pra correção de erro, e o errado pra mudança de
+ * conteúdo — se um dia o catálogo mudar de forma que não deva alcançar o que
+ * já saiu, aí sim vale congelar o HTML junto da linha.
+ */
+export async function porSlug(slug) {
+    if (!slug) return null;
+    return (await lerTudo()).map(lerLinha).find((r) => r.slug === slug) || null;
 }
 
 /**

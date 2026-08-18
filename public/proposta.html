@@ -70,6 +70,11 @@
   .pend{font-size:.82rem;flex:1;min-width:14rem}
   .pend b{color:var(--alert)}
   .pend.ok b{color:var(--ok)}
+  .pend b.warn,.pend ul.warn li::marker{color:#B45309}
+  @media (prefers-color-scheme:dark){.pend b.warn,.pend ul.warn li::marker{color:#FBBF24}}
+  .pend ul.warn{color:var(--muted)}
+  .feito{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+  .feito a{color:var(--accent);font-weight:600;word-break:break-all}
   .pend ul{margin:.25rem 0 0;padding-left:1.1rem;color:var(--dim);font-size:.78rem}
   button.primary{font:700 .9rem var(--sans);background:var(--accent);color:#fff;border:0;border-radius:3px;
     padding:.6rem 1.4rem;cursor:pointer}
@@ -356,8 +361,30 @@ function pendencias() {
   return p;
 }
 
+/**
+ * Coisas que NÃO bloqueiam, mas que quase sempre são dedo errado.
+ *
+ * O pacote é o caso real: no primeiro teste saiu R$ 100 com soma de
+ * R$ 15.000, e o formulário aceitou calado. Desconto grande existe, então
+ * bloquear seria errado — mas passar batido manda o preço errado pro cliente.
+ */
+function avisos() {
+  const a = [];
+  const soma = [...estado.produtos].reduce((t, c) => t + (Number(estado.porProduto[c].preco) || 0), 0);
+  const pac = Number(estado.pacote);
+  if (estado.pacote !== '' && soma > 0) {
+    if (pac > soma) a.push('O pacote (' + brl(pac) + ') está ACIMA da soma dos serviços (' + brl(soma) + ').');
+    else if (pac < soma * 0.5) a.push('O pacote (' + brl(pac) + ') é menos da metade da soma (' + brl(soma) + ') — desconto de ' + Math.round((1 - pac / soma) * 100) + '%. Confira antes de salvar.');
+  }
+  for (const code of estado.produtos) {
+    if (!estado.porProduto[code].canais.size) a.push('Sem canal marcado em ' + code + ' — a linha não sai no documento.');
+  }
+  return a;
+}
+
 function atualizarPendencias() {
   const p = pendencias();
+  const av = avisos();
   const box = $('#pend');
   box.className = 'pend' + (p.length ? '' : ' ok');
   box.textContent = '';
@@ -365,6 +392,10 @@ function atualizarPendencias() {
   else {
     box.append(el('b', {}, 'Falta preencher ' + p.length + (p.length === 1 ? ' campo' : ' campos')));
     box.append(el('ul', {}, p.slice(0, 6).map(x => el('li', {}, x))));
+  }
+  if (av.length) {
+    box.append(el('b', { className: 'warn' }, '⚠ Confira antes de salvar'));
+    box.append(el('ul', { className: 'warn' }, av.slice(0, 3).map(x => el('li', {}, x))));
   }
   $('#salvar').disabled = p.length > 0;
 }
@@ -398,9 +429,18 @@ $('#salvar').onclick = async () => {
       body: JSON.stringify({ spec }),
     });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || ('HTTP ' + r.status));
-    const { revisao } = await r.json();
-    btn.textContent = '✓ Salvo (revisão ' + revisao + ')';
-    setTimeout(() => { btn.textContent = 'Salvar proposta'; atualizarPendencias(); }, 2500);
+    const { revisao, url, avisos: probs } = await r.json();
+    btn.textContent = '✓ Revisão ' + revisao + ' gerada';
+    // A proposta tem endereço agora — mostrar o link é o ponto todo. Sem isso
+    // o closer teria que voltar ao card pra descobrir se deu certo.
+    const box = $('#pend');
+    box.className = 'pend ok';
+    box.textContent = '';
+    box.append(el('div', { className: 'feito' },
+      el('b', {}, '✓ Proposta gerada · '),
+      el('a', { href: url, target: '_blank', rel: 'noopener', textContent: url })));
+    if (probs && probs.length) box.append(el('ul', { className: 'warn' }, probs.map(x => el('li', {}, x))));
+    else box.append(el('ul', {}, [el('li', {}, 'Link gravado no card e atividade fechada.')]));
   } catch (e) {
     alert('Não consegui salvar: ' + e.message);
     btn.textContent = 'Salvar proposta'; btn.disabled = false;
