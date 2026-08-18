@@ -744,9 +744,27 @@ export const CANAIS_POR_PRODUTO = {
     VM:  [1604, 1605, 1606, 1607],
 };
 
-/** As três modalidades. A primeira é o que TODOS os 45 modelos descrevem. */
-export const MODALIDADES = ['Monitoria + Atuação', 'Monitoria', 'Atuação'];
+// Duas modalidades, não três, e só em três dos quatro produtos — decidido em
+// 18/08/2026 lendo o que cada bloco promete em "Formas de atuação":
+//
+//   BB  → envia notificação extrajudicial e protocola denúncia
+//   GD  → executa denúncias e remoções, e disputa de domínio
+//   VM  → envia aviso ao infrator e protocola denúncia
+//   BBP → "apoio à identificação", "cruzamento de bases", "suporte à atuação
+//         comercial DA MARCA" — quem atua é o cliente, não a Branddi
+//
+// Por isso BBP não tem modalidade: não há atuação da Branddi ali pra tirar,
+// o serviço é monitoria e inteligência por definição. Marcar "só monitoria"
+// num BBP não mudaria uma linha do documento.
+//
+// "Só Atuação" saiu: sem monitoria não existe de onde vir a ocorrência. Se
+// aparecer venda real assim (cliente que já monitora e quer só o enforcement),
+// acrescentar aqui e escrever o bloco — não antes.
+export const MODALIDADES = ['Monitoria + Atuação', 'Monitoria'];
 export const MODALIDADE_PADRAO = MODALIDADES[0];
+
+/** As modalidades de cada produto. `null` = o produto não tem essa dimensão. */
+export const MODALIDADE_POR_PRODUTO = { BB: MODALIDADES, BBP: null, GD: MODALIDADES, VM: MODALIDADES };
 
 // A quantidade que cada bloco cita no documento. GD não tem — o texto dele
 // não cita número nenhum, lista as plataformas monitoradas.
@@ -768,7 +786,7 @@ export function catalogoDoFormulario(idioma = IDIOMA_PADRAO) {
         produtos: PRODUCT_CASCADE_ORDER.map((code) => ({ code, label: PRODUCTS[code].label })),
         canais: Object.fromEntries(Object.entries(CANAIS_POR_PRODUTO)
             .map(([code, ids]) => [code, ids.map((id) => ({ id, label: rotulo(id) }))])),
-        modalidades: MODALIDADES,
+        modalidades: MODALIDADE_POR_PRODUTO,
         modalidadePadrao: MODALIDADE_PADRAO,
         quantidades: QUANTIDADE_POR_PRODUTO,
         maxFaixas: MAX_FAIXAS,

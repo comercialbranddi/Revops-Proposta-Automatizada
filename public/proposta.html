@@ -115,7 +115,7 @@ const brl = n => (n == null || n === '') ? '—'
   : Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
 const estado = { marcas: '', idioma: 'pt', produtos: new Set(), porProduto: {}, pacote: '', observacoes: '' };
-const vazio = () => ({ modalidade: CFG.catalogo.modalidadePadrao, canais: new Set(), quantidade: '', preco: '', faixas: [], sobConsulta: false });
+const vazio = (code) => ({ modalidade: CFG.catalogo.modalidades[code] ? CFG.catalogo.modalidadePadrao : null, canais: new Set(), quantidade: '', preco: '', faixas: [], sobConsulta: false });
 
 // ─── Login ──────────────────────────────────────────────────────────
 // O script do Google entra com `async defer`, então pode chegar DEPOIS deste
@@ -174,7 +174,7 @@ function aplicarSeed() {
     estado.observacoes = a.observacoes || '';
     (a.produtos || []).forEach(c => estado.produtos.add(c));
     Object.entries(a.porProduto || {}).forEach(([c, p]) => {
-      estado.porProduto[c] = Object.assign(vazio(), p, { canais: new Set(p.canais || []), quantidade: p.quantidade == null ? '' : p.quantidade });
+      estado.porProduto[c] = Object.assign(vazio(c), p, { canais: new Set(p.canais || []), quantidade: p.quantidade == null ? '' : p.quantidade });
     });
     return;
   }
@@ -182,7 +182,7 @@ function aplicarSeed() {
   // caso comum (cliente com uma marca só); quem tem mais acrescenta.
   estado.marcas = SEED.deal.organizacao || '';
   estado.idioma = SEED.sugestao.idioma || 'pt';
-  (SEED.sugestao.produtos || []).forEach(c => { estado.produtos.add(c); estado.porProduto[c] = vazio(); });
+  (SEED.sugestao.produtos || []).forEach(c => { estado.produtos.add(c); estado.porProduto[c] = vazio(c); });
 }
 
 // ─── Render ─────────────────────────────────────────────────────────
@@ -221,7 +221,7 @@ function cardEscopo() {
   CFG.catalogo.produtos.forEach(p => {
     const inp = el('input', { type: 'checkbox', checked: estado.produtos.has(p.code) });
     inp.onchange = () => {
-      if (inp.checked) { estado.produtos.add(p.code); if (!estado.porProduto[p.code]) estado.porProduto[p.code] = vazio(); }
+      if (inp.checked) { estado.produtos.add(p.code); if (!estado.porProduto[p.code]) estado.porProduto[p.code] = vazio(p.code); }
       else estado.produtos.delete(p.code);
       render();
     };
@@ -239,14 +239,20 @@ function cardProduto(p) {
   const c = el('div', { className: 'card' }, el('h2', {}, p.label, el('span', { className: 'tag' }, p.code)));
   const b = el('div', { className: 'body' });
 
-  const mod = el('div', { className: 'chips' });
-  CFG.catalogo.modalidades.forEach(m => {
-    const inp = el('input', { type: 'radio', name: 'mod-' + p.code, checked: st.modalidade === m });
-    inp.onchange = () => { st.modalidade = m; };
-    mod.append(el('label', { className: 'chip' }, inp, m));
-  });
-  b.append(el('label', { className: 'f' }, 'Modalidade', mod, el('span', { className: 'hint' },
-    'Monitoria observa e reporta. Atuação envia aviso e protocola denúncia. O texto do documento muda conforme a escolha.')));
+  // BBP não tem modalidade: quem atua nele é o cliente, a Branddi entrega
+  // inteligência. Mostrar a escolha ali sugeriria uma diferença que o
+  // documento não tem.
+  const mods = CFG.catalogo.modalidades[p.code];
+  if (mods) {
+    const mod = el('div', { className: 'chips' });
+    mods.forEach(m => {
+      const inp = el('input', { type: 'radio', name: 'mod-' + p.code, checked: st.modalidade === m });
+      inp.onchange = () => { st.modalidade = m; };
+      mod.append(el('label', { className: 'chip' }, inp, m));
+    });
+    b.append(el('label', { className: 'f' }, 'Modalidade', mod, el('span', { className: 'hint' },
+      'Monitoria observa e reporta. Com Atuação, a Branddi envia o aviso ao infrator e protocola a denúncia. O texto do documento muda conforme a escolha.')));
+  }
 
   const ch = el('div', { className: 'chips' });
   CFG.catalogo.canais[p.code].forEach(o => {
