@@ -60,6 +60,14 @@ export const BLOCOS_PT = {
         },
         especificacoes: [
             { rotulo: 'Canais', valor: '{{CANAIS}}' },
+            // O modelo antigo trazia "Palavras-chave: Até N palavras." e a
+            // primeira versão deste catálogo perdeu a linha — proposta de Brand
+            // Bidding saía sem declarar o limite contratado, que é item de
+            // escopo. Achado pela bateria em 18/08/2026.
+            //
+            // Fica sem valor quando a venda é só de App Store: ali não se
+            // contrata por palavra, e valorLinha() faz a linha inteira sumir.
+            { rotulo: 'Palavras-chave', valor: 'Até {{QUANTIDADE}} palavras' },
             { rotulo: 'Frequência', valor: 'Diária, em horários diversos' },
             { rotulo: 'Coleta', valor: 'De cada anúncio encontrado: palavra monitorada, data, geolocalização, tipo de ambiente (desktop ou mobile), posição em tela, título, link, marca anunciada, domínio exibido, descrição e captura de tela da evidência' },
             { rotulo: 'Tratamento', valor: 'Triagem e classificação das ocorrências por tipo de violação, por equipe especializada da Contratada' },

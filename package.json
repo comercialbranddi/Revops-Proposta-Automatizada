@@ -5,7 +5,9 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "node scripts/testa-render.js",
+    "test:e2e": "node scripts/testa-fluxo-completo.js"
   },
   "engines": {
     "node": ">=22"

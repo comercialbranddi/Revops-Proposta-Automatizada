@@ -32,7 +32,13 @@ const esc = (s) => String(s ?? '')
 // de usuário. Escapa tudo e devolve só essa tag.
 const rich = (s) => esc(s).replace(/&lt;strong&gt;/g, '<strong>').replace(/&lt;\/strong&gt;/g, '</strong>');
 
-const brl = (n) => Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+// O   (espaço não-quebrável) que o toLocaleString põe entre "R$" e o número
+// vira espaço normal: visualmente idêntico, e a saída deixa de depender de um
+// caractere invisível pra qualquer coisa que leia o documento depois — busca,
+// teste, extração de PDF.
+const brl = (n) => Number(n)
+    .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
+    .replace(/ /g, ' ');
 
 function dataBR(d) {
     return new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
@@ -157,7 +163,7 @@ function clausulaInvestimento(ctx) {
     const linhas = codes.map((c) => {
         const b = BLOCOS_PT[c];
         const p = spec.porProduto[c] || {};
-        const escopo = [canaisTexto(p), Number(p.quantidade) > 0 ? `até ${p.quantidade}` : null]
+        const escopo = [canaisTexto(p), Number(p.quantidade) > 0 ? `Até ${p.quantidade}` : null]
             .filter(Boolean).join(' · ') || '—';
         // Escada: uma linha por faixa, em vez de preço único. Exceção, não regra.
         if (p.faixas?.length) {
