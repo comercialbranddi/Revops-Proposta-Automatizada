@@ -38,11 +38,19 @@ app.get('/p/:slug', async (req, res) => {
             .send('Proposta não encontrada. Confira o link com quem enviou.');
         const { pdGet } = await import('./services/pipedrive.js');
         const deal = (await pdGet(`/deals/${reg.deal_id}`))?.data;
-        res.type('text/html; charset=utf-8').send(renderProposta({
+        const html = renderProposta({
             deal: { id: reg.deal_id, organizacao: deal?.org_name || deal?.org_id?.name, contato: deal?.person_name || deal?.person_id?.name },
             spec: reg.spec,
             emitidaEm: new Date(reg.registrado_em),
-        }));
+        });
+        res.type('text/html; charset=utf-8').send(html);
+
+        // Depois de responder: a página do cliente não espera a planilha.
+        const { afterResponse } = await import('./lib/after-response.js');
+        afterResponse(async () => {
+            const { registrarAbertura } = await import('./services/spec-store.js');
+            await registrarAbertura(reg.slug, reg.deal_id, req.get('user-agent'));
+        });
     } catch (err) {
         log.error(`/p/${req.params.slug}: ${err.message}`);
         res.status(500).type('text/plain; charset=utf-8').send('Não consegui montar a proposta.');

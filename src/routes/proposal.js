@@ -16,7 +16,7 @@ import {
     catalogoDoFormulario,
 } from '../config/proposal.js';
 import { exigeLogin } from '../lib/auth-google.js';
-import { ultimaSpec, salvarSpec, porSlug, marcarGerada } from '../services/spec-store.js';
+import { ultimaSpec, salvarSpec, porSlug, marcarGerada, aberturasDoDeal } from '../services/spec-store.js';
 import { renderProposta } from '../services/render-proposta.js';
 import { closeProposalActivity } from '../services/proposal-activity.js';
 import { getContextLogger } from '../lib/logger.js';
@@ -123,6 +123,9 @@ router.get('/form/:dealId', exigeLogin, async (req, res) => {
         // uma revisão obriga a digitar tudo de novo — que é o defeito que
         // este projeto está corrigindo.
         const anterior = await ultimaSpec(dealId);
+        // Quantas vezes o cliente abriu a proposta anterior — é o dado que o
+        // Google Doc nunca deu, e o que decide se vale ligar ou esperar.
+        const aberturas = anterior ? await aberturasDoDeal(dealId) : null;
 
         res.json({
             deal: {
@@ -134,7 +137,7 @@ router.get('/form/:dealId', exigeLogin, async (req, res) => {
                 valor: deal.value ?? null,
             },
             sugestao: { produtos: codes, idioma: idiomaDoDeal(deal), semTemplate },
-            anterior: anterior ? { revisao: anterior.revisao, spec: anterior.spec, doc_url: anterior.doc_url } : null,
+            anterior: anterior ? { revisao: anterior.revisao, spec: anterior.spec, doc_url: anterior.doc_url, aberturas } : null,
             usuario: req.usuario,
         });
     } catch (err) {

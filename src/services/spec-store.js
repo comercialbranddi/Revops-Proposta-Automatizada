@@ -139,3 +139,71 @@ export async function marcarGerada(dealId, revisao, docUrl) {
     });
     return true;
 }
+
+// ─── Aberturas ──────────────────────────────────────────────────────
+// Aba separada, append-only: uma linha por abertura da página pública. É o
+// que o Google Doc nunca deu — saber que o cliente abriu, quando, e quantas
+// vezes. Vira gatilho de follow-up: "reabriu três vezes na semana passada".
+const ABA_ABERTURAS = 'aberturas';
+export const COLUNAS_ABERTURAS = ['quando', 'slug', 'deal_id', 'dispositivo'];
+
+// Varredor de link (antivírus de e-mail, prévia do WhatsApp/Slack, robô de
+// busca) abre o link sem ninguém ter lido. Contar isso como interesse do
+// cliente é pior que não contar: o closer liga achando que houve leitura.
+const ROBO = /bot|crawl|spider|slurp|preview|fetch|monitor|curl|wget|python-requests|headless|facebookexternalhit|whatsapp|slackbot|discord|telegram|linkedinbot|bingpreview/i;
+
+/** True se o user agent é de robô/varredor — a abertura não é contada. */
+export function ehRobo(ua) {
+    return !ua || ROBO.test(String(ua));
+}
+
+function dispositivo(ua) {
+    return /mobile|android|iphone|ipad/i.test(String(ua)) ? 'celular' : 'computador';
+}
+
+/**
+ * Registra uma abertura. Não lança nunca: telemetria que derruba a página do
+ * cliente é pior que telemetria que falta.
+ *
+ * Não guarda IP nem user agent inteiro — só "celular" ou "computador".
+ * Registrar quem abriu de onde é dado pessoal, e a pergunta que o comercial
+ * precisa responder ("abriram?") não exige isso.
+ */
+export async function registrarAbertura(slug, dealId, ua) {
+    try {
+        if (!SHEET_ID || ehRobo(ua)) return false;
+        const meta = await (await authedFetch(`${base()}?fields=sheets.properties.title`)).json();
+        if (!(meta.sheets || []).some((s) => s.properties?.title === ABA_ABERTURAS)) {
+            await authedFetch(`${base()}:batchUpdate`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ requests: [{ addSheet: { properties: { title: ABA_ABERTURAS } } }] }),
+            });
+            await authedFetch(`${base()}/values/${ABA_ABERTURAS}!A1?valueInputOption=RAW`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ values: [COLUNAS_ABERTURAS] }),
+            });
+        }
+        await authedFetch(`${base()}/values/${ABA_ABERTURAS}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values: [[new Date().toISOString(), slug, String(dealId), dispositivo(ua)]] }),
+        });
+        return true;
+    } catch (err) {
+        log.warn(`abertura de ${slug} não registrada: ${err.message}`);
+        return false;
+    }
+}
+
+/** Resumo das aberturas de um negócio — o que o formulário mostra ao reabrir. */
+export async function aberturasDoDeal(dealId) {
+    try {
+        if (!SHEET_ID) return { total: 0, primeira: null, ultima: null };
+        const res = await authedFetch(`${base()}/values/${ABA_ABERTURAS}!A2:D2000`);
+        const linhas = ((await res.json()).values || []).filter((v) => String(v[2]) === String(dealId));
+        if (!linhas.length) return { total: 0, primeira: null, ultima: null };
+        const datas = linhas.map((v) => v[0]).sort();
+        return { total: linhas.length, primeira: datas[0], ultima: datas[datas.length - 1] };
+    } catch {
+        return { total: 0, primeira: null, ultima: null };
+    }
+}

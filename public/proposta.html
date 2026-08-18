@@ -62,6 +62,8 @@
   button.mini:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
   button.mini:disabled{opacity:.4;cursor:not-allowed}
 
+  .aviso.info{border-left-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+  .aberturas{margin-top:.35rem;font-family:var(--mono);font-size:.72rem;color:var(--text)}
   .aviso{border-left:3px solid var(--alert);background:color-mix(in srgb,var(--alert) 8%,transparent);
     padding:.6rem .8rem;font-size:.85rem;border-radius:0 3px 3px 0}
 
@@ -197,9 +199,23 @@ function render() {
   const app = $('#app');
   app.textContent = '';
 
-  if (SEED.anterior) app.append(el('div', { className: 'aviso' },
-    'Este negócio já teve ' + SEED.anterior.revisao + (SEED.anterior.revisao === 1 ? ' proposta' : ' propostas') +
-    '. Salvar cria a revisão ' + (SEED.anterior.revisao + 1) + ' — a anterior continua guardada.'));
+  if (SEED.anterior) {
+    const box = el('div', { className: 'aviso info' });
+    box.append(el('div', {}, 'Este negócio já teve ' + SEED.anterior.revisao +
+      (SEED.anterior.revisao === 1 ? ' proposta' : ' propostas') +
+      '. Salvar cria a revisão ' + (SEED.anterior.revisao + 1) + ' — a anterior continua guardada.'));
+    // Quantas vezes o cliente abriu. É o que decide se vale ligar ou esperar,
+    // e o que o Google Doc nunca disse.
+    const ab = SEED.anterior.aberturas;
+    if (ab && ab.total > 0) {
+      const quando = new Date(ab.ultima).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+      box.append(el('div', { className: 'aberturas' },
+        '👁 O cliente abriu a proposta ' + ab.total + (ab.total === 1 ? ' vez' : ' vezes') + '. Última: ' + quando + '.'));
+    } else if (SEED.anterior.doc_url) {
+      box.append(el('div', { className: 'aberturas' }, '👁 Ainda sem registro de abertura pelo cliente.'));
+    }
+    app.append(box);
+  }
 
   if (SEED.sugestao.semTemplate && SEED.sugestao.semTemplate.length) app.append(el('div', { className: 'aviso' },
     'O card tem ' + SEED.sugestao.semTemplate.join(' e ') + ' em "Serviço oferecido", que não tem modelo de proposta. Esse trecho não sai no documento.'));

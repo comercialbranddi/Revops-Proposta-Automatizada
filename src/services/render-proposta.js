@@ -267,6 +267,14 @@ export function renderProposta({ deal, spec, emitidaEm = new Date() }) {
     const meta = { numero: `PC-${deal.id}`, emissao: dataBR(emitidaEm), validade: dataBR(validade) };
     const ctx = { deal, spec, codes, meta, soma, total };
 
+    // Vencida não bloqueia: procurement abre proposta semanas depois, e uma
+    // página em branco só gera ligação. Avisa e segue mostrando.
+    const vencida = Date.now() > validade.getTime() + 86400000; // até o fim do dia da validade
+    const aviso = vencida
+        ? `<div class="vencida"><b>Esta proposta venceu em ${esc(meta.validade)}.</b> Os valores e condições
+           precisam ser reconfirmados — fale com seu contato na Branddi para receber uma versão atualizada.</div>`
+        : '';
+
     const corpo = CLAUSULAS.map(([titulo, fn], i) =>
         `<section><h2><span class="idx">${i + 1}</span> ${esc(titulo)}</h2>${fn(ctx)}</section>`).join('\n');
 
@@ -275,11 +283,21 @@ export function renderProposta({ deal, spec, emitidaEm = new Date() }) {
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Proposta ${esc(deal.organizacao)} — Branddi</title>
+<!-- Proposta com preço de cliente. O link é privado por ser imprevisível, mas
+     basta alguém colá-lo em qualquer lugar público pra virar resultado de
+     busca. noindex fecha esse caminho. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
 <style>${CSS}</style></head><body><div class="wrap"><article class="sheet">
 <header class="masthead">
   <div class="logo">Brand<span>di</span></div>
   <div class="ref"><b>${esc(meta.numero)}</b><br>Emissão ${esc(meta.emissao)} · Validade ${esc(meta.validade)}</div>
 </header>
+<div class="acoes">
+  <button type="button" onclick="window.print()">Baixar em PDF</button>
+  <span>Abre a janela de impressão — escolha "Salvar como PDF".</span>
+</div>
+${aviso}
 <div class="doctitle">
   <p class="kicker">Proposta técnica e comercial</p>
   <h1>${esc(titulo)}</h1>
@@ -360,6 +378,18 @@ blockquote cite{display:block;margin-top:.35rem;font-family:var(--mono);font-siz
 .foot{background:var(--petrol);padding:.8rem clamp(1rem,3.5vw,2.2rem);display:flex;justify-content:space-between;
 gap:.4rem 1rem;flex-wrap:wrap;font-family:var(--mono);font-size:.62rem;letter-spacing:.04em;color:var(--on-petrol-dim)}
 .foot b{color:var(--on-petrol);font-weight:600}
-@media print{body{background:#fff;font-size:10pt}.wrap{padding:0}
+.acoes{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;padding:.7rem clamp(1rem,3.5vw,2.2rem);
+background:var(--surface-2);border-bottom:1px solid var(--rule);font-size:.76rem;color:var(--dim)}
+.acoes button{font:600 .8rem var(--sans);background:var(--accent);color:#fff;border:0;border-radius:3px;
+padding:.45rem 1rem;cursor:pointer}
+@media (prefers-color-scheme:dark){.acoes button{color:#00212B}}
+.acoes button:hover{filter:brightness(1.08)}
+.acoes button:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.vencida{padding:.75rem clamp(1rem,3.5vw,2.2rem);background:#FEF3C7;color:#78350F;
+border-bottom:1px solid #FCD34D;font-size:.84rem}
+.vencida b{color:#78350F}
+@media (prefers-color-scheme:dark){.vencida{background:#3B2E0A;color:#FDE68A;border-bottom-color:#78350F}
+.vencida b{color:#FDE68A}}
+@media print{body{background:#fff;font-size:10pt}.wrap{padding:0}.acoes{display:none}
 .sheet{box-shadow:none;border:0;max-width:none}section,.tw{break-inside:avoid}}
 `;
