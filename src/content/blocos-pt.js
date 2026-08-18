@@ -50,6 +50,9 @@ export const BLOCOS_PT = {
     // ─────────────────────────────────────────────────────────────────
     BB: {
         titulo: 'Brand Bidding',
+        // Frase do problema que o produto resolve. Monta a cláusula "Objetivo do
+        // contrato" sem que o gerador precise redigir nada na hora.
+        objetivo: 'concorrentes e terceiros compram o nome da marca como palavra-chave e capturam tráfego que era da Contratante, no momento em que o consumidor já a estava procurando',
         temModalidade: true,
         prosa: {
             ambos: 'Monitoramento da marca nos buscadores para localizar quais marcas, entidades ou empresas — concorrentes ou não — utilizam o termo da Contratante como palavra de busca para anunciar seus próprios produtos e serviços. Ao identificarmos anunciantes nessa prática, <strong>a Branddi executa a assessoria jurídica</strong> que contempla a redação, o envio e o acompanhamento de notificações extrajudiciais, com o objetivo de desestimular o uso ilícito da marca e de reunir subsídios para eventual ação judicial.',
@@ -74,6 +77,7 @@ export const BLOCOS_PT = {
     // ─────────────────────────────────────────────────────────────────
     BBP: {
         titulo: 'Buy Box Protection',
+        objetivo: 'a loja oficial perde a posição de compra nos marketplaces para sellers não autorizados, o que desloca receita sem que haja qualquer infração de marca',
         temModalidade: false,
         // O modelo antigo intitulava esta lista "Formas de atuação", o que
         // sugeria que a Branddi atuava. Ela não atua: apoia, cruza e dá
@@ -98,6 +102,7 @@ export const BLOCOS_PT = {
     // ─────────────────────────────────────────────────────────────────
     GD: {
         titulo: 'Golpes Digitais',
+        objetivo: 'sites, domínios e perfis falsos se passam pela marca para aplicar golpes, o que lesa o consumidor e transfere o dano reputacional para a Contratante',
         temModalidade: true,
         prosa: {
             ambos: 'Detecção e neutralização de ameaças digitais que simulam ou clonam a identidade da marca para lesar a Contratante e seus consumidores — sites falsos, domínios semelhantes, perfis e anúncios fraudulentos. Com base nas ocorrências encontradas, <strong>a Branddi protocola denúncias</strong> junto às plataformas, registradores e provedores de hospedagem envolvidos, solicitando a remoção do conteúdo infrator ou o bloqueio do domínio.',
@@ -123,6 +128,7 @@ export const BLOCOS_PT = {
     // ─────────────────────────────────────────────────────────────────
     VM: {
         titulo: 'Violação de Propriedade Intelectual',
+        objetivo: 'terceiros usam o sinal distintivo da marca sem autorização para vender produtos e serviços, o que dilui a marca e confunde o consumidor',
         temModalidade: true,
         prosa: {
             ambos: 'Identificação do uso indevido das marcas registradas da Contratante nas principais plataformas de venda online. Com base nas ocorrências encontradas, <strong>a Branddi comunica as violações às plataformas</strong>, buscando a remoção das listagens infratoras ou a correção dos anúncios.',
