@@ -35,7 +35,13 @@ function getClient() {
     return _client;
 }
 
-async function authedFetch(url, opts = {}) {
+/**
+ * Exportado porque o spec-store usa a MESMA service account e os mesmos
+ * escopos pra falar com a API de Sheets — `drive` é escopo aceito por ela.
+ * Duplicar o JWT aqui daria duas credenciais pra manter e dois lugares pra
+ * errar quando a chave rodar.
+ */
+export async function authedFetch(url, opts = {}) {
     const client = getClient();
     const { token } = await client.getAccessToken();
     const res = await fetch(url, {

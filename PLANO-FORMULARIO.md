@@ -164,3 +164,32 @@ produto o mesmo padrão que preço, canais e quantidade já seguem.
 `proposal_generation_log` já existe. Acrescentar: e-mail de quem gerou, duração,
 e — quando o LLM entrar — tokens e custo. Das quatro automações de final de
 funil, nenhuma mede token hoje; não repetir isso aqui.
+
+---
+
+## 8. Onde o preenchido é gravado — planilha, não banco
+
+Decidido em 18/08/2026, depois de descobrir que **não existe Supabase na
+Branddi**: a dependência está no `package.json` de vários repos e engana, mas
+as variáveis nunca foram configuradas e o `.env.example` registra a escolha de
+07/08/2026 de rodar sem banco.
+
+O que existe e está pago é o Google Workspace. A service account
+`proposal-bot@automacoes-pipedrive` já tem escopo `drive`, que a API de Sheets
+aceita — então o destino é uma **planilha append-only no Drive**
+(`src/services/spec-store.js`), uma linha por envio:
+
+`registrado_em · deal_id · revisao · criado_por · doc_url · gerado_em · spec_json`
+
+Nunca se edita linha. As únicas células escritas depois são `doc_url` e
+`gerado_em`, que só existem quando a proposta é gerada — o `spec` em si é
+imutável.
+
+**O que isso custa:** planilha não tem transação. Dois envios simultâneos no
+mesmo negócio podem calcular a mesma revisão. Com 359 negócios chegando nessa
+etapa na vida inteira do funil, é aceitável. Se deixar de ser, `spec-store.js`
+troca de implementação sem mexer em quem chama.
+
+Setup: criar a planilha num Drive Compartilhado, dar Editor à service account,
+pôr o ID em `PROPOSAL_SPEC_SHEET_ID` e habilitar a Sheets API no projeto
+`automacoes-pipedrive`. A aba e o cabeçalho nascem sozinhos.

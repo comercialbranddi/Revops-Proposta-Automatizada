@@ -14,7 +14,7 @@ import {
     idiomaDoDeal,
 } from '../config/proposal.js';
 import { exigeLogin } from '../lib/auth-google.js';
-import supabase from '../services/supabase-client.js';
+import { ultimaSpec, salvarSpec } from '../services/spec-store.js';
 import { getContextLogger } from '../lib/logger.js';
 import { afterResponse } from '../lib/after-response.js';
 
@@ -90,8 +90,7 @@ router.get('/form/:dealId', exigeLogin, async (req, res) => {
         // Reabrir o formulário tem que trazer o que já foi preenchido, senão
         // uma revisão obriga a digitar tudo de novo — que é o defeito que
         // este projeto está corrigindo.
-        const { data: anterior } = await supabase
-            .from('proposal_spec_atual').select('*').eq('deal_id', dealId).maybeSingle();
+        const anterior = await ultimaSpec(dealId);
 
         res.json({
             deal: {
@@ -121,18 +120,8 @@ router.post('/form/:dealId', exigeLogin, async (req, res) => {
     if (!spec || typeof spec !== 'object') return res.status(400).json({ error: 'spec ausente' });
 
     try {
-        const { data: atual } = await supabase
-            .from('proposal_spec_atual').select('revisao').eq('deal_id', dealId).maybeSingle();
-        const revisao = (atual?.revisao || 0) + 1;
-
-        const { data, error } = await supabase
-            .from('proposal_spec')
-            .insert({ deal_id: dealId, revisao, criado_por: req.usuario, spec })
-            .select().single();
-        if (error) throw new Error(error.message);
-
-        log.info(`deal #${dealId}: spec revisão ${revisao} gravada por ${req.usuario}`);
-        res.json({ id: data.id, revisao });
+        const { revisao } = await salvarSpec(dealId, req.usuario, spec);
+        res.json({ revisao });
     } catch (err) {
         log.error(`form/${dealId} POST: ${err.message}`);
         res.status(500).json({ error: 'Não consegui salvar' });
