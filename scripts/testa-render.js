@@ -186,6 +186,36 @@ const CASOS = [
     },
 ];
 
+// Estes precisam de slug/substituida, que os demais não usam.
+const CASOS_VERSAO = [
+    {
+        nome: 'versão atual oferece aceite e não avisa nada',
+        args: { slug: 'atual1' },
+        checa: [naoContem('foi substituída'), contem('Aceitar proposta')],
+    },
+    {
+        nome: 'versão substituída avisa, aponta pra atual e não deixa aceitar',
+        args: { slug: 'velha1', substituida: { revisao: 4, slug: 'novoSlug' } },
+        checa: [contem('Esta versão foi substituída'), contem('/p/novoSlug'),
+            contem('revisão 4'), naoContem('Aceitar proposta')],
+    },
+    {
+        nome: 'substituída E vencida — o aviso da versão nova é o que importa',
+        args: { slug: 'velha2', substituida: { revisao: 2, slug: 'x' }, emitidaEm: new Date('2026-01-01') },
+        checa: [contem('foi substituída'), naoContem('venceu em')],
+    },
+    {
+        nome: 'já aceita continua mostrando quem aceitou',
+        args: { slug: 'a1', aceite: { quando: '2026-08-18T18:00:00Z', nome: 'Fulano', email: 'f@x.com', cargo: 'Diretor' } },
+        checa: [contem('Fulano'), contem('Diretor'), naoContem('Aceitar proposta')],
+    },
+    {
+        nome: 'preview sem link não oferece aceite a ninguém',
+        args: {},
+        checa: [naoContem('Aceitar proposta'), naoContem('Proposta aceita')],
+    },
+];
+
 const ERROS = [
     { nome: 'idioma sem catálogo é recusado', spec: spec(['BB'], { idioma: 'en' }), esperado: /inglês/ },
     { nome: 'spec sem produto é recusado', spec: spec([]), esperado: /sem produtos/ },
@@ -198,6 +228,15 @@ let ok = 0; const falhas = [];
 for (const caso of CASOS) {
     let html;
     try { html = renderProposta({ deal: DEAL, spec: caso.spec }); }
+    catch (e) { falhas.push([caso.nome, `estourou: ${e.message}`]); continue; }
+    const erros = caso.checa.map((f) => f(html)).filter((r) => r !== true);
+    if (erros.length) falhas.push([caso.nome, erros.join(' | ')]);
+    else { ok++; console.log(`✅ ${caso.nome}`); }
+}
+
+for (const caso of CASOS_VERSAO) {
+    let html;
+    try { html = renderProposta({ deal: DEAL, spec: spec(['BB']), ...caso.args }); }
     catch (e) { falhas.push([caso.nome, `estourou: ${e.message}`]); continue; }
     const erros = caso.checa.map((f) => f(html)).filter((r) => r !== true);
     if (erros.length) falhas.push([caso.nome, erros.join(' | ')]);

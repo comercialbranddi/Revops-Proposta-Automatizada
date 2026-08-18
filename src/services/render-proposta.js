@@ -250,7 +250,9 @@ function blocoAceite(ctx, vencida) {
       (${esc(ctx.aceite.email)}) em <strong>${esc(q)}</strong>.</p>
       <p class="fine">A Branddi foi notificada e entrará em contato para a implantação.</p></section>`;
     }
-    if (vencida) return '';
+    // Substituída não aceita: o cliente estaria concordando com um valor que a
+    // Branddi já revisou. Se ele quiser fechar, é pela versão atual.
+    if (vencida || ctx.substituida) return '';
     return `<section id="aceite"><h2><span class="idx">✓</span> Aceite</h2>
     <p class="fine">Ao confirmar, a Branddi é notificada e inicia a implantação em 3 dias úteis. Isto registra o
     aceite comercial desta proposta; o contrato é formalizado em seguida.</p>
@@ -302,7 +304,7 @@ const CLAUSULAS = [
  * @param {{deal:{id:number,organizacao:string,contato?:string}, spec:object, emitidaEm?:Date}} args
  * @returns {string} HTML completo
  */
-export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null, aceite = null }) {
+export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null, aceite = null, substituida = null }) {
     const codes = produtosOrdenados(spec);
     if (!codes.length) throw new Error('spec sem produtos — nada a renderizar');
     if (!deal?.organizacao) throw new Error('sem organização — o nome vai no corpo da proposta');
@@ -317,12 +319,19 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
     const soma = codes.reduce((t, c) => t + (Number(spec.porProduto[c]?.preco) || 0), 0);
     const total = Number(spec.pacote) > 0 ? Number(spec.pacote) : soma;
     const meta = { numero: `PC-${deal.id}`, emissao: dataBR(emitidaEm), validade: dataBR(validade) };
-    const ctx = { deal, spec, codes, meta, soma, total, slug, aceite };
+    const ctx = { deal, spec, codes, meta, soma, total, slug, aceite, substituida };
 
     // Vencida não bloqueia: procurement abre proposta semanas depois, e uma
     // página em branco só gera ligação. Avisa e segue mostrando.
     const vencida = Date.now() > validade.getTime() + 86400000; // até o fim do dia da validade
-    const aviso = vencida
+
+    // Substituída vem antes de vencida: se as duas valem, o que o cliente
+    // precisa é do endereço novo, não do aviso de prazo.
+    const aviso = substituida
+        ? `<div class="substituida"><b>Esta versão foi substituída.</b> Uma proposta mais recente
+           (revisão ${esc(substituida.revisao)}) foi emitida para esta negociação.
+           <a href="/p/${esc(substituida.slug)}">Abrir a versão atual</a>.</div>`
+        : vencida
         ? `<div class="vencida"><b>Esta proposta venceu em ${esc(meta.validade)}.</b> Os valores e condições
            precisam ser reconfirmados — fale com seu contato na Branddi para receber uma versão atualizada.</div>`
         : '';
@@ -438,6 +447,12 @@ padding:.45rem 1rem;cursor:pointer}
 @media (prefers-color-scheme:dark){.acoes button{color:#00212B}}
 .acoes button:hover{filter:brightness(1.08)}
 .acoes button:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.substituida{padding:.75rem clamp(1rem,3.5vw,2.2rem);background:#FEF3C7;color:#78350F;
+border-bottom:1px solid #FCD34D;font-size:.84rem}
+.substituida b{color:#78350F}
+.substituida a{color:#78350F;font-weight:700}
+@media (prefers-color-scheme:dark){.substituida{background:#3B2E0A;color:#FDE68A;border-bottom-color:#78350F}
+.substituida b,.substituida a{color:#FDE68A}}
 .vencida{padding:.75rem clamp(1rem,3.5vw,2.2rem);background:#FEF3C7;color:#78350F;
 border-bottom:1px solid #FCD34D;font-size:.84rem}
 .vencida b{color:#78350F}

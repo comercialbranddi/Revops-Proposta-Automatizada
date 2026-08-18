@@ -31,9 +31,9 @@ app.get('/proposta/:dealId', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'p
 // vizinho trocando um número.
 app.get('/p/:slug', async (req, res) => {
     try {
-        const { porSlug } = await import('./services/spec-store.js');
+        const { porSlugComVersao } = await import('./services/spec-store.js');
         const { renderProposta } = await import('./services/render-proposta.js');
-        const reg = await porSlug(req.params.slug);
+        const reg = await porSlugComVersao(req.params.slug);
         if (!reg) return res.status(404).type('text/plain; charset=utf-8')
             .send('Proposta não encontrada. Confira o link com quem enviou.');
         const { pdGet } = await import('./services/pipedrive.js');
@@ -45,6 +45,7 @@ app.get('/p/:slug', async (req, res) => {
             emitidaEm: new Date(reg.registrado_em),
             slug: reg.slug,
             aceite: await aceiteDe(reg.slug),
+            substituida: reg.substituida,
         });
         res.type('text/html; charset=utf-8').send(html);
 

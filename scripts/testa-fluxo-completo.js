@@ -14,7 +14,7 @@
  * Uso: node scripts/testa-fluxo-completo.js
  */
 import 'dotenv/config';
-import { salvarSpec, porSlug, registrarAceite, aceiteDe } from '../src/services/spec-store.js';
+import { salvarSpec, porSlug, porSlugComVersao, registrarAceite, aceiteDe } from '../src/services/spec-store.js';
 import { renderProposta } from '../src/services/render-proposta.js';
 import { closeProposalActivity } from '../src/services/proposal-activity.js';
 import { authedFetch } from '../src/services/google-docs-client.js';
@@ -83,6 +83,43 @@ const CASOS = [
         ],
     },
 ];
+
+/**
+ * Revisão nova tem que marcar a anterior como substituída — é o que impede o
+ * cliente de fechar no preço velho a partir do link que já está no e-mail dele.
+ */
+async function testaSubstituicao(dados) {
+    const problemas = [];
+    const base = {
+        marcas: ['Marca Versao'], idioma: 'pt', produtos: ['BB'], pacote: null, observacoes: '',
+        porProduto: { BB: prod({ canais: [1592], quantidade: 5, preco: 9900 }) },
+    };
+    const a = await salvarSpec(DEAL_ID, 'bateria@branddi.com', base);
+    criados.push(a.slug);
+
+    const antes = await porSlugComVersao(a.slug);
+    if (antes?.substituida) problemas.push('a proposta nasceu marcada como substituída');
+
+    const nova = JSON.parse(JSON.stringify(base));
+    nova.porProduto.BB.preco = 12900;
+    const b = await salvarSpec(DEAL_ID, 'bateria@branddi.com', nova);
+    criados.push(b.slug);
+
+    const depois = await porSlugComVersao(a.slug);
+    if (!depois?.substituida) problemas.push('a antiga NÃO foi marcada como substituída');
+    else if (depois.substituida.slug !== b.slug) problemas.push('a antiga aponta pro slug errado');
+
+    const atual = await porSlugComVersao(b.slug);
+    if (atual?.substituida) problemas.push('a mais nova se marcou como substituída');
+
+    // e o documento reflete isso
+    const htmlVelho = renderProposta({ deal: dados, spec: antes.spec, slug: a.slug, substituida: depois.substituida });
+    if (!htmlVelho.includes('foi substituída')) problemas.push('o documento antigo não avisa');
+    if (htmlVelho.includes('Aceitar proposta')) problemas.push('o documento antigo ainda deixa aceitar');
+    if (!htmlVelho.includes(`/p/${b.slug}`)) problemas.push('o documento antigo não aponta pra versão atual');
+
+    return problemas;
+}
 
 /**
  * O aceite, pelo caminho real: registra, confere a idempotência, posta a nota
@@ -229,6 +266,10 @@ try {
         if (problemas.length) { falhas.push([caso.nome, problemas.join(' | ')]); console.log(`❌ ${caso.nome}`); }
         else { ok++; console.log(`✅ ${caso.nome}`); }
     }
+
+    const pSub = await testaSubstituicao(dados).catch((e) => [`estourou: ${e.message}`]);
+    if (pSub.length) { falhas.push(['revisão nova marca a anterior como substituída', pSub.join(' | ')]); console.log('❌ substituição'); }
+    else { ok++; console.log('✅ revisão nova marca a anterior como substituída'); }
 
     const pAceite = await testaAceite(dados).catch((e) => [`estourou: ${e.message}`]);
     if (pAceite.length) { falhas.push(['aceite: registra, não duplica e avisa no card', pAceite.join(' | ')]); console.log('❌ aceite'); }

@@ -126,6 +126,32 @@ export async function porSlug(slug) {
 }
 
 /**
+ * A proposta do slug MAIS a informação de ter sido substituída.
+ *
+ * Uma revisão nova não invalida o link antigo: ele continua no e-mail que o
+ * cliente já recebeu. Sem avisar, o cliente lê o preço velho e pode aceitar
+ * um valor que a Branddi não pratica mais.
+ *
+ * Uma leitura da planilha só, em vez de porSlug + ultimaSpec: a página é a
+ * primeira coisa que o cliente vê e cada ida à API custa latência.
+ */
+export async function porSlugComVersao(slug) {
+    if (!slug) return null;
+    const linhas = (await lerTudo()).map(lerLinha);
+    const reg = linhas.find((r) => r.slug === slug);
+    if (!reg) return null;
+    const atual = linhas
+        .filter((r) => r.deal_id === reg.deal_id)
+        .reduce((a, b) => (b.revisao > a.revisao ? b : a), reg);
+    // Só conta como substituta a revisão que tem endereço próprio — sem slug
+    // não há pra onde mandar o cliente.
+    const substituida = atual.revisao > reg.revisao && atual.slug
+        ? { revisao: atual.revisao, slug: atual.slug }
+        : null;
+    return { ...reg, substituida };
+}
+
+/**
  * Carimba o documento na revisão indicada. Escreve SÓ doc_url e gerado_em —
  * as duas colunas que não existiam na hora do envio.
  */
