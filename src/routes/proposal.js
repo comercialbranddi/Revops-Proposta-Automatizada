@@ -72,6 +72,22 @@ router.post('/webhook/deal', (req, res) => {
         const deal = (await pdGet(`/deals/${dealId}`))?.data;
         if (!deal) return log.warn(`deal #${dealId} não encontrado`);
 
+        // Proposta já gerada? Então não há tarefa a pedir.
+        //
+        // Isto fecha um CICLO real, visto em produção em 18/08/2026: gerar a
+        // proposta grava o link no card, gravar dispara este webhook, e o card
+        // seguia na etapa sem atividade aberta (as abertas acabavam de ser
+        // fechadas pela própria geração) — então nascia outra, quatro segundos
+        // depois, pedindo pra fazer o que tinha acabado de ser feito.
+        //
+        // Pra gerar de novo, é só limpar "Link Proposta": o card volta a pedir
+        // atividade no próximo update.
+        const link = String(deal[PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA] || '');
+        if (/^https?:\/\//.test(link)) {
+            log.info(`deal #${dealId}: proposta já gerada (${link}) — sem atividade`);
+            return;
+        }
+
         await ensureProposalActivity(dealId, deal);
     });
 });
