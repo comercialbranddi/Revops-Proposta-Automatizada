@@ -12,6 +12,7 @@ import {
     PROPOSAL_DEAL_FIELDS,
     parseServicoOferecido,
     idiomaDoDeal,
+    catalogoDoFormulario,
 } from '../config/proposal.js';
 import { exigeLogin } from '../lib/auth-google.js';
 import { ultimaSpec, salvarSpec } from '../services/spec-store.js';
@@ -69,6 +70,18 @@ router.post('/webhook/deal', (req, res) => {
         if (!deal) return log.warn(`deal #${dealId} não encontrado`);
 
         await ensureProposalActivity(dealId, deal);
+    });
+});
+
+// Catálogo da tela (produtos, canais, modalidades) + o client id do login.
+// SEM auth de propósito: o client id do OAuth é público por natureza, e a
+// página precisa dele ANTES de conseguir autenticar — exigir login aqui seria
+// pedir a chave pra quem ainda não tem como entrar.
+router.get('/config', (req, res) => {
+    res.json({
+        clientId: process.env.GOOGLE_OAUTH_CLIENT_ID || null,
+        dominio: process.env.PROPOSAL_FORM_DOMAIN || 'branddi.com',
+        catalogo: catalogoDoFormulario('pt'),
     });
 });
 

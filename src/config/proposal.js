@@ -731,3 +731,48 @@ export const ATIVIDADE_PROPOSTA_PRAZO_DIAS = 1;
 // propósito: dá pra ligar a atividade (que só cria tarefa, não manda nada pro
 // cliente) muito antes de ligar a geração do documento.
 export const PROPOSAL_ACTIVITY_ENABLED = process.env.PROPOSAL_ACTIVITY_ENABLED === 'true';
+
+// ─── Catálogos que o formulário precisa ─────────────────────────────
+// Front e back leem daqui pra não divergir: opção que existe na tela e não
+// no Pipedrive vira proposta com canal inventado.
+
+/** Opções de canal de cada produto — os ids são os do campo real no Pipedrive. */
+export const CANAIS_POR_PRODUTO = {
+    BB:  [1592, 1593, 1594, 1595, 1609],
+    BBP: [1596, 1597, 1598],
+    GD:  [1599, 1600, 1601, 1602],
+    VM:  [1604, 1605, 1606, 1607],
+};
+
+/** As três modalidades. A primeira é o que TODOS os 45 modelos descrevem. */
+export const MODALIDADES = ['Monitoria + Atuação', 'Monitoria', 'Atuação'];
+export const MODALIDADE_PADRAO = MODALIDADES[0];
+
+// A quantidade que cada bloco cita no documento. GD não tem — o texto dele
+// não cita número nenhum, lista as plataformas monitoradas.
+export const QUANTIDADE_POR_PRODUTO = {
+    BB:  { rotulo: 'Palavras-chave', unidade: 'palavras' },
+    BBP: { rotulo: 'Catálogo', unidade: 'SKUs' },
+    GD:  null,
+    VM:  { rotulo: 'Plataformas', unidade: 'marketplaces simultâneos' },
+};
+
+// Quantas faixas de preço cada produto aceita, contando a primeira (que é a
+// quantidade + preço principais). Bate com FAIXAS_BB_FIELDS/FAIXAS_BBP_FIELDS.
+export const MAX_FAIXAS = { BB: 3, BBP: 4 };
+
+/** Catálogo pronto pro front, já no idioma pedido. */
+export function catalogoDoFormulario(idioma = IDIOMA_PADRAO) {
+    const rotulo = (id) => CANAIS_LABEL_POR_IDIOMA[idioma]?.[id] || CANAIS_OPTION_TO_LABEL[id];
+    return {
+        produtos: PRODUCT_CASCADE_ORDER.map((code) => ({ code, label: PRODUCTS[code].label })),
+        canais: Object.fromEntries(Object.entries(CANAIS_POR_PRODUTO)
+            .map(([code, ids]) => [code, ids.map((id) => ({ id, label: rotulo(id) }))])),
+        modalidades: MODALIDADES,
+        modalidadePadrao: MODALIDADE_PADRAO,
+        quantidades: QUANTIDADE_POR_PRODUTO,
+        maxFaixas: MAX_FAIXAS,
+        idiomas: Object.entries(IDIOMA_LABEL).map(([code, label]) => ({ code, label })),
+        canalAppStore: CANAL_BB_APP_STORE_ID,
+    };
+}
