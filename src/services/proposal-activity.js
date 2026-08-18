@@ -140,20 +140,35 @@ export async function ensureProposalActivity(dealId, deal) {
 }
 
 /**
- * Fecha as atividades de proposta abertas do negócio. Chamado depois que a
- * proposta é gerada com sucesso.
+ * Fecha a atividade de proposta MAIS RECENTE do negócio, e só ela. Chamado
+ * depois que a proposta é gerada com sucesso.
+ *
+ * Só a mais recente por decisão da Jessica em 18/08/2026, depois de ver a
+ * primeira geração fechar treze de uma vez no deal 57030. Ali era limpeza
+ * útil — as treze vinham da automação nativa duplicando nos testes — mas num
+ * card real uma atividade aberta pode estar ali por outro motivo, e fechar em
+ * lote decide pelo dono do card.
+ *
+ * As antigas ficam abertas de propósito: elas são sintoma da automação nativa
+ * que duplica, e esconder o sintoma não resolve a causa.
  *
  * Falha aqui NÃO derruba a geração: a proposta já existe e o link já está no
  * card. O pior caso é uma atividade que alguém fecha na mão.
  */
 export async function closeProposalActivity(dealId) {
     try {
-        const abertas = await abertasDoDeal(dealId);
-        for (const a of abertas) {
-            await pdPut(`/activities/${a.id}`, { done: true });
-            log.info(`deal #${dealId}: atividade #${a.id} fechada`);
+        // abertasDoDeal já devolve da mais recente pra mais antiga.
+        const [maisRecente, ...antigas] = await abertasDoDeal(dealId);
+        if (!maisRecente) {
+            log.info(`deal #${dealId}: nenhuma atividade de proposta aberta pra fechar`);
+            return 0;
         }
-        return abertas.length;
+        await pdPut(`/activities/${maisRecente.id}`, { done: true });
+        log.info(`deal #${dealId}: atividade #${maisRecente.id} fechada`);
+        if (antigas.length) {
+            log.info(`deal #${dealId}: ${antigas.length} atividade(s) de proposta mais antiga(s) seguem abertas (#${antigas.map((a) => a.id).join(', #')})`);
+        }
+        return 1;
     } catch (err) {
         log.warn(`deal #${dealId}: não consegui fechar a atividade de proposta — ${err.message}`);
         return 0;
