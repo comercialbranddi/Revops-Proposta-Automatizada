@@ -779,6 +779,16 @@ export const QUANTIDADE_POR_PRODUTO = {
 // quantidade + preço principais). Bate com FAIXAS_BB_FIELDS/FAIXAS_BBP_FIELDS.
 export const MAX_FAIXAS = { BB: 3, BBP: 4 };
 
+// Idiomas com catálogo de blocos ESCRITO. Os 45 Google Docs antigos tinham
+// en e es traduzidos; o catálogo novo (content/blocos-pt.js) só tem português.
+// Oferecer os três no formulário faria alguém pedir inglês e receber
+// português calado — que é exatamente o defeito corrigido em 11/08/2026,
+// quando o campo "Idioma da proposta" passou a ser lido de verdade.
+//
+// Acrescentar um idioma aqui exige o arquivo de blocos correspondente e o
+// registro dele no renderizador. Não basta traduzir a lista.
+export const IDIOMAS_COM_BLOCOS = ['pt'];
+
 /** Catálogo pronto pro front, já no idioma pedido. */
 export function catalogoDoFormulario(idioma = IDIOMA_PADRAO) {
     const rotulo = (id) => CANAIS_LABEL_POR_IDIOMA[idioma]?.[id] || CANAIS_OPTION_TO_LABEL[id];
@@ -790,7 +800,12 @@ export function catalogoDoFormulario(idioma = IDIOMA_PADRAO) {
         modalidadePadrao: MODALIDADE_PADRAO,
         quantidades: QUANTIDADE_POR_PRODUTO,
         maxFaixas: MAX_FAIXAS,
-        idiomas: Object.entries(IDIOMA_LABEL).map(([code, label]) => ({ code, label })),
+        // `disponivel: false` chega na tela como opção desabilitada, em vez de
+        // sumir: o closer precisa ver que o idioma existe e ainda não está
+        // pronto, senão pergunta por que a opção desapareceu.
+        idiomas: Object.entries(IDIOMA_LABEL).map(([code, label]) => ({
+            code, label, disponivel: IDIOMAS_COM_BLOCOS.includes(code),
+        })),
         canalAppStore: CANAL_BB_APP_STORE_ID,
     };
 }

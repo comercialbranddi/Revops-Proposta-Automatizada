@@ -20,7 +20,7 @@
 import {
     BLOCOS_PT, SLA_GERAL, linhasDaModalidade, prosaDoBloco, contratoTemAtuacao,
 } from '../content/blocos-pt.js';
-import { CANAIS_OPTION_TO_LABEL, PRODUCT_CASCADE_ORDER } from '../config/proposal.js';
+import { CANAIS_OPTION_TO_LABEL, PRODUCT_CASCADE_ORDER, IDIOMAS_COM_BLOCOS, IDIOMA_LABEL } from '../config/proposal.js';
 
 const TZ = 'America/Sao_Paulo';
 const VALIDADE_DIAS = 15;
@@ -248,6 +248,12 @@ export function renderProposta({ deal, spec, emitidaEm = new Date() }) {
     const codes = produtosOrdenados(spec);
     if (!codes.length) throw new Error('spec sem produtos — nada a renderizar');
     if (!deal?.organizacao) throw new Error('sem organização — o nome vai no corpo da proposta');
+    // Barrar aqui, e não só na tela: bloquear no formulário é interface, não
+    // garantia. Um POST direto com idioma:'en' sairia em português calado.
+    const idioma = spec.idioma || 'pt';
+    if (!IDIOMAS_COM_BLOCOS.includes(idioma)) {
+        throw new Error(`ainda não existe modelo em ${IDIOMA_LABEL[idioma] || idioma} — a proposta só sai em português por enquanto`);
+    }
 
     const validade = new Date(emitidaEm.getTime() + VALIDADE_DIAS * 86400000);
     const soma = codes.reduce((t, c) => t + (Number(spec.porProduto[c]?.preco) || 0), 0);

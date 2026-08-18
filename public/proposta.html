@@ -174,7 +174,8 @@ function aplicarSeed() {
     // Reabertura: retoma a revisão anterior. Sem isso, corrigir um preço
     // obrigaria a digitar a proposta inteira de novo.
     estado.marcas = (a.marcas || []).join('\n');
-    estado.idioma = a.idioma || 'pt';
+    const disp = CFG.catalogo.idiomas.filter(i => i.disponivel).map(i => i.code);
+    estado.idioma = disp.includes(a.idioma) ? a.idioma : 'pt';
     estado.pacote = a.pacote == null ? '' : a.pacote;
     estado.observacoes = a.observacoes || '';
     (a.produtos || []).forEach(c => estado.produtos.add(c));
@@ -186,7 +187,8 @@ function aplicarSeed() {
   // Primeira vez: só o que o card sabe. Marca vem da organização porque é o
   // caso comum (cliente com uma marca só); quem tem mais acrescenta.
   estado.marcas = SEED.deal.organizacao || '';
-  estado.idioma = SEED.sugestao.idioma || 'pt';
+  const disponiveis = CFG.catalogo.idiomas.filter(i => i.disponivel).map(i => i.code);
+  estado.idioma = disponiveis.includes(SEED.sugestao.idioma) ? SEED.sugestao.idioma : 'pt';
   (SEED.sugestao.produtos || []).forEach(c => { estado.produtos.add(c); estado.porProduto[c] = vazio(c); });
 }
 
@@ -218,9 +220,19 @@ function cardEscopo() {
     el('span', { className: 'hint' }, 'Vão no texto da proposta. Veio o nome da organização, mas o cliente pode ter mais de uma marca.')));
 
   const sel = el('select');
-  CFG.catalogo.idiomas.forEach(i => sel.append(el('option', { value: i.code, textContent: i.label, selected: i.code === estado.idioma })));
+  const indisponiveis = [];
+  CFG.catalogo.idiomas.forEach(i => {
+    if (!i.disponivel) indisponiveis.push(i.label);
+    sel.append(el('option', {
+      value: i.code, disabled: !i.disponivel,
+      textContent: i.label + (i.disponivel ? '' : ' — em preparação'),
+      selected: i.code === estado.idioma && i.disponivel,
+    }));
+  });
   sel.onchange = () => { estado.idioma = sel.value; };
-  b.append(el('label', { className: 'f' }, 'Idioma da proposta', sel));
+  b.append(el('label', { className: 'f' }, 'Idioma da proposta', sel,
+    indisponiveis.length ? el('span', { className: 'hint' },
+      indisponiveis.join(' e ') + ' ainda não tem o texto dos blocos escrito. Enquanto isso, a proposta sai em português — monte à mão se o cliente precisar em outro idioma.') : null));
 
   const chips = el('div', { className: 'chips' });
   CFG.catalogo.produtos.forEach(p => {
