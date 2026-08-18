@@ -458,7 +458,13 @@ border-bottom:1px solid #FCD34D;font-size:.84rem}
 .vencida b{color:#78350F}
 @media (prefers-color-scheme:dark){.vencida{background:#3B2E0A;color:#FDE68A;border-bottom-color:#78350F}
 .vencida b{color:#FDE68A}}
-.aceite-form{display:flex;flex-direction:column;gap:.6rem;max-width:26rem;border:1px solid var(--accent);
+/* O aceite é o fecho do documento, não mais uma cláusula: centralizado, ele
+   lê como painel de ação em vez de tabela que sobrou no rodapé. */
+#aceite{align-items:center;text-align:center}
+#aceite h2{align-self:stretch}
+#aceite .fine{max-width:46ch;margin-inline:auto}
+.aceite-form{display:flex;flex-direction:column;gap:.6rem;width:100%;max-width:26rem;
+margin-inline:auto;text-align:left;border:1px solid var(--accent);
 padding:1rem;border-radius:3px;background:var(--surface-2)}
 .aceite-form label{display:flex;flex-direction:column;gap:.25rem;font-family:var(--mono);font-size:.62rem;
 letter-spacing:.11em;text-transform:uppercase;color:var(--dim);font-weight:700}
