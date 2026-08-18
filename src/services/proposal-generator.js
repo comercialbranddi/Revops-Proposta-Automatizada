@@ -35,6 +35,7 @@ import {
     faixasBBDoDeal, linhaFaixaDoIdioma,
     faixasBBPDoDeal, rotuloFaixaBBPDoIdioma, prefixoCatalogoBBPDoIdioma,
 } from '../config/proposal.js';
+import { closeProposalActivity } from './proposal-activity.js';
 import { getContextLogger } from '../lib/logger.js';
 import supabase from './supabase-client.js';
 
@@ -679,6 +680,12 @@ export async function generateProposalForDeal(dealId, { notifyOnEntry = false } 
 
         log.info(`✅ Proposta gerada pro deal #${dealId} (${templateKey}, ${idioma}): ${docUrl}`);
         await logAttempt(dealId, 'success', { template_used: templateKey, idioma, doc_url: docUrl });
+
+        // A atividade "Gerar proposta pelo formulário" cumpriu o que pedia —
+        // deixá-la aberta a transformaria em atividade vencida, que é um
+        // problema que o funil de Vendas já tem. Não derruba a geração se
+        // falhar: a proposta existe e o link já está no card.
+        await closeProposalActivity(dealId);
     } catch (err) {
         log.error(`deal #${dealId} falhou: ${err.message}`);
         // Sem isso a sentinela ficaria no card até a janela de abandono vencer —

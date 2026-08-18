@@ -688,3 +688,46 @@ export function isProposalAutomationEnabledForDeal(dealId) {
     if (!PROPOSAL_TEST_ONLY) return true;
     return PROPOSAL_TEST_DEAL_ID != null && Number(dealId) === PROPOSAL_TEST_DEAL_ID;
 }
+
+// ─── Formulário de proposta ─────────────────────────────────────────
+// Decisão da Jessica em 18/08/2026: a proposta deixa de ser gerada sozinha a
+// partir dos campos do card. Quando o negócio entra em "Envio de proposta", o
+// DONO DO NEGÓCIO recebe uma atividade com o link do formulário, e é lá que
+// todos os dados da proposta são preenchidos.
+//
+// O motivo é medido, não opinião. Dos 359 negócios que chegaram nesta etapa ou
+// passaram dela, "Serviço oferecido" está preenchido em 269 — e todo o resto
+// aparece em menos de 10: idioma 7, palavras-chave BB 7, canais BB 5,
+// plataformas VM 3, catálogo BBP 2, algum preço 9. Parte disso é idade (os
+// campos nasceram em agosto/2026 e a automação nunca saiu do piloto), mas o
+// efeito prático é o mesmo: não há o que pré-preencher. Construir sincronia
+// pra puxar campo vazio seria trabalho jogado fora.
+//
+// Do card seguem sendo lidas só QUATRO coisas, e nenhuma delas é "campo da
+// proposta": organização, contato e dono (identidade — errar o nome do cliente
+// é o erro caro, e vem de graça do deal id) e "Serviço oferecido", que é o
+// único com preenchimento real e serve pra já abrir o formulário com os
+// produtos marcados. O resto é digitado.
+//
+// De volta pro card vão duas: "Link Proposta" e o valor.
+export const PROPOSAL_FORM_BASE_URL = (process.env.PROPOSAL_FORM_BASE_URL
+    || 'https://revops-proposta-automatizada.vercel.app').replace(/\/+$/, '');
+
+/** URL do formulário desse negócio. */
+export function formUrlDoDeal(dealId) {
+    return `${PROPOSAL_FORM_BASE_URL}/proposta/${dealId}`;
+}
+
+// Tipo da atividade — "Enviar proposta comercial" (id 24) já existe e é
+// exatamente isto. Não criar tipo novo: o funil já tem 56, metade inativos.
+export const ATIVIDADE_PROPOSTA_TYPE = 'enviar_proposta_comercial';
+export const ATIVIDADE_PROPOSTA_ASSUNTO = 'Gerar proposta pelo formulário';
+
+// Prazo da atividade, em dias úteis a partir da entrada na etapa. Curto de
+// propósito: proposta parada é o que a etapa mede.
+export const ATIVIDADE_PROPOSTA_PRAZO_DIAS = 1;
+
+// Liga a criação da atividade. Separado de PROPOSAL_AUTOMATION_ENABLED de
+// propósito: dá pra ligar a atividade (que só cria tarefa, não manda nada pro
+// cliente) muito antes de ligar a geração do documento.
+export const PROPOSAL_ACTIVITY_ENABLED = process.env.PROPOSAL_ACTIVITY_ENABLED === 'true';
