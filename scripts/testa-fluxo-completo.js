@@ -14,11 +14,11 @@
  * Uso: node scripts/testa-fluxo-completo.js
  */
 import 'dotenv/config';
-import { salvarSpec, porSlug } from '../src/services/spec-store.js';
+import { salvarSpec, porSlug, registrarAceite, aceiteDe } from '../src/services/spec-store.js';
 import { renderProposta } from '../src/services/render-proposta.js';
 import { closeProposalActivity } from '../src/services/proposal-activity.js';
 import { authedFetch } from '../src/services/google-docs-client.js';
-import { pdGet, pdPut } from '../src/services/pipedrive.js';
+import { pdGet, pdPut, pdPost } from '../src/services/pipedrive.js';
 import { PROPOSAL_DEAL_FIELDS, PROPOSAL_FORM_BASE_URL } from '../src/config/proposal.js';
 
 // Trava no card de teste. Sem isto um erro de digitação sobrescreve o
@@ -84,7 +84,57 @@ const CASOS = [
     },
 ];
 
+/**
+ * O aceite, pelo caminho real: registra, confere a idempotência, posta a nota
+ * no card e confere que a página passa a mostrar quem aceitou.
+ *
+ * Roda depois dos casos de geração porque precisa de uma proposta com slug.
+ */
+async function testaAceite(dados) {
+    const problemas = [];
+    const spec = {
+        marcas: ['Marca Aceite'], idioma: 'pt', produtos: ['BB'], pacote: null, observacoes: '',
+        porProduto: { BB: prod({ canais: [1592], quantidade: 5, preco: 11900 }) },
+    };
+    const { slug } = await salvarSpec(DEAL_ID, 'bateria@branddi.com', spec);
+    criados.push(slug);
+
+    // 1. antes de aceitar, a página oferece o aceite
+    const antes = renderProposta({ deal: dados, spec, slug, aceite: null });
+    if (!antes.includes('Aceitar proposta')) problemas.push('a página não ofereceu o aceite');
+
+    // 2. registra
+    const r1 = await registrarAceite(slug, DEAL_ID, { nome: 'Cliente Bateria', email: 'cliente@bateria.test', cargo: 'Diretor', valor: 11900 });
+    if (!r1.novo) problemas.push('o primeiro aceite não veio como novo');
+
+    // 3. idempotência — a página é pública, duplo clique não pode duplicar
+    const r2 = await registrarAceite(slug, DEAL_ID, { nome: 'Outra Pessoa', email: 'outra@bateria.test', valor: 11900 });
+    if (r2.novo) problemas.push('aceitou duas vezes o mesmo link');
+    if (r2.aceite?.nome !== 'Cliente Bateria') problemas.push('o segundo aceite sobrescreveu quem aceitou primeiro');
+
+    // 4. volta da planilha
+    const lido = await aceiteDe(slug);
+    if (!lido) problemas.push('aceiteDe não achou o que acabou de gravar');
+    else if (lido.email !== 'cliente@bateria.test') problemas.push('e-mail voltou diferente');
+
+    // 5. a página muda
+    const depois = renderProposta({ deal: dados, spec, slug, aceite: lido });
+    if (!depois.includes('Cliente Bateria')) problemas.push('a página não mostra quem aceitou');
+    if (depois.includes('Aceitar proposta')) problemas.push('a página ainda oferece aceitar de novo');
+
+    // 6. proposta vencida não oferece aceite
+    const velha = renderProposta({ deal: dados, spec, slug, emitidaEm: new Date('2026-01-01') });
+    if (velha.includes('Aceitar proposta')) problemas.push('proposta vencida ofereceu aceite');
+
+    // 7. o aviso no card
+    const nota = await pdPost('/notes', { deal_id: DEAL_ID, content: `<p><b>✅ PROPOSTA ACEITA PELO CLIENTE</b> (bateria ${slug})</p>` });
+    if (nota?.data?.id) notas.push(nota.data.id); else problemas.push('não consegui postar o aviso no card');
+
+    return problemas;
+}
+
 const criados = [];
+const notas = [];
 let linkOriginal = null;
 let ok = 0; const falhas = [];
 
@@ -96,6 +146,16 @@ async function limpar() {
             console.log(`  "Link Proposta" restaurado para ${linkOriginal || '(vazio)'}`);
         } catch (e) { console.log(`  ⚠️ não consegui restaurar o link: ${e.message}`); }
     }
+    // DELETE direto: o cliente do projeto não tem pdDelete, e esvaziar a nota
+    // antes só rende um 400 barulhento ("Note needs to have a content").
+    for (const id of notas) {
+        try {
+            const r = await fetch(`https://api.pipedrive.com/v1/notes/${id}?api_token=${process.env.PIPEDRIVE_API_TOKEN}`, { method: 'DELETE' });
+            if (!r.ok) console.log(`  ⚠️ nota #${id} ficou no card (HTTP ${r.status})`);
+        } catch (e) { console.log(`  ⚠️ nota #${id} ficou no card: ${e.message}`); }
+    }
+    if (notas.length) console.log(`  ${notas.length} nota(s) de teste removida(s) do card`);
+
     if (!criados.length) return;
     try {
         const meta = await (await authedFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET}?fields=sheets.properties`)).json();
@@ -110,7 +170,21 @@ async function limpar() {
                 body: JSON.stringify({ requests: alvos.map((i) => ({ deleteDimension: { range: { sheetId: abaId, dimension: 'ROWS', startIndex: i, endIndex: i + 1 } } })) }),
             });
         }
-        console.log(`  ${alvos.length} linha(s) de teste removida(s) da planilha`);
+        console.log(`  ${alvos.length} linha(s) removida(s) de "specs"`);
+
+        // A aba de aceites guarda o slug na coluna B, não na H.
+        const abaAceites = meta.sheets.find((s) => s.properties.title === 'aceites');
+        if (abaAceites) {
+            const va = await (await authedFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET}/values/aceites!A1:G500`)).json();
+            const ra = (va.values || []).map((r, i) => (criados.includes(r[1]) ? i : -1)).filter((i) => i >= 0).sort((a, b) => b - a);
+            if (ra.length) {
+                await authedFetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET}:batchUpdate`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requests: ra.map((i) => ({ deleteDimension: { range: { sheetId: abaAceites.properties.sheetId, dimension: 'ROWS', startIndex: i, endIndex: i + 1 } } })) }),
+                });
+            }
+            console.log(`  ${ra.length} linha(s) removida(s) de "aceites"`);
+        }
     } catch (e) { console.log(`  ⚠️ não consegui limpar a planilha: ${e.message}`); }
 }
 
@@ -155,6 +229,10 @@ try {
         if (problemas.length) { falhas.push([caso.nome, problemas.join(' | ')]); console.log(`❌ ${caso.nome}`); }
         else { ok++; console.log(`✅ ${caso.nome}`); }
     }
+
+    const pAceite = await testaAceite(dados).catch((e) => [`estourou: ${e.message}`]);
+    if (pAceite.length) { falhas.push(['aceite: registra, não duplica e avisa no card', pAceite.join(' | ')]); console.log('❌ aceite'); }
+    else { ok++; console.log('✅ aceite: registra, não duplica e avisa no card'); }
 } finally {
     await limpar();
 }
