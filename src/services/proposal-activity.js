@@ -61,19 +61,60 @@ export function vencimento(diasUteis = ATIVIDADE_PROPOSTA_PRAZO_DIAS, hoje = new
  * mais criar atividade num card onde alguém apagou a anterior.
  */
 async function abertasDoDeal(dealId) {
-    const r = await pdGet(`/activities?deal_id=${dealId}&done=0&limit=100`);
-    return (r?.data || []).filter((a) => a.active_flag !== false && a.type === ATIVIDADE_PROPOSTA_TYPE);
+    // `type` na QUERY, não só no filtro em memória: um card de uso pesado passa
+    // de 100 atividades abertas e o limite da página corta — no 60956 a
+    // atividade criada minutos antes ficou de fora da resposta, e o link foi
+    // parar numa de cinco semanas atrás. Filtrando na origem, voltam 10.
+    const r = await pdGet(`/activities?deal_id=${dealId}&done=0&type=${ATIVIDADE_PROPOSTA_TYPE}&limit=100`);
+    return (r?.data || [])
+        .filter((a) => a.active_flag !== false && a.type === ATIVIDADE_PROPOSTA_TYPE)
+        // Mais RECENTE primeiro. A ordem que a API devolve não é a de criação, e
+        // um card pode ter mais de uma atividade de proposta aberta — o 60956
+        // tinha duas, uma de 13/07 e a de hoje. Sem ordenar, o link ia parar na
+        // de cinco semanas atrás, que ninguém mais abre.
+        .sort((a, b) => String(b.add_time || '').localeCompare(String(a.add_time || '')));
+}
+
+/** O trecho de nota que leva o closer ao formulário. */
+function blocoLink(dealId) {
+    const url = formUrlDoDeal(dealId);
+    return [
+        `<p>Monte a proposta pelo formulário:</p>`,
+        `<p><a href="${url}">${url}</a></p>`,
+    ].join('');
 }
 
 /**
- * Garante UMA atividade aberta de proposta no negócio, para o dono dele.
- * Devolve { criada, activityId } — `criada: false` quando já existia.
+ * Garante que o negócio tenha UMA atividade de proposta aberta, com o link do
+ * formulário, no nome do dono.
+ *
+ * A ordem importa: o funil JÁ TEM uma automação nativa do Pipedrive que cria
+ * "Enviar Proposta Comercial" na entrada da etapa (confirmado em 18/08/2026 no
+ * card 60956 — `reference_type: automation`, nota vazia). Criar outra deixaria
+ * duas tarefas no card pro mesmo trabalho.
+ *
+ * Então o caminho normal é ENRIQUECER a que existe: ela já traz o hábito do
+ * time e o dono certo; o que falta nela é o link. Criar do zero virou o
+ * fallback, pra quando a automação nativa não tiver rodado.
+ *
+ * Devolve { acao, activityId } — 'criada' | 'link_incluido' | 'ja_tinha_link'.
  */
 export async function ensureProposalActivity(dealId, deal) {
     const jaAbertas = await abertasDoDeal(dealId);
     if (jaAbertas.length) {
-        log.info(`deal #${dealId}: já tem atividade de proposta aberta (#${jaAbertas[0].id}) — não duplica`);
-        return { criada: false, activityId: jaAbertas[0].id };
+        const alvo = jaAbertas[0];
+        const url = formUrlDoDeal(dealId);
+        // Idempotente: o webhook dispara a cada edição do card (15 vezes em 2
+        // segundos no teste real), então sem esta checagem a nota ganharia o
+        // mesmo link uma dúzia de vezes.
+        if (String(alvo.note || '').includes(url)) {
+            log.info(`deal #${dealId}: atividade #${alvo.id} já tem o link — nada a fazer`);
+            return { acao: 'ja_tinha_link', activityId: alvo.id };
+        }
+        const notaAtual = String(alvo.note || '').trim();
+        await pdPut(`/activities/${alvo.id}`, { note: notaAtual ? `${notaAtual}${blocoLink(dealId)}` : blocoLink(dealId) });
+        log.info(`deal #${dealId}: link do formulário incluído na atividade #${alvo.id}`);
+        return { acao: 'link_incluido', activityId: alvo.id };
     }
 
     const ownerId = donoDoDeal(deal);
@@ -81,7 +122,7 @@ export async function ensureProposalActivity(dealId, deal) {
     // responsável por gerar a proposta de um card que não é dele.
     if (!ownerId) {
         log.warn(`deal #${dealId}: sem dono definido — atividade NÃO criada`);
-        return { criada: false, activityId: null, erro: 'sem_dono' };
+        return { acao: 'sem_dono', activityId: null };
     }
 
     const criada = await pdPost('/activities', {
@@ -90,16 +131,12 @@ export async function ensureProposalActivity(dealId, deal) {
         deal_id: Number(dealId),
         user_id: ownerId,
         due_date: vencimento(),
-        note: [
-            `<p>Abra o formulário para montar a proposta deste negócio:</p>`,
-            `<p><a href="${formUrlDoDeal(dealId)}">${formUrlDoDeal(dealId)}</a></p>`,
-            `<p>A atividade se fecha sozinha quando a proposta for gerada.</p>`,
-        ].join(''),
+        note: blocoLink(dealId),
     });
 
     const activityId = criada?.data?.id ?? null;
     log.info(`deal #${dealId}: atividade de proposta #${activityId} criada para o usuário ${ownerId}`);
-    return { criada: true, activityId };
+    return { acao: 'criada', activityId };
 }
 
 /**
