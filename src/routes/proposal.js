@@ -15,6 +15,7 @@ import {
     IDIOMAS_COM_BLOCOS,
 } from '../config/proposal.js';
 import { condicoesPadrao } from '../content/textos.js';
+import { logo } from '../content/logo.js';
 import { exigeLogin } from '../lib/auth-google.js';
 import { ultimaSpec, salvarSpec, porSlug, marcarGerada, aberturasDoDeal, registrarAceite, aceiteDe } from '../services/spec-store.js';
 import { renderProposta } from '../services/render-proposta.js';
@@ -84,6 +85,9 @@ router.post('/webhook/deal', (req, res) => {
 router.get('/config', (req, res) => {
     res.json({
         clientId: process.env.GOOGLE_OAUTH_CLIENT_ID || null,
+        // O logo vem daqui pra existir num lugar só: a proposta e o formulário
+        // usavam texto imitando a marca, cada um com o seu.
+        logo: logo(22),
         dominio: process.env.PROPOSAL_FORM_DOMAIN || 'branddi.com',
         catalogo: catalogoDoFormulario('pt'),
         // As condicoes padrao de cada idioma. O formulario mostra as do idioma

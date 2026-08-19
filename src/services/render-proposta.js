@@ -41,6 +41,7 @@ import {
     catalogoDoIdioma, linhasDaModalidade, prosaDoBloco, contratoTemAtuacao,
     modalidadeNoIdioma, MODALIDADE_AMBOS, MODALIDADE_MONITORIA,
 } from '../content/blocos.js';
+import { logo } from '../content/logo.js';
 import { CANAIS_OPTION_TO_LABEL, CANAIS_LABEL_POR_IDIOMA, PRODUCT_CASCADE_ORDER, IDIOMAS_COM_BLOCOS, IDIOMA_LABEL } from '../config/proposal.js';
 
 const TZ = 'America/Sao_Paulo';
@@ -451,7 +452,7 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 <style>${cssLimpo()}</style></head><body><div class="wrap"><article class="sheet">
 <header class="masthead">
-  <div class="logo">Brand<span>di</span></div>
+  ${logo(26)}
   <div class="ref"><b>${esc(meta.numero)}</b><br>${esc(t.emissao)} ${esc(meta.emissao)} · ${esc(t.validadeCurta)} ${esc(meta.validade)}</div>
 </header>
 <div class="acoes">
@@ -477,7 +478,8 @@ ${blocoAceite(ctx, vencida)}
 const CSS = `
 :root{--bg:#F1F5F9;--surface:#fff;--surface-2:#F8FAFC;--text:#0F172A;--muted:#475569;--dim:#64748B;
 --accent:#0891B2;--turquoise:#0E7490;--rule:#D8E0E8;--rule-soft:#EAEFF4;--petrol:#002B36;
---on-petrol:#fff;--on-petrol-dim:#94A3B8;--logo-accent:#4BBECD;
+--on-petrol:#fff;--on-petrol-dim:#94A3B8;
+--logo-fill:#FFFFFF;--logo-accent:#4BBECD;--logo-counter:#001D2E;--logo-accent:#4BBECD;
 --shadow:0 1px 2px rgba(15,23,42,.04),0 18px 44px -24px rgba(15,23,42,.2);
 --display:"Montserrat","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
 --sans:"Montserrat","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
@@ -492,8 +494,6 @@ body{margin:0;background:var(--bg);color:var(--muted);font:14.5px/1.52 var(--san
 box-shadow:var(--shadow);overflow:hidden}
 .masthead{background:var(--petrol);padding:1rem clamp(1rem,3.5vw,2.2rem);display:flex;
 align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
-.logo{font-family:var(--display);color:var(--on-petrol);font-weight:700;font-size:1.15rem;letter-spacing:.01em}
-.logo span{color:var(--logo-accent)}
 .ref{font-family:var(--mono);font-size:.64rem;letter-spacing:.06em;line-height:1.65;
 color:var(--on-petrol-dim);text-align:right}
 .ref b{color:var(--on-petrol);font-weight:600}
