@@ -128,6 +128,34 @@ function tabela(linhas) {
         .map(([r, v]) => `<tr><th scope="row">${esc(r)}</th><td>${rich(v)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
+/**
+ * As opções de pacote, normalizadas.
+ *
+ * Aceita as DUAS formas porque a planilha já tem propostas gravadas com a
+ * antiga: `pacote: 15800` (um valor fechado pro contrato inteiro) e
+ * `pacotes: [{produtos, extras, preco}]` (várias opções, cada uma com sua
+ * composição). Sem isso, reabrir uma proposta de ontem renderizaria sem preço.
+ *
+ * Cada opção sai com `soma` — o preço cheio do que ela contém — pra dar o
+ * "de/por" sem o renderizador recalcular em três lugares.
+ */
+function opcoesDePacote(spec, codes) {
+    const precoDe = (c) => Number(spec.porProduto?.[c]?.preco) || 0;
+    const lista = Array.isArray(spec.pacotes) && spec.pacotes.length
+        ? spec.pacotes
+        : (Number(spec.pacote) > 0 ? [{ produtos: codes, extras: [], preco: Number(spec.pacote) }] : []);
+    return lista
+        .map((o) => {
+            const produtos = (o.produtos || []).filter((c) => codes.includes(c));
+            const extras = (o.extras || []).map((x) => String(x).trim()).filter(Boolean);
+            return { ...o, produtos, extras, soma: produtos.reduce((t, c) => t + precoDe(c), 0) };
+        })
+        // Opção sem preço ou sem nada dentro não é opção — sai calada em vez de
+        // virar linha vazia no documento do cliente.
+        .filter((o) => Number(o.preco) > 0 && (o.produtos.length + o.extras.length) > 0)
+        .sort((a, b) => a.preco - b.preco);
+}
+
 /** A modalidade efetiva de um produto: null quando o produto não tem essa dimensão. */
 function modalidadeDo(blocos, code, p) {
     return blocos[code].temModalidade ? (p?.modalidade || MODALIDADE_AMBOS) : null;
@@ -144,7 +172,9 @@ function clausulaIdentificacao(ctx) {
         [t.marcas, (spec.marcas || []).join(', ')],
         [t.servicos, codes.map((c) => blocos[c].titulo).join(' · ')],
         [t.regime, t.regimeValor],
-        [t.valorMensal, `<strong>${brl(ctx.total)}</strong> — ${t.verClausula(CLAUSULA_INVESTIMENTO)}`],
+        // Com mais de uma opção de pacote, um valor único mentiria: o cliente
+        // ainda vai escolher. Sai "a partir de" com o menor.
+        [t.valorMensal, `<strong>${ctx.opcoes.length > 1 ? t.aPartirDe(brl(ctx.total)) : brl(ctx.total)}</strong> — ${t.verClausula(CLAUSULA_INVESTIMENTO)}`],
         [t.validade, t.validadeValor(VALIDADE_DIAS, meta.validade)],
     ]);
 }
@@ -223,16 +253,36 @@ function clausulaInvestimento(ctx) {
       <td class="n-cell">${brl(p.preco)}</td></tr>`;
     }).join('');
 
-    // "De / Por" só quando há desconto real. Pacote igual à soma não é desconto,
-    // e mostrar as duas linhas iguais só levanta pergunta.
-    const fecho = total < soma - 0.01
-        ? `<tr class="sub"><td>${esc(t.subtotal)}</td><td></td><td class="n-cell">${brl(soma)}</td></tr>
-       <tr class="total"><td>${esc(t.totalCombinado)}</td><td>${esc(t.descontoDe(brl(soma - total)))}</td><td class="n-cell">${brl(total)}</td></tr>`
-        : `<tr class="total"><td>${esc(t.total)}</td><td></td><td class="n-cell">${brl(total)}</td></tr>`;
+    const { opcoes } = ctx;
+
+    // UMA opção cobrindo tudo é o caso comum: fecha a própria tabela com
+    // "de/por", como sempre fez. Duas ou mais viram um quadro de escolha
+    // separado — misturar as duas coisas na mesma tabela faria o cliente somar
+    // valores que são alternativas entre si.
+    const unica = opcoes.length === 1 && opcoes[0].produtos.length === codes.length && !opcoes[0].extras.length;
+    const fecho = unica
+        ? (opcoes[0].preco < soma - 0.01
+            ? `<tr class="sub"><td>${esc(t.subtotal)}</td><td></td><td class="n-cell">${brl(soma)}</td></tr>
+         <tr class="total"><td>${esc(t.totalCombinado)}</td><td>${esc(t.descontoDe(brl(soma - opcoes[0].preco)))}</td><td class="n-cell">${brl(opcoes[0].preco)}</td></tr>`
+            : `<tr class="total"><td>${esc(t.total)}</td><td></td><td class="n-cell">${brl(opcoes[0].preco)}</td></tr>`)
+        : (opcoes.length ? '' : `<tr class="total"><td>${esc(t.total)}</td><td></td><td class="n-cell">${brl(soma)}</td></tr>`);
+
+    const quadro = (!unica && opcoes.length) ? `<h4>${esc(t.opcoesPacote)}</h4>
+    <div class="tw"><table>
+      <thead><tr><th scope="col">${esc(t.thOpcao)}</th><th scope="col">${esc(t.thComposicao)}</th><th scope="col" style="text-align:right">${esc(t.thMensal)}</th></tr></thead>
+      <tbody>${opcoes.map((o, i) => {
+        const partes = [...o.produtos.map((c) => blocos[c].titulo), ...o.extras];
+        const eco = o.soma > o.preco + 0.01 ? t.economiaDe(brl(o.soma - o.preco)) : '';
+        return `<tr><td><strong>${esc(o.rotulo || t.pacoteN(i + 1))}</strong></td>
+          <td>${esc(partes.join(' + '))}${eco ? `<br><span class="eco">${esc(eco)}</span>` : ''}</td>
+          <td class="n-cell">${brl(o.preco)}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    <p class="fine">${esc(t.opcoesNota)}</p>` : '';
 
     return `<div class="tw"><table>
       <thead><tr><th scope="col">${esc(t.thItem)}</th><th scope="col">${esc(t.thEscopo)}</th><th scope="col" style="text-align:right">${esc(t.thMensal)}</th></tr></thead>
       <tbody>${linhas}${fecho}</tbody></table></div>
+    ${quadro}
     ${tabela([[t.setup, cond(ctx, 'setup', t.setupValor)], [t.impostos, t.impostosValor]])}`;
 }
 
@@ -357,13 +407,16 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
 
     const validade = new Date(emitidaEm.getTime() + VALIDADE_DIAS * 86400000);
     const soma = codes.reduce((acc, c) => acc + (Number(spec.porProduto[c]?.preco) || 0), 0);
-    const total = Number(spec.pacote) > 0 ? Number(spec.pacote) : soma;
+    const opcoes = opcoesDePacote(spec, codes);
+    // O "valor mensal" da capa: a opção mais barata quando há pacote, senão a
+    // soma dos serviços. Já vem ordenado por preço.
+    const total = opcoes.length ? opcoes[0].preco : soma;
     const meta = {
         numero: `${t.numeroPrefixo}-${deal.id}`,
         emissao: dataNoIdioma(emitidaEm, idioma),
         validade: dataNoIdioma(validade, idioma),
     };
-    const ctx = { deal, spec, codes, meta, soma, total, slug, aceite, substituida, idioma, t, blocos, slaGeral, insumos };
+    const ctx = { deal, spec, codes, meta, soma, total, opcoes, slug, aceite, substituida, idioma, t, blocos, slaGeral, insumos };
 
     const vencida = Date.now() > validade.getTime() + 86400000; // até o fim do dia da validade
 
@@ -475,6 +528,7 @@ tbody tr:last-child>*{border-bottom:0}
 thead th{font-family:var(--mono);font-size:.6rem;letter-spacing:.11em;text-transform:uppercase;color:var(--dim);
 font-weight:700;background:var(--surface-2);border-bottom:1px solid var(--rule);white-space:nowrap}
 th[scope=row]{font-family:var(--mono);font-size:.68rem;color:var(--dim);font-weight:400;width:12rem;white-space:nowrap}
+.eco{font-family:var(--mono);font-size:.68rem;color:var(--turquoise)}
 .n-cell{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--text);font-weight:600}
 tr.sub>*{border-top:1px solid var(--rule);background:var(--surface-2);color:var(--dim)}
 tr.sub .n-cell{color:var(--dim);font-weight:400}

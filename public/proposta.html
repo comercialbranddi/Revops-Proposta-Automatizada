@@ -56,6 +56,10 @@
   input.outro{width:11rem;flex:0 0 auto;padding:.3rem .55rem;font-size:.82rem;border-style:dashed}
   input.outro::placeholder{color:var(--dim)}
   input.outro:focus{border-style:solid;border-color:var(--accent)}
+  .opcao{border:1px solid var(--rule);border-radius:3px;padding:.8rem;display:flex;flex-direction:column;gap:.7rem}
+  .opcaohead{display:flex;gap:.5rem;align-items:center}
+  .opcaohead input.rotulo{flex:1;font-weight:600;text-transform:none;letter-spacing:0}
+  .opcaohead button{margin-left:auto}
   .condhead{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
   .condhead .flag{font-family:var(--mono);font-size:.6rem;color:var(--accent);letter-spacing:.05em}
   .condhead button{margin-left:auto;text-transform:none;letter-spacing:0}
@@ -133,7 +137,7 @@ const el = (t, a = {}, ...kids) => {
 const brl = n => (n == null || n === '') ? '—'
   : Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
-const estado = { marcas: '', idioma: 'pt', produtos: new Set(), porProduto: {}, pacote: '', observacoes: '', condicoes: {} };
+const estado = { marcas: '', idioma: 'pt', produtos: new Set(), porProduto: {}, pacotes: [], observacoes: '', condicoes: {} };
 const vazio = (code) => ({ modalidade: CFG.catalogo.modalidades[code] ? CFG.catalogo.modalidadePadrao : null, canais: new Set(), canaisOutros: [], quantidade: '', preco: '', faixas: [], sobConsulta: false });
 
 // ─── Login ──────────────────────────────────────────────────────────
@@ -190,7 +194,16 @@ function aplicarSeed() {
     estado.marcas = (a.marcas || []).join('\n');
     const disp = CFG.catalogo.idiomas.filter(i => i.disponivel).map(i => i.code);
     estado.idioma = disp.includes(a.idioma) ? a.idioma : 'pt';
-    estado.pacote = a.pacote == null ? '' : a.pacote;
+    // Proposta gravada antes de 18/08/2026 tem um valor fechado só. Vira uma
+    // opção cobrindo tudo, pra reabrir sem perder o preço.
+    if (Array.isArray(a.pacotes)) {
+      estado.pacotes = a.pacotes.map((o) => ({
+        produtos: new Set(o.produtos || []), extras: (o.extras || []).slice(),
+        preco: o.preco == null ? '' : o.preco, rotulo: o.rotulo || '',
+      }));
+    } else if (Number(a.pacote) > 0) {
+      estado.pacotes = [{ produtos: new Set(a.produtos || []), extras: [], preco: a.pacote, rotulo: '' }];
+    }
     estado.observacoes = a.observacoes || '';
     estado.condicoes = Object.assign({}, a.condicoes || {});
     (a.produtos || []).forEach(c => estado.produtos.add(c));
@@ -239,7 +252,7 @@ function render() {
 
   app.append(cardEscopo());
   CFG.catalogo.produtos.filter(p => estado.produtos.has(p.code)).forEach(p => app.append(cardProduto(p)));
-  if (estado.produtos.size > 1) app.append(cardPacote());
+  if (estado.produtos.size) app.append(cardPacote());
   app.append(cardCondicoes());
   atualizarPendencias();
 }
@@ -443,15 +456,78 @@ function cardCondicoes() {
   return c;
 }
 
+/**
+ * Opções de pacote. Plural: a proposta pode oferecer mais de uma combinação com
+ * preço próprio — "BB + VM por X, os três por Y" — e o cliente escolhe.
+ *
+ * Cada opção diz o que contém: produtos desta proposta, mais frentes digitadas
+ * pra o que não é produto de catálogo. O desconto de cada uma é calculado
+ * contra a soma do que ela própria contém, não contra o contrato todo.
+ */
 function cardPacote() {
-  const soma = [...estado.produtos].reduce((t, c) => t + (Number(estado.porProduto[c].preco) || 0), 0);
-  const c = el('div', { className: 'card' }, el('h2', {}, 'Pacote'));
+  const c = el('div', { className: 'card' }, el('h2', {}, 'Opções de pacote'));
   const b = el('div', { className: 'body' });
 
-  const inp = el('input', { type: 'number', min: '0', step: '100', value: estado.pacote, placeholder: soma ? String(soma) : '' });
-  inp.oninput = () => { estado.pacote = inp.value; };
-  b.append(el('label', { className: 'f' }, 'Valor fechado do pacote (R$)', inp, el('span', { className: 'hint' },
-    'Soma dos serviços: ' + brl(soma) + '. Vazio significa sem desconto — o documento lista o preço cheio de cada um.')));
+  const soma = (o) => [...o.produtos].reduce((t, k) => t + (Number(estado.porProduto[k]?.preco) || 0), 0);
+
+  b.append(el('div', { className: 'hint' },
+    'Sem nenhuma opção, o documento lista o preço cheio de cada serviço. Com uma ou mais, ele mostra as combinações e o cliente escolhe.'));
+
+  estado.pacotes.forEach((o, i) => {
+    const box = el('div', { className: 'opcao' });
+
+    const cab = el('div', { className: 'opcaohead' });
+    const rot = el('input', { type: 'text', value: o.rotulo, placeholder: 'Opção ' + (i + 1), className: 'rotulo' });
+    rot.oninput = () => { o.rotulo = rot.value; };
+    const rm = el('button', { className: 'mini', type: 'button', textContent: 'remover opção' });
+    rm.onclick = () => { estado.pacotes.splice(i, 1); render(); };
+    cab.append(rot, rm);
+    box.append(cab);
+
+    // o que entra: produtos desta proposta
+    const chips = el('div', { className: 'chips' });
+    CFG.catalogo.produtos.filter((pr) => estado.produtos.has(pr.code)).forEach((pr) => {
+      const inp = el('input', { type: 'checkbox', checked: o.produtos.has(pr.code) });
+      inp.onchange = () => { if (inp.checked) o.produtos.add(pr.code); else o.produtos.delete(pr.code); render(); };
+      chips.append(el('label', { className: 'chip' }, inp, pr.label));
+    });
+    // e frentes digitadas, mesmo padrão dos canais
+    o.extras.forEach((nome, j) => {
+      const x = el('button', { className: 'x', type: 'button', textContent: '×', title: 'remover' });
+      x.onclick = () => { o.extras.splice(j, 1); render(); };
+      chips.append(el('span', { className: 'chip digitado' }, nome, x));
+    });
+    const novo = el('input', { type: 'text', className: 'outro', placeholder: '+ outra frente' });
+    const guarda = () => {
+      const add = novo.value.split(/[,;]/).map((x) => x.trim()).filter(Boolean).filter((x) => !o.extras.includes(x));
+      if (!add.length) { novo.value = ''; return; }
+      o.extras.push(...add); render();
+    };
+    novo.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); guarda(); } };
+    novo.onblur = guarda;
+    chips.append(novo);
+    box.append(el('label', { className: 'f' }, 'O que entra', chips));
+
+    const pr = el('input', { type: 'number', min: '0', step: '100', value: o.preco });
+    pr.oninput = () => { o.preco = pr.value; atualizarPendencias(); };
+    const s0 = soma(o);
+    const desc = Number(o.preco) > 0 && s0 > Number(o.preco)
+      ? 'economia de ' + brl(s0 - Number(o.preco)) + '/mês'
+      : (s0 > 0 ? 'soma dos serviços desta opção: ' + brl(s0) : '');
+    box.append(el('label', { className: 'f' }, 'Preço do pacote (R$)', pr,
+      desc ? el('span', { className: 'hint' }, desc) : null));
+
+    b.append(box);
+  });
+
+  const add = el('button', { className: 'mini', type: 'button', textContent: '+ opção de pacote' });
+  add.onclick = () => {
+    // Nasce com todos os produtos marcados: é a combinação mais provável, e
+    // desmarcar é menos trabalho que marcar de novo.
+    estado.pacotes.push({ produtos: new Set(estado.produtos), extras: [], preco: '', rotulo: '' });
+    render();
+  };
+  b.append(add);
 
   const ta = el('textarea', { value: estado.observacoes, placeholder: 'Só para o time. Não sai no documento.' });
   ta.oninput = () => { estado.observacoes = ta.value; };
@@ -479,6 +555,13 @@ function pendencias() {
       if (!(Number(f.preco) > 0)) p.push(code + ' faixa ' + (i + 2) + ' — preço');
     });
   }
+  // Opção de pacote pela metade: preço sem conteúdo, ou conteúdo sem preço.
+  estado.pacotes.forEach((o, i) => {
+    const nome = o.rotulo || ('opção ' + (i + 1));
+    if (!(Number(o.preco) > 0)) p.push('Preço da ' + nome);
+    // Pacote de um item só é o preço do próprio serviço — não é pacote.
+    if (o.produtos.size + o.extras.length < 2) p.push(nome + ' precisa de pelo menos dois itens');
+  });
   return p;
 }
 
@@ -491,12 +574,15 @@ function pendencias() {
  */
 function avisos() {
   const a = [];
-  const soma = [...estado.produtos].reduce((t, c) => t + (Number(estado.porProduto[c].preco) || 0), 0);
-  const pac = Number(estado.pacote);
-  if (estado.pacote !== '' && soma > 0) {
-    if (pac > soma) a.push('O pacote (' + brl(pac) + ') está ACIMA da soma dos serviços (' + brl(soma) + ').');
-    else if (pac < soma * 0.5) a.push('O pacote (' + brl(pac) + ') é menos da metade da soma (' + brl(soma) + ') — desconto de ' + Math.round((1 - pac / soma) * 100) + '%. Confira antes de salvar.');
-  }
+  estado.pacotes.forEach((o, i) => {
+    const nome = o.rotulo || ('Opção ' + (i + 1));
+    const soma = [...o.produtos].reduce((t, c) => t + (Number(estado.porProduto[c]?.preco) || 0), 0);
+    const pac = Number(o.preco);
+    if (!(pac > 0) || soma <= 0) return;
+    if (pac > soma) a.push(nome + ' (' + brl(pac) + ') está ACIMA da soma do que ela contém (' + brl(soma) + ').');
+    else if (pac === soma) a.push(nome + ' tem o mesmo valor da soma — sem desconto, não é pacote.');
+    else if (pac < soma * 0.5) a.push(nome + ' dá ' + Math.round((1 - pac / soma) * 100) + '% de desconto. Confira antes de salvar.');
+  });
   for (const code of estado.produtos) {
     if (!estado.porProduto[code].canais.size) a.push('Sem canal marcado em ' + code + ' — a linha não sai no documento.');
   }
@@ -541,7 +627,10 @@ $('#salvar').onclick = async () => {
         sobConsulta: !!s.sobConsulta,
       }];
     })),
-    pacote: estado.pacote === '' ? null : Number(estado.pacote),
+    pacotes: estado.pacotes.map((o) => ({
+      produtos: [...o.produtos], extras: o.extras.slice(),
+      preco: Number(o.preco), rotulo: o.rotulo.trim() || null,
+    })),
     observacoes: estado.observacoes,
     // Só o que foi negociado. Chave ausente = condição padrão da Branddi.
     condicoes: estado.condicoes,
