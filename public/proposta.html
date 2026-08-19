@@ -248,7 +248,7 @@ function cardEscopo() {
   sel.onchange = () => { estado.idioma = sel.value; };
   b.append(el('label', { className: 'f' }, 'Idioma da proposta', sel,
     indisponiveis.length ? el('span', { className: 'hint' },
-      indisponiveis.join(' e ') + ' ainda não tem o texto dos blocos escrito. Enquanto isso, a proposta sai em português — monte à mão se o cliente precisar em outro idioma.') : null));
+      indisponiveis.join(' e ') + ' ainda não tem o texto dos blocos escrito.') : null));
 
   const chips = el('div', { className: 'chips' });
   CFG.catalogo.produtos.forEach(p => {

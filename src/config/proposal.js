@@ -786,8 +786,13 @@ export const MAX_FAIXAS = { BB: 3, BBP: 4 };
 // quando o campo "Idioma da proposta" passou a ser lido de verdade.
 //
 // Acrescentar um idioma aqui exige o arquivo de blocos correspondente e o
-// registro dele no renderizador. Não basta traduzir a lista.
-export const IDIOMAS_COM_BLOCOS = ['pt'];
+// registro dele em content/blocos.js. Não basta traduzir a lista.
+//
+// en e es entraram em 18/08/2026, escritos com o vocabulário dos documentos que
+// o comercial já tinha em cada idioma — mas com as CONDIÇÕES do português: os
+// quatro documentos antigos em inglês vendiam contrato anual com fidelidade, o
+// oposto do que a Branddi pratica.
+export const IDIOMAS_COM_BLOCOS = ['pt', 'en', 'es'];
 
 /** Catálogo pronto pro front, já no idioma pedido. */
 export function catalogoDoFormulario(idioma = IDIOMA_PADRAO) {

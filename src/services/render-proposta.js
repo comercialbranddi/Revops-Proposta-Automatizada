@@ -1,29 +1,59 @@
 /**
  * Monta o documento da proposta a partir do spec do formulário e do catálogo
- * de blocos. Saída: HTML autocontido — sem CDN, sem fonte externa, com CSS de
- * impressão, pra virar PDF direto do navegador.
+ * de blocos, em português, inglês ou espanhol. Saída: HTML autocontido — sem
+ * CDN, sem fonte externa, com CSS de impressão, pra virar PDF direto do
+ * navegador.
  *
  * Por que HTML e não Google Doc (decisão de 18/08/2026): o modelo validado é
  * um documento HTML. Reproduzi-lo pela API do Docs é ordem de grandeza mais
- * trabalho e entrega um resultado visualmente pior que o já aprovado. Se o
- * time exigir arquivo editável depois, o Doc entra como saída adicional — não
- * como caminho.
+ * trabalho e entrega um resultado visualmente pior que o já aprovado.
  *
- * Nada aqui inventa texto. Prosa, especificações e SLA vêm de
- * content/blocos-pt.js; números e escolhas vêm do spec. É o que garante que o
- * documento enviado seja o que a Jessica validou na tela de revisão.
+ * Nada aqui inventa texto. Prosa, especificações e SLA vêm de `content/`;
+ * números e escolhas vêm do spec. É o que garante que o documento enviado seja
+ * o que foi validado na tela de revisão.
+ *
+ * ─── Idioma ─────────────────────────────────────────────────────────
+ *
+ * Tudo que é texto sai de `catalogoDoIdioma(idioma)`: os blocos de produto e
+ * também a moldura do documento — títulos de cláusula, cabeçalhos de tabela,
+ * cláusula legal, bloco de aceite, faixas de aviso. Traduzir só os blocos
+ * produziria proposta com cláusula em inglês e cabeçalho em português, que é
+ * exatamente o defeito dos documentos antigos.
+ *
+ * DUAS coisas NÃO acompanham o idioma, de propósito:
+ *
+ * 1. **A moeda.** Fica em real, com formatação brasileira, nos três idiomas —
+ *    "R$ 7.900,00/month" é como o comercial já escrevia. A escolha entre real e
+ *    dólar segue aberta e é comercial: o espanhol antigo cobrava em USD quando
+ *    era Brand Bidding sozinho e em real no combo. Manter real é o único
+ *    comportamento que não inventa uma regra que ninguém definiu.
+ *
+ * 2. **A modalidade gravada no spec.** Fica em português ("Monitoria +
+ *    Atuação"), que é o valor canônico do formulário e da planilha. Só a
+ *    exibição traduz — assim uma proposta em inglês continua legível pra quem
+ *    olha a planilha ou o Pipedrive.
  *
  * A cláusula "Situação apurada" (o diagnóstico do prospect) NÃO é gerada:
  * esse dado ainda não está conectado. Melhor a seção não existir do que sair
  * com número inventado num documento comercial.
  */
 import {
-    BLOCOS_PT, SLA_GERAL, linhasDaModalidade, prosaDoBloco, contratoTemAtuacao,
-} from '../content/blocos-pt.js';
-import { CANAIS_OPTION_TO_LABEL, PRODUCT_CASCADE_ORDER, IDIOMAS_COM_BLOCOS, IDIOMA_LABEL } from '../config/proposal.js';
+    catalogoDoIdioma, linhasDaModalidade, prosaDoBloco, contratoTemAtuacao,
+    modalidadeNoIdioma, MODALIDADE_AMBOS, MODALIDADE_MONITORIA,
+} from '../content/blocos.js';
+import { CANAIS_OPTION_TO_LABEL, CANAIS_LABEL_POR_IDIOMA, PRODUCT_CASCADE_ORDER, IDIOMAS_COM_BLOCOS, IDIOMA_LABEL } from '../config/proposal.js';
 
 const TZ = 'America/Sao_Paulo';
 const VALIDADE_DIAS = 15;
+const CLAUSULA_INVESTIMENTO = 4;
+
+/**
+ * O CSS sem os comentários de fonte. Eles explicam decisão interna, em
+ * português, e iam parar no "ver código-fonte" do cliente — inclusive numa
+ * proposta em inglês. Ficam no arquivo, saem do documento.
+ */
+let _css = null;
+const cssLimpo = () => (_css ??= CSS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/[ \t]*\n[ \t]*\n+/g, '\n'));
 
 const esc = (s) => String(s ?? '')
     .replace(/&(?!\w+;|#)/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -32,16 +62,26 @@ const esc = (s) => String(s ?? '')
 // de usuário. Escapa tudo e devolve só essa tag.
 const rich = (s) => esc(s).replace(/&lt;strong&gt;/g, '<strong>').replace(/&lt;\/strong&gt;/g, '</strong>');
 
-// O   (espaço não-quebrável) que o toLocaleString põe entre "R$" e o número
-// vira espaço normal: visualmente idêntico, e a saída deixa de depender de um
-// caractere invisível pra qualquer coisa que leia o documento depois — busca,
-// teste, extração de PDF.
+// Formatação brasileira em qualquer idioma — ver o cabeçalho. O   que o
+// toLocaleString põe entre "R$" e o número vira espaço normal: visualmente
+// idêntico, e a saída deixa de depender de um caractere invisível pra quem for
+// ler o documento depois (busca, teste, extração de PDF).
 const brl = (n) => Number(n)
     .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
     .replace(/ /g, ' ');
 
-function dataBR(d) {
-    return new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+/**
+ * Data no idioma do documento. Inglês sai com o mês escrito ("August 18,
+ * 2026") em vez de numérico: "08/18" e "18/08" são a mesma string com sentidos
+ * diferentes, e proposta comercial não pode ter data ambígua. Português e
+ * espanhol usam a mesma ordem, então numérico não confunde.
+ */
+function dataNoIdioma(d, idioma) {
+    const opcoes = idioma === 'en'
+        ? { day: 'numeric', month: 'long', year: 'numeric' }
+        : { day: '2-digit', month: '2-digit', year: 'numeric' };
+    const locale = idioma === 'en' ? 'en-US' : (idioma === 'es' ? 'es-ES' : 'pt-BR');
+    return new Intl.DateTimeFormat(locale, { timeZone: TZ, ...opcoes }).format(d);
 }
 
 /** Ordem canônica dos produtos — BB primeiro, igual ao resto do sistema. */
@@ -49,8 +89,11 @@ function produtosOrdenados(spec) {
     return PRODUCT_CASCADE_ORDER.filter((c) => (spec.produtos || []).includes(c));
 }
 
-function canaisTexto(p) {
-    const labels = (p.canais || []).map((id) => CANAIS_OPTION_TO_LABEL[id]).filter(Boolean);
+/** Rótulo de canal no idioma; nome próprio de plataforma não se traduz. */
+function canaisTexto(p, idioma) {
+    const labels = (p.canais || [])
+        .map((id) => CANAIS_LABEL_POR_IDIOMA[idioma]?.[id] || CANAIS_OPTION_TO_LABEL[id])
+        .filter(Boolean);
     return labels.length ? labels.join(', ') : null;
 }
 
@@ -59,10 +102,10 @@ function canaisTexto(p) {
  * Devolve null quando o marcador não tem valor — a linha inteira some, em vez
  * de sair "Canais: {{CANAIS}}" no documento do cliente.
  */
-function valorLinha(valor, p) {
+function valorLinha(valor, p, idioma) {
     let v = valor;
     if (v.includes('{{CANAIS}}')) {
-        const c = canaisTexto(p);
+        const c = canaisTexto(p, idioma);
         if (!c) return null;
         v = v.replace('{{CANAIS}}', c);
     }
@@ -79,157 +122,145 @@ function tabela(linhas) {
         .map(([r, v]) => `<tr><th scope="row">${esc(r)}</th><td>${rich(v)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
+/** A modalidade efetiva de um produto: null quando o produto não tem essa dimensão. */
+function modalidadeDo(blocos, code, p) {
+    return blocos[code].temModalidade ? (p?.modalidade || MODALIDADE_AMBOS) : null;
+}
+
 // ─── Cláusulas ──────────────────────────────────────────────────────
 
 function clausulaIdentificacao(ctx) {
-    const { deal, spec, meta, codes } = ctx;
-    const servicos = codes.map((c) => BLOCOS_PT[c].titulo).join(' · ');
-    const marcas = (spec.marcas || []).join(', ');
+    const { deal, spec, meta, codes, t, blocos } = ctx;
     return tabela([
-        ['Contratante', `<strong>${esc(deal.organizacao)}</strong>`],
-        ...(deal.contato ? [['Destinatário', deal.contato]] : []),
-        ['Contratada', 'Branddi Tecnologia — São Paulo/SP'],
-        ['Marcas monitoradas', marcas],
-        ['Serviços', servicos],
-        ['Regime', 'Mensal recorrente, sem fidelidade'],
-        ['Valor mensal', `<strong>${brl(ctx.total)}</strong> — ver cláusula 4`],
-        ['Validade', `${VALIDADE_DIAS} dias corridos, até ${meta.validade}`],
+        [t.contratante, `<strong>${esc(deal.organizacao)}</strong>`],
+        ...(deal.contato ? [[t.destinatario, deal.contato]] : []),
+        [t.contratada, t.contratadaValor],
+        [t.marcas, (spec.marcas || []).join(', ')],
+        [t.servicos, codes.map((c) => blocos[c].titulo).join(' · ')],
+        [t.regime, t.regimeValor],
+        [t.valorMensal, `<strong>${brl(ctx.total)}</strong> — ${t.verClausula(CLAUSULA_INVESTIMENTO)}`],
+        [t.validade, t.validadeValor(VALIDADE_DIAS, meta.validade)],
     ]);
 }
 
 function clausulaObjetivo(ctx) {
-    const { codes, deal } = ctx;
-    const itens = codes.map((c) => `<li>${esc(BLOCOS_PT[c].objetivo)}</li>`).join('');
-    const plural = codes.length > 1;
-    return `<p>O escopo desta proposta responde a ${plural ? 'problemas distintos' : 'um problema'}, que exige${plural ? 'm' : ''} tratamento${plural ? 's' : ''} próprio${plural ? 's' : ''}:</p>
-    <ul>${itens}</ul>
-    <p>Os serviços descritos a seguir endereçam ${plural ? 'cada um deles' : 'esse ponto'} para a marca ${esc(deal.organizacao)}.</p>`;
+    const { codes, deal, t, blocos } = ctx;
+    const varios = codes.length > 1;
+    const itens = codes.map((c) => `<li>${esc(blocos[c].objetivo)}</li>`).join('');
+    return `<p>${esc(t.objetivoAbre(varios))}</p><ul>${itens}</ul>
+    <p>${esc(t.objetivoFecha(varios, deal.organizacao))}</p>`;
 }
 
 function clausulaAbordagem(ctx) {
+    const { t, blocos, idioma } = ctx;
     return ctx.codes.map((code, i) => {
-        const b = BLOCOS_PT[code];
+        const b = blocos[code];
         const p = ctx.spec.porProduto[code] || {};
-        const mod = b.temModalidade ? (p.modalidade || 'Monitoria + Atuação') : null;
-        const badge = mod ? `<span class="mode">${esc(mod)}</span>` : '';
+        const mod = modalidadeDo(blocos, code, p);
+        const badge = mod ? `<span class="mode">${esc(modalidadeNoIdioma(mod, idioma))}</span>` : '';
         const linhas = linhasDaModalidade(b.especificacoes, mod)
-            .map((l) => [l.rotulo, valorLinha(l.valor, p)])
+            .map((l) => [l.rotulo, valorLinha(l.valor, p, idioma)])
             .filter(([, v]) => v != null);
         return `<h3><span class="idx">3.${i + 1}</span> ${esc(b.titulo)} ${badge}</h3>
-      <p class="fine">${rich(prosaDoBloco(code, mod))}</p>
+      <p class="fine">${rich(prosaDoBloco(blocos, code, mod))}</p>
       ${tabela(linhas)}`;
     }).join('');
 }
 
 function clausulaEscopo(ctx) {
-    const { codes, spec } = ctx;
+    const { codes, spec, t, blocos, slaGeral, idioma } = ctx;
     const modalidades = codes.map((c) => {
-        const b = BLOCOS_PT[c];
-        const p = spec.porProduto[c] || {};
-        return [`Modalidade · ${b.titulo}`, b.temModalidade
-            ? `<strong>${esc(p.modalidade || 'Monitoria + Atuação')}</strong>`
-            : 'Monitoria e inteligência'];
+        const mod = modalidadeDo(blocos, c, spec.porProduto[c]);
+        return [t.modalidadeDe(blocos[c].titulo), mod
+            ? `<strong>${esc(modalidadeNoIdioma(mod, idioma))}</strong>`
+            : t.semModalidade];
     });
 
     // SLA: o de cada produto, mais o do contrato inteiro. Sem repetir entregável
     // que dois produtos declaram igual — o cliente não precisa ler duas vezes
     // que recebe relatório semanal.
-    const comAtuacao = contratoTemAtuacao(spec.porProduto);
-    const modoContrato = comAtuacao ? 'Monitoria + Atuação' : 'Monitoria';
+    const modoContrato = contratoTemAtuacao(spec.porProduto) ? MODALIDADE_AMBOS : MODALIDADE_MONITORIA;
     const vistos = new Set();
     const sla = [
-        ...codes.flatMap((c) => {
-            const b = BLOCOS_PT[c];
-            const mod = b.temModalidade ? (spec.porProduto[c]?.modalidade || 'Monitoria + Atuação') : null;
-            return linhasDaModalidade(b.sla, mod);
-        }),
-        ...linhasDaModalidade(SLA_GERAL, modoContrato),
+        ...codes.flatMap((c) => linhasDaModalidade(blocos[c].sla, modalidadeDo(blocos, c, spec.porProduto[c]))),
+        ...linhasDaModalidade(slaGeral, modoContrato),
     ].filter((l) => (vistos.has(l.entregavel) ? false : vistos.add(l.entregavel)));
 
     return `${tabela([
-        ['Marcas monitoradas', (spec.marcas || []).join(', ')],
+        [t.marcas, (spec.marcas || []).join(', ')],
         ...modalidades,
-        ['Idioma dos relatórios', 'Português'],
+        [t.idiomaRelatorios, t.idiomaRelatoriosValor],
     ])}
-    <h4>Entregáveis</h4>
+    <h4>${esc(t.entregaveis)}</h4>
     <div class="tw"><table>
-      <thead><tr><th scope="col">Entregável</th><th scope="col">Periodicidade</th><th scope="col">Canal</th></tr></thead>
+      <thead><tr><th scope="col">${esc(t.thEntregavel)}</th><th scope="col">${esc(t.thPeriodicidade)}</th><th scope="col">${esc(t.thCanal)}</th></tr></thead>
       <tbody>${sla.map((l) => `<tr><td>${esc(l.entregavel)}</td><td>${esc(l.periodicidade)}</td><td>${esc(l.canal)}</td></tr>`).join('')}</tbody>
     </table></div>`;
 }
 
 function clausulaInvestimento(ctx) {
-    const { codes, spec, soma, total } = ctx;
+    const { codes, spec, soma, total, t, blocos, idioma } = ctx;
     const linhas = codes.map((c) => {
-        const b = BLOCOS_PT[c];
         const p = spec.porProduto[c] || {};
-        const escopo = [canaisTexto(p), Number(p.quantidade) > 0 ? `Até ${p.quantidade}` : null]
+        const escopo = [canaisTexto(p, idioma), Number(p.quantidade) > 0 ? t.ate(p.quantidade) : null]
             .filter(Boolean).join(' · ') || '—';
         // Escada: uma linha por faixa, em vez de preço único. Exceção, não regra.
         if (p.faixas?.length) {
-            const faixas = [{ qtd: p.quantidade, preco: p.preco }, ...p.faixas]
+            return [{ qtd: p.quantidade, preco: p.preco }, ...p.faixas]
                 .filter((f) => Number(f.qtd) > 0 && Number(f.preco) > 0)
-                .sort((a, b2) => a.qtd - b2.qtd);
-            return faixas.map((f, i) => `<tr><td>${i === 0 ? `<strong>${esc(b.titulo)}</strong>` : ''}</td>
-        <td>Até ${esc(f.qtd)}</td><td class="n-cell">${brl(f.preco)}</td></tr>`).join('');
+                .sort((a, b) => a.qtd - b.qtd)
+                .map((f, i) => `<tr><td>${i === 0 ? `<strong>${esc(blocos[c].titulo)}</strong>` : ''}</td>
+          <td>${esc(t.ate(f.qtd))}</td><td class="n-cell">${brl(f.preco)}</td></tr>`).join('');
         }
-        return `<tr><td><strong>${esc(b.titulo)}</strong></td><td>${esc(escopo)}</td>
+        return `<tr><td><strong>${esc(blocos[c].titulo)}</strong></td><td>${esc(escopo)}</td>
       <td class="n-cell">${brl(p.preco)}</td></tr>`;
     }).join('');
 
     // "De / Por" só quando há desconto real. Pacote igual à soma não é desconto,
     // e mostrar as duas linhas iguais só levanta pergunta.
-    const temDesconto = total < soma - 0.01;
-    const fecho = temDesconto
-        ? `<tr class="sub"><td>Subtotal — itens contratados separadamente</td><td></td><td class="n-cell">${brl(soma)}</td></tr>
-       <tr class="total"><td>Valor contratado — condição combinada</td><td>Desconto de ${brl(soma - total)}/mês</td><td class="n-cell">${brl(total)}</td></tr>`
-        : `<tr class="total"><td>Valor contratado</td><td></td><td class="n-cell">${brl(total)}</td></tr>`;
+    const fecho = total < soma - 0.01
+        ? `<tr class="sub"><td>${esc(t.subtotal)}</td><td></td><td class="n-cell">${brl(soma)}</td></tr>
+       <tr class="total"><td>${esc(t.totalCombinado)}</td><td>${esc(t.descontoDe(brl(soma - total)))}</td><td class="n-cell">${brl(total)}</td></tr>`
+        : `<tr class="total"><td>${esc(t.total)}</td><td></td><td class="n-cell">${brl(total)}</td></tr>`;
 
     return `<div class="tw"><table>
-      <thead><tr><th scope="col">Item</th><th scope="col">Escopo</th><th scope="col" style="text-align:right">Mensal</th></tr></thead>
+      <thead><tr><th scope="col">${esc(t.thItem)}</th><th scope="col">${esc(t.thEscopo)}</th><th scope="col" style="text-align:right">${esc(t.thMensal)}</th></tr></thead>
       <tbody>${linhas}${fecho}</tbody></table></div>
-    ${tabela([
-        ['Setup (implantação)', '01 mensalidade, cobrada uma única vez no início da vigência'],
-        ['Impostos', 'Valores líquidos; tributos conforme legislação vigente'],
-    ])}`;
+    ${tabela([[t.setup, t.setupValor], [t.impostos, t.impostosValor]])}`;
 }
 
 function clausulaCondicoes(ctx) {
+    const { t, meta } = ctx;
     return tabela([
-        ['Condição de pagamento', 'Mensal, D+30 da emissão da nota fiscal'],
-        ['Vigência', 'Indeterminada, com <strong>renovação automática</strong>'],
-        ['Rescisão', '<strong>Sem fidelidade.</strong> Aviso prévio de 60 dias, sem multa'],
-        ['Prazo de implantação', '3 dias úteis a contar do aceite'],
-        ['Validade da proposta', `${VALIDADE_DIAS} dias corridos, até ${ctx.meta.validade}`],
+        [t.pagamento, t.pagamentoValor],
+        [t.vigencia, t.vigenciaValor],
+        [t.rescisao, t.rescisaoValor],
+        [t.implantacao, t.implantacaoValor],
+        [t.validadeProposta, t.validadeValor(VALIDADE_DIAS, meta.validade)],
     ]);
 }
 
-function clausulaLegal() {
-    return `<p>A legislação brasileira de propriedade industrial assegura ao titular o direito de impedir o uso não autorizado de marca registrada por terceiros. A atuação prevista nesta proposta se apoia nesse direito e no entendimento consolidado dos tribunais quanto à concorrência desleal.</p>
-  <blockquote>Os tribunais brasileiros reconhecem que a utilização de marca registrada de terceiro para desvio de clientela constitui prática de concorrência desleal, podendo gerar a obrigação de abstenção de uso e o dever de indenizar.<cite>Lei 9.279/96, arts. 129 e 195</cite></blockquote>
-  <p class="fine">Toda ocorrência tratada gera registro de evidência — captura de tela, data, canal e identificação do infrator — arquivado e disponibilizado à Contratante como subsídio a eventual medida judicial. Requisito: a marca deve possuir registro no INPI de titularidade da Contratante.</p>`;
+function clausulaLegal(ctx) {
+    const { t } = ctx;
+    return `<p>${esc(t.legalP1)}</p>
+  <blockquote>${esc(t.legalCitacao)}<cite>${esc(t.legalFonte)}</cite></blockquote>
+  <p class="fine">${esc(t.legalP2)}</p>`;
 }
 
 function clausulaAceite(ctx) {
-    const { codes, meta } = ctx;
+    const { codes, meta, t, insumos } = ctx;
     // O que o cliente precisa mandar depende do que ele contratou: SKU só se
     // tem BBP, safelist só se tem GD. Pedir tudo em toda proposta faz o cliente
     // perguntar por que precisa de algo que não contratou.
-    const insumos = [
-        codes.includes('BBP') ? 'relação de SKUs prioritários e de sellers autorizados' : null,
-        codes.includes('BB') ? 'lista de palavras-chave a monitorar' : null,
-        codes.includes('GD') ? 'safelist de domínios e perfis oficiais' : null,
-        'comprovante de registro da marca no INPI',
-    ].filter(Boolean).join('; ');
-
+    const lista = [...codes.map((c) => insumos[c]).filter(Boolean), t.insumoINPI].join('; ');
     return `<div class="tw"><table>
-    <thead><tr><th scope="col">Etapa</th><th scope="col">Responsável</th><th scope="col">Prazo</th></tr></thead>
+    <thead><tr><th scope="col">${esc(t.thEtapa)}</th><th scope="col">${esc(t.thResponsavel)}</th><th scope="col">${esc(t.thPrazo)}</th></tr></thead>
     <tbody>
-      <tr><td>Aceite formal da proposta</td><td>Contratante</td><td>Até ${esc(meta.validade)}</td></tr>
-      <tr><td>Envio de ${esc(insumos)}</td><td>Contratante</td><td>D+0</td></tr>
-      <tr><td>Configuração de robôs e critérios de triagem</td><td>Branddi</td><td>D+3 úteis</td></tr>
-      <tr><td>Primeira entrega de ocorrências</td><td>Branddi</td><td>D+7</td></tr>
-      <tr><td>Primeira reunião de acompanhamento</td><td>Ambas</td><td>D+30</td></tr>
+      <tr><td>${esc(t.etapaAceite)}</td><td>${esc(t.respContratante)}</td><td>${esc(t.prazoAte(meta.validade))}</td></tr>
+      <tr><td>${esc(t.etapaEnvio(lista))}</td><td>${esc(t.respContratante)}</td><td>D+0</td></tr>
+      <tr><td>${esc(t.etapaConfig)}</td><td>Branddi</td><td>${esc(t.prazoUteis)}</td></tr>
+      <tr><td>${esc(t.etapaPrimeira)}</td><td>Branddi</td><td>D+7</td></tr>
+      <tr><td>${esc(t.etapaReuniao)}</td><td>${esc(t.respAmbas)}</td><td>D+30</td></tr>
     </tbody></table></div>`;
 }
 
@@ -238,38 +269,39 @@ function clausulaAceite(ctx) {
  * gerado no formulário não deve oferecer aceite a ninguém.
  *
  * É declaração do cliente, não assinatura qualificada: prova intenção e data,
- * não identidade certificada. O texto do botão diz isso, pra ninguém achar que
- * assinou contrato ali.
+ * não identidade certificada. O texto diz isso, pra ninguém achar que assinou
+ * contrato ali.
  */
 function blocoAceite(ctx, vencida) {
+    const { t, idioma } = ctx;
     if (!ctx.slug) return '';
     if (ctx.aceite) {
-        const q = new Date(ctx.aceite.quando).toLocaleString('pt-BR', { timeZone: TZ, dateStyle: 'short', timeStyle: 'short' });
-        return `<section class="aceito"><h2><span class="idx">✓</span> Proposta aceita</h2>
-      <p>Aceita por <strong>${esc(ctx.aceite.nome)}</strong>${ctx.aceite.cargo ? ` — ${esc(ctx.aceite.cargo)}` : ''}
-      (${esc(ctx.aceite.email)}) em <strong>${esc(q)}</strong>.</p>
-      <p class="fine">A Branddi foi notificada e entrará em contato para a implantação.</p></section>`;
+        const locale = idioma === 'en' ? 'en-US' : (idioma === 'es' ? 'es-ES' : 'pt-BR');
+        const q = new Date(ctx.aceite.quando).toLocaleString(locale, { timeZone: TZ, dateStyle: 'long', timeStyle: 'short' });
+        return `<section class="aceito"><h2><span class="idx">✓</span> ${esc(t.aceiteAceitaTitulo)}</h2>
+      <p>${t.aceitaPor(esc(ctx.aceite.nome), esc(ctx.aceite.cargo || ''), esc(ctx.aceite.email), esc(q))}</p>
+      <p class="fine">${esc(t.aceitaNota)}</p></section>`;
     }
     // Substituída não aceita: o cliente estaria concordando com um valor que a
     // Branddi já revisou. Se ele quiser fechar, é pela versão atual.
     if (vencida || ctx.substituida) return '';
-    return `<section id="aceite"><h2><span class="idx">✓</span> Aceite</h2>
-    <p class="fine">Ao confirmar, a Branddi é notificada e inicia a implantação em 3 dias úteis. Isto registra o
-    aceite comercial desta proposta; o contrato é formalizado em seguida.</p>
+    return `<section id="aceite"><h2><span class="idx">✓</span> ${esc(t.aceiteTitulo)}</h2>
+    <p class="fine">${esc(t.aceiteProsa)}</p>
     <form id="fAceite" class="aceite-form" autocomplete="on">
-      <label>Nome completo<input name="nome" required autocomplete="name"></label>
-      <label>E-mail corporativo<input name="email" type="email" required autocomplete="email"></label>
-      <label>Cargo <span class="opc">(opcional)</span><input name="cargo" autocomplete="organization-title"></label>
-      <button type="submit">Aceitar proposta</button>
+      <label>${esc(t.aceiteNome)}<input name="nome" required autocomplete="name"></label>
+      <label>${esc(t.aceiteEmail)}<input name="email" type="email" required autocomplete="email"></label>
+      <label>${esc(t.aceiteCargo)} <span class="opc">${esc(t.aceiteOpcional)}</span><input name="cargo" autocomplete="organization-title"></label>
+      <button type="submit">${esc(t.aceiteBotao)}</button>
       <p class="msg" id="aceiteMsg" role="status"></p>
     </form>
     <script>
     (function () {
       var f = document.getElementById('fAceite');
+      var LABEL = ${JSON.stringify(t.aceiteBotao)}, ENVIANDO = ${JSON.stringify(t.aceiteEnviando)};
       f.addEventListener('submit', async function (e) {
         e.preventDefault();
         var btn = f.querySelector('button'), msg = document.getElementById('aceiteMsg');
-        btn.disabled = true; btn.textContent = 'Enviando…'; msg.textContent = '';
+        btn.disabled = true; btn.textContent = ENVIANDO; msg.textContent = '';
         try {
           var r = await fetch('/api/proposal/aceite/${esc(ctx.slug)}', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -279,8 +311,8 @@ function blocoAceite(ctx, vencida) {
           if (!r.ok) throw new Error(d.error || 'falhou');
           location.reload();
         } catch (err) {
-          msg.textContent = 'Não consegui registrar: ' + err.message + '. Tente de novo ou responda o e-mail do seu contato.';
-          btn.disabled = false; btn.textContent = 'Aceitar proposta';
+          msg.textContent = ${JSON.stringify(t.aceiteErro('@@'))}.replace('@@', err.message);
+          btn.disabled = false; btn.textContent = LABEL;
         }
       });
     })();
@@ -290,77 +322,74 @@ function blocoAceite(ctx, vencida) {
 // ─── Documento ──────────────────────────────────────────────────────
 
 const CLAUSULAS = [
-    ['Identificação', clausulaIdentificacao],
-    ['Objetivo do contrato', clausulaObjetivo],
-    ['Abordagem', clausulaAbordagem],
-    ['Investimento', clausulaInvestimento],
-    ['Escopo e níveis de serviço', clausulaEscopo],
-    ['Condições comerciais', clausulaCondicoes],
-    ['Fundamentação legal', clausulaLegal],
-    ['Aceite e implantação', clausulaAceite],
+    clausulaIdentificacao, clausulaObjetivo, clausulaAbordagem, clausulaInvestimento,
+    clausulaEscopo, clausulaCondicoes, clausulaLegal, clausulaAceite,
 ];
 
 /**
- * @param {{deal:{id:number,organizacao:string,contato?:string}, spec:object, emitidaEm?:Date}} args
+ * @param {{deal:{id:number,organizacao:string,contato?:string}, spec:object,
+ *   emitidaEm?:Date, slug?:string, aceite?:object, substituida?:object}} args
  * @returns {string} HTML completo
  */
 export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null, aceite = null, substituida = null }) {
     const codes = produtosOrdenados(spec);
     if (!codes.length) throw new Error('spec sem produtos — nada a renderizar');
     if (!deal?.organizacao) throw new Error('sem organização — o nome vai no corpo da proposta');
+
     // Barrar aqui, e não só na tela: bloquear no formulário é interface, não
-    // garantia. Um POST direto com idioma:'en' sairia em português calado.
+    // garantia. Um POST direto com idioma sem catálogo sairia em português calado.
     const idioma = spec.idioma || 'pt';
     if (!IDIOMAS_COM_BLOCOS.includes(idioma)) {
-        throw new Error(`ainda não existe modelo em ${IDIOMA_LABEL[idioma] || idioma} — a proposta só sai em português por enquanto`);
+        throw new Error(`ainda não existe modelo em ${IDIOMA_LABEL[idioma] || idioma} — a proposta só sai nos idiomas com catálogo escrito`);
     }
+    const { blocos, slaGeral, insumos, textos: t } = catalogoDoIdioma(idioma);
 
     const validade = new Date(emitidaEm.getTime() + VALIDADE_DIAS * 86400000);
-    const soma = codes.reduce((t, c) => t + (Number(spec.porProduto[c]?.preco) || 0), 0);
+    const soma = codes.reduce((acc, c) => acc + (Number(spec.porProduto[c]?.preco) || 0), 0);
     const total = Number(spec.pacote) > 0 ? Number(spec.pacote) : soma;
-    const meta = { numero: `PC-${deal.id}`, emissao: dataBR(emitidaEm), validade: dataBR(validade) };
-    const ctx = { deal, spec, codes, meta, soma, total, slug, aceite, substituida };
+    const meta = {
+        numero: `${t.numeroPrefixo}-${deal.id}`,
+        emissao: dataNoIdioma(emitidaEm, idioma),
+        validade: dataNoIdioma(validade, idioma),
+    };
+    const ctx = { deal, spec, codes, meta, soma, total, slug, aceite, substituida, idioma, t, blocos, slaGeral, insumos };
 
-    // Vencida não bloqueia: procurement abre proposta semanas depois, e uma
-    // página em branco só gera ligação. Avisa e segue mostrando.
     const vencida = Date.now() > validade.getTime() + 86400000; // até o fim do dia da validade
 
     // Substituída vem antes de vencida: se as duas valem, o que o cliente
     // precisa é do endereço novo, não do aviso de prazo.
     const aviso = substituida
-        ? `<div class="substituida"><b>Esta versão foi substituída.</b> Uma proposta mais recente
-           (revisão ${esc(substituida.revisao)}) foi emitida para esta negociação.
-           <a href="/p/${esc(substituida.slug)}">Abrir a versão atual</a>.</div>`
+        ? `<div class="substituida"><b>${esc(t.substituidaTitulo)}</b> ${esc(t.substituidaTexto(substituida.revisao))}
+           <a href="/p/${esc(substituida.slug)}">${esc(t.substituidaLink)}</a>.</div>`
         : vencida
-        ? `<div class="vencida"><b>Esta proposta venceu em ${esc(meta.validade)}.</b> Os valores e condições
-           precisam ser reconfirmados — fale com seu contato na Branddi para receber uma versão atualizada.</div>`
-        : '';
+            ? `<div class="vencida"><b>${esc(t.vencidaTitulo(meta.validade))}</b> ${esc(t.vencidaTexto)}</div>`
+            : '';
 
-    const corpo = CLAUSULAS.map(([titulo, fn], i) =>
-        `<section><h2><span class="idx">${i + 1}</span> ${esc(titulo)}</h2>${fn(ctx)}</section>`).join('\n');
+    const corpo = CLAUSULAS.map((fn, i) =>
+        `<section><h2><span class="idx">${i + 1}</span> ${esc(t.clausulas[i])}</h2>${fn(ctx)}</section>`).join('\n');
 
-    const titulo = `${codes.map((c) => BLOCOS_PT[c].titulo).join(' e ')} — ${deal.organizacao}`;
+    const titulo = `${codes.map((c) => blocos[c].titulo).join(' · ')} — ${deal.organizacao}`;
 
-    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+    return `<!doctype html><html lang="${esc(idioma)}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Proposta ${esc(deal.organizacao)} — Branddi</title>
+<title>${esc(deal.organizacao)} — Branddi</title>
 <!-- Proposta com preço de cliente. O link é privado por ser imprevisível, mas
      basta alguém colá-lo em qualquer lugar público pra virar resultado de
      busca. noindex fecha esse caminho. -->
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<style>${CSS}</style></head><body><div class="wrap"><article class="sheet">
+<style>${cssLimpo()}</style></head><body><div class="wrap"><article class="sheet">
 <header class="masthead">
   <div class="logo">Brand<span>di</span></div>
-  <div class="ref"><b>${esc(meta.numero)}</b><br>Emissão ${esc(meta.emissao)} · Validade ${esc(meta.validade)}</div>
+  <div class="ref"><b>${esc(meta.numero)}</b><br>${esc(t.emissao)} ${esc(meta.emissao)} · ${esc(t.validadeCurta)} ${esc(meta.validade)}</div>
 </header>
 <div class="acoes">
-  <button type="button" onclick="window.print()">Baixar em PDF</button>
-  <span>Abre a janela de impressão — escolha "Salvar como PDF".</span>
+  <button type="button" onclick="window.print()">${esc(t.baixarPdf)}</button>
+  <span>${esc(t.baixarPdfDica)}</span>
 </div>
 ${aviso}
 <div class="doctitle">
-  <p class="kicker">Proposta técnica e comercial</p>
+  <p class="kicker">${esc(t.kicker)}</p>
   <h1>${esc(titulo)}</h1>
 </div>
 <div class="pad">
@@ -368,8 +397,8 @@ ${corpo}
 ${blocoAceite(ctx, vencida)}
 </div>
 <footer class="foot">
-  <div><b>Branddi</b> — Combata o uso indevido da sua marca e maximize seus resultados</div>
-  <div>${esc(meta.numero)} · válida até ${esc(meta.validade)}</div>
+  <div><b>Branddi</b> — ${esc(t.rodape)}</div>
+  <div>${esc(meta.numero)} · ${esc(t.rodapeValida)} ${esc(meta.validade)}</div>
 </footer>
 </article></div></body></html>`;
 }

@@ -195,3 +195,13 @@ export function contratoTemAtuacao(porProduto) {
         return b.temModalidade && p.modalidade !== 'Monitoria';
     });
 }
+
+/**
+ * Insumos do aceite, por produto — o cliente só é cobrado do que contratou.
+ * Estava cravado no renderizador; virou dado pra existir nos três idiomas.
+ */
+export const INSUMOS_PT = {
+    BBP: 'relação de SKUs prioritários e de sellers autorizados',
+    BB: 'lista de palavras-chave a monitorar',
+    GD: 'safelist de domínios e perfis oficiais',
+};

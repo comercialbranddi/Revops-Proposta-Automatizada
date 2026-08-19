@@ -11,6 +11,7 @@
  */
 import { renderProposta } from '../src/services/render-proposta.js';
 import { BLOCOS_PT } from '../src/content/blocos-pt.js';
+import { catalogoDoIdioma } from '../src/content/blocos.js';
 
 const CANAIS = { BB: [1592, 1593], BBP: [1598], GD: [1599, 1600, 1601], VM: [1604] };
 const QTD = { BB: 3, BBP: 25, GD: null, VM: 3 };
@@ -217,10 +218,87 @@ const CASOS_VERSAO = [
 ];
 
 const ERROS = [
-    { nome: 'idioma sem catálogo é recusado', spec: spec(['BB'], { idioma: 'en' }), esperado: /inglês/ },
+    // 'fr' não tem catálogo. Antes este caso usava 'en', que passou a ter.
+    { nome: 'idioma sem catálogo é recusado', spec: spec(['BB'], { idioma: 'fr' }), esperado: /não existe modelo/ },
     { nome: 'spec sem produto é recusado', spec: spec([]), esperado: /sem produtos/ },
     { nome: 'negócio sem organização é recusado', spec: spec(['BB']), deal: { id: 1 }, esperado: /sem organiza/ },
 ];
+
+// ─── Idiomas ────────────────────────────────────────────────────────
+// Ortografia que só existe em português. Serve pra pegar o defeito que a
+// auditoria de 11/08/2026 achou nos documentos antigos: português vazando no
+// meio do inglês ("Google + Meta (Facebook e Instagram) + TLD's (Dominios)").
+// "São Paulo" é nome próprio e sai da conta antes.
+const SO_PORTUGUES = new RegExp(['ção', 'ções', 'não', 'ência', 'Entregável',
+    'Aprovação', 'Validade', 'Atuação', 'Monitoria'].join('|'));
+
+const MESES_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+    'August', 'September', 'October', 'November', 'December'];
+
+const IDIOMAS = [
+    {
+        idioma: 'en',
+        checa: [
+            contem('Technical and commercial proposal'), contem('Identification'),
+            contem('Purpose of the agreement'), contem('Commercial terms'), contem('Legal basis'),
+            contem('Client'), contem('Deliverable'), contem('Monitoring + Enforcement'),
+            contem('No minimum term'), contem('Accept proposal'), contem('Download PDF'),
+            // A data em inglês sai com o mês escrito: "08/18" e "18/08" são a
+            // mesma string com sentidos diferentes.
+            (h) => MESES_EN.some((m) => h.includes(m))
+                || 'data em inglês devia trazer o mês escrito',
+            // Condição que os documentos antigos em inglês vendiam e que NÃO
+            // deve ter sido herdada.
+            naoContem('annual'), naoContem('12 months'),
+        ],
+    },
+    {
+        idioma: 'es',
+        checa: [
+            contem('Propuesta técnica y comercial'), contem('Identificación'),
+            contem('Objeto del contrato'), contem('Condiciones comerciales'), contem('Fundamento legal'),
+            contem('Entregable'), contem('Monitoreo + Actuación'), contem('Sin permanencia'),
+            contem('Aceptar propuesta'), contem('Descargar en PDF'),
+            // O defeito real do espanhol antigo: "para cancelamento sem multa"
+            // embutido no meio da cláusula de contrato.
+            naoContem('cancelamento'), naoContem('sem multa'),
+        ],
+    },
+];
+
+/**
+ * Os três catálogos precisam ter a MESMA forma. Idioma que esquece uma linha
+ * gera proposta que promete menos que a portuguesa — e ninguém percebe, porque
+ * o documento sai bonito.
+ */
+function mesmaForma() {
+    const problemas = [];
+    const cats = ['pt', 'en', 'es'].map((i) => [i, catalogoDoIdioma(i)]);
+    const [, base] = cats[0];
+    for (const [idioma, c] of cats.slice(1)) {
+        const pk = Object.keys(base.blocos).sort().join(',');
+        const ck = Object.keys(c.blocos).sort().join(',');
+        if (pk !== ck) problemas.push(`${idioma}: produtos diferentes (${ck} vs ${pk})`);
+        for (const code of Object.keys(base.blocos)) {
+            const a = base.blocos[code]; const b = c.blocos[code];
+            if (!b) continue;
+            if (a.temModalidade !== b.temModalidade) problemas.push(`${idioma}/${code}: temModalidade divergente`);
+            const marca = (arr) => arr.map((l) => l.so || '-').join('|');
+            if (marca(a.especificacoes) !== marca(b.especificacoes)) {
+                problemas.push(`${idioma}/${code}: especificações com ${b.especificacoes.length} linhas (pt tem ${a.especificacoes.length}) ou marcação "so" diferente`);
+            }
+            if (marca(a.sla) !== marca(b.sla)) problemas.push(`${idioma}/${code}: SLA divergente`);
+            if (!b.objetivo) problemas.push(`${idioma}/${code}: sem objetivo`);
+        }
+        if (base.slaGeral.map((l) => l.so || '-').join('|') !== c.slaGeral.map((l) => l.so || '-').join('|')) {
+            problemas.push(`${idioma}: SLA geral divergente`);
+        }
+        for (const k of Object.keys(base.insumos)) {
+            if (!c.insumos[k]) problemas.push(`${idioma}: insumo de ${k} faltando`);
+        }
+    }
+    return problemas;
+}
 
 // ─── Execução ───────────────────────────────────────────────────────
 let ok = 0; const falhas = [];
@@ -242,6 +320,26 @@ for (const caso of CASOS_VERSAO) {
     if (erros.length) falhas.push([caso.nome, erros.join(' | ')]);
     else { ok++; console.log(`✅ ${caso.nome}`); }
 }
+
+for (const { idioma, checa } of IDIOMAS) {
+    const nome = `documento em ${idioma}`;
+    let html;
+    try { html = renderProposta({ deal: DEAL, spec: spec(['BB', 'BBP', 'GD', 'VM'], { idioma }), slug: 'x' }); }
+    catch (e) { falhas.push([nome, `estourou: ${e.message}`]); continue; }
+    const erros = checa.map((f) => f(html)).filter((r) => r !== true);
+    // O vazamento de português é conferido no documento inteiro, sem "São Paulo".
+    const limpo = html.replace(/São Paulo/g, '');
+    const vaza = limpo.match(SO_PORTUGUES);
+    if (vaza) erros.push(`português vazando: "${vaza[0]}"`);
+    // A moeda fica em real nos três idiomas — decisão comercial aberta.
+    if (!html.includes('R$')) erros.push('a moeda devia seguir em real');
+    if (erros.length) falhas.push([nome, erros.join(' | ')]);
+    else { ok++; console.log(`✅ ${nome}`); }
+}
+
+const pForma = mesmaForma();
+if (pForma.length) falhas.push(['os três catálogos têm a mesma forma', pForma.join(' | ')]);
+else { ok++; console.log('✅ os três catálogos têm a mesma forma'); }
 
 for (const caso of ERROS) {
     try {

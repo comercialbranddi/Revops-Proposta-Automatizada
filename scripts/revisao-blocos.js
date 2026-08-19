@@ -7,7 +7,8 @@
  *
  * Uso: node scripts/revisao-blocos.js > revisao-blocos.html
  */
-import { BLOCOS_PT, SLA_GERAL, linhasDaModalidade, prosaDoBloco } from '../src/content/blocos-pt.js';
+import { BLOCOS_PT, SLA_GERAL } from '../src/content/blocos-pt.js';
+import { linhasDaModalidade, prosaDoBloco } from '../src/content/blocos.js';
 
 const esc = (s) => String(s).replace(/&(?!\w+;|#)/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/&lt;strong&gt;/g, '<strong>').replace(/&lt;\/strong&gt;/g, '</strong>');
@@ -49,7 +50,7 @@ function bloco(code, b) {
 
     const coluna = (mod, outroSet) => `<div class="col">
       <h3>${esc(mod)}</h3>
-      <p class="prosa">${esc(prosaDoBloco(code, mod))}</p>
+      <p class="prosa">${esc(prosaDoBloco(BLOCOS_PT, code, mod))}</p>
       <h4>Especificações</h4>
       ${tabela(b.especificacoes, mod, outroSet, (l) => l.rotulo, (l) => l.valor)}
       <h4>Entregáveis</h4>
