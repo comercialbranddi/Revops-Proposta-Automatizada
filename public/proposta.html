@@ -60,6 +60,7 @@
   .opcaohead{display:flex;gap:.5rem;align-items:center}
   .opcaohead input.rotulo{flex:1;font-weight:600;text-transform:none;letter-spacing:0}
   .opcaohead button{margin-left:auto}
+  textarea.cond{min-height:2.1rem;resize:vertical;overflow:hidden;line-height:1.4}
   .condhead{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
   .condhead .flag{font-family:var(--mono);font-size:.6rem;color:var(--accent);letter-spacing:.05em}
   .condhead button{margin-left:auto;text-transform:none;letter-spacing:0}
@@ -134,6 +135,8 @@ const el = (t, a = {}, ...kids) => {
   kids.flat().forEach(k => { if (k == null || k === false) return; n.append(k.nodeType ? k : document.createTextNode(k)); });
   return n;
 };
+// Tira as tags do texto padrão pra ele caber num campo de formulário.
+const semTags = (x) => String(x).replace(/<[^>]+>/g, '');
 const brl = n => (n == null || n === '') ? '—'
   : Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
@@ -435,21 +438,30 @@ function cardCondicoes() {
     'Já vêm com a condição padrão da Branddi. Altere só o que foi negociado — o que ficar como está sai como padrão.'));
 
   Object.entries(padrao).forEach(([chave, def]) => {
+    // O padrão tem <strong> pra dar ênfase no documento. Isso NÃO vai pra tela:
+    // ninguém deveria precisar saber HTML pra editar uma condição comercial.
+    // Mostra o texto limpo; se o closer não mexer, o override não é enviado e o
+    // documento usa o padrão original — com o negrito no lugar.
+    const limpo = semTags(def.valor);
     const atual = estado.condicoes[chave];
-    const ta = el('textarea', { value: atual == null ? def.valor : atual, rows: 2 });
-    const alterado = () => ta.value.trim() !== def.valor.trim();
+    const ta = el('textarea', { className: 'cond', value: atual == null ? limpo : atual, rows: 1 });
+    const alterado = () => ta.value.trim() !== limpo.trim();
     const marca = el('span', { className: 'flag' });
     const pinta = () => { marca.textContent = alterado() ? '● negociado' : ''; };
+    // Cresce com o conteúdo em vez de reservar quatro linhas pra uma.
+    const encolhe = () => { ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; };
     ta.oninput = () => {
       if (alterado()) estado.condicoes[chave] = ta.value;
       else delete estado.condicoes[chave];
-      pinta();
+      pinta(); encolhe();
     };
     pinta();
     const reset = el('button', { className: 'mini', type: 'button', textContent: 'voltar ao padrão' });
-    reset.onclick = () => { ta.value = def.valor; delete estado.condicoes[chave]; pinta(); };
+    reset.onclick = () => { ta.value = limpo; delete estado.condicoes[chave]; pinta(); encolhe(); };
     b.append(el('label', { className: 'f' },
       el('span', { className: 'condhead' }, el('span', {}, def.rotulo), marca, reset), ta));
+    // Só depois de estar no documento o scrollHeight é real.
+    requestAnimationFrame(encolhe);
   });
 
   c.append(b);
