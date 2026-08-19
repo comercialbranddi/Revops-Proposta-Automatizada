@@ -44,7 +44,7 @@
   input[type=text],input[type=number],select,textarea{
     font:400 .9rem/1.4 var(--sans);color:var(--text);background:var(--surface-2);
     border:1px solid var(--rule);border-radius:3px;padding:.45rem .6rem;width:100%;text-transform:none;letter-spacing:0}
-  textarea{resize:vertical;min-height:4.2rem}
+  textarea{resize:vertical;min-height:2.1rem;overflow:hidden;line-height:1.4}
   input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
   .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.8rem}
   .hint{font:400 .76rem/1.45 var(--sans);color:var(--dim);text-transform:none;letter-spacing:0}
@@ -60,7 +60,6 @@
   .opcaohead{display:flex;gap:.5rem;align-items:center}
   .opcaohead input.rotulo{flex:1;font-weight:600;text-transform:none;letter-spacing:0}
   .opcaohead button{margin-left:auto}
-  textarea.cond{min-height:2.1rem;resize:vertical;overflow:hidden;line-height:1.4}
   .condhead{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
   .condhead .flag{font-family:var(--mono);font-size:.6rem;color:var(--accent);letter-spacing:.05em}
   .condhead button{margin-left:auto;text-transform:none;letter-spacing:0}
@@ -137,6 +136,24 @@ const el = (t, a = {}, ...kids) => {
 };
 // Tira as tags do texto padrão pra ele caber num campo de formulário.
 const semTags = (x) => String(x).replace(/<[^>]+>/g, '');
+
+/**
+ * Textarea que nasce com uma linha e cresce com o conteúdo.
+ *
+ * Campo de texto livre neste formulário quase sempre recebe uma linha — uma
+ * marca, uma condição, uma observação curta — e reservar quatro de altura pra
+ * isso empurrava o resto da tela pra baixo sem motivo.
+ */
+function textareaAuto(props = {}) {
+    const ta = el('textarea', { rows: 1, ...props });
+    const cresce = () => { ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; };
+    const antes = ta.oninput;
+    ta.oninput = (e) => { if (antes) antes.call(ta, e); cresce(); };
+    // scrollHeight só é real depois de o campo estar no documento.
+    requestAnimationFrame(cresce);
+    ta.cresce = cresce;
+    return ta;
+}
 const brl = n => (n == null || n === '') ? '—'
   : Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
@@ -264,8 +281,8 @@ function cardEscopo() {
   const c = el('div', { className: 'card' }, el('h2', {}, 'Escopo'));
   const b = el('div', { className: 'body' });
 
-  const ta = el('textarea', { value: estado.marcas, placeholder: 'Uma marca por linha' });
-  ta.oninput = () => { estado.marcas = ta.value; atualizarPendencias(); };
+  const ta = textareaAuto({ value: estado.marcas, placeholder: 'Uma marca por linha' });
+  ta.oninput = () => { estado.marcas = ta.value; atualizarPendencias(); ta.cresce(); };
   b.append(el('label', { className: 'f' }, 'Marcas monitoradas', ta,
     el('span', { className: 'hint' }, 'Vão no texto da proposta. Veio o nome da organização, mas o cliente pode ter mais de uma marca.')));
 
@@ -444,24 +461,20 @@ function cardCondicoes() {
     // documento usa o padrão original — com o negrito no lugar.
     const limpo = semTags(def.valor);
     const atual = estado.condicoes[chave];
-    const ta = el('textarea', { className: 'cond', value: atual == null ? limpo : atual, rows: 1 });
+    const ta = textareaAuto({ className: 'cond', value: atual == null ? limpo : atual });
     const alterado = () => ta.value.trim() !== limpo.trim();
     const marca = el('span', { className: 'flag' });
     const pinta = () => { marca.textContent = alterado() ? '● negociado' : ''; };
-    // Cresce com o conteúdo em vez de reservar quatro linhas pra uma.
-    const encolhe = () => { ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; };
     ta.oninput = () => {
       if (alterado()) estado.condicoes[chave] = ta.value;
       else delete estado.condicoes[chave];
-      pinta(); encolhe();
+      pinta(); ta.cresce();
     };
     pinta();
     const reset = el('button', { className: 'mini', type: 'button', textContent: 'voltar ao padrão' });
-    reset.onclick = () => { ta.value = limpo; delete estado.condicoes[chave]; pinta(); encolhe(); };
+    reset.onclick = () => { ta.value = limpo; delete estado.condicoes[chave]; pinta(); ta.cresce(); };
     b.append(el('label', { className: 'f' },
       el('span', { className: 'condhead' }, el('span', {}, def.rotulo), marca, reset), ta));
-    // Só depois de estar no documento o scrollHeight é real.
-    requestAnimationFrame(encolhe);
   });
 
   c.append(b);
@@ -541,8 +554,8 @@ function cardPacote() {
   };
   b.append(add);
 
-  const ta = el('textarea', { value: estado.observacoes, placeholder: 'Só para o time. Não sai no documento.' });
-  ta.oninput = () => { estado.observacoes = ta.value; };
+  const ta = textareaAuto({ value: estado.observacoes, placeholder: 'Só para o time. Não sai no documento.' });
+  ta.oninput = () => { estado.observacoes = ta.value; ta.cresce(); };
   b.append(el('label', { className: 'f' }, 'Observações internas', ta));
 
   c.append(b);
