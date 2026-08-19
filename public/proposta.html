@@ -50,12 +50,12 @@
   .hint{font:400 .76rem/1.45 var(--sans);color:var(--dim);text-transform:none;letter-spacing:0}
 
   .chips{display:flex;flex-wrap:wrap;gap:.4rem}
-  .chip.fixo{cursor:default;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
-  .chip.fixo button{margin-left:.1rem;padding:0 .2rem;border:0;background:transparent;color:var(--dim);cursor:pointer;font-size:.9rem}
-  .chip.fixo button:hover{color:var(--alert)}
-  .outros{display:flex;flex-direction:column;gap:.45rem}
-  .addrow{display:flex;gap:.4rem;align-items:center}
-  .addrow input{flex:1}
+  .chip.digitado{cursor:default;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);font-weight:600}
+  .chip.digitado .x{margin-left:.15rem;padding:0 .15rem;border:0;background:transparent;color:var(--dim);cursor:pointer;font-size:1rem;line-height:1}
+  .chip.digitado .x:hover{color:var(--alert)}
+  input.outro{width:11rem;flex:0 0 auto;padding:.3rem .55rem;font-size:.82rem;border-style:dashed}
+  input.outro::placeholder{color:var(--dim)}
+  input.outro:focus{border-style:solid;border-color:var(--accent)}
   .condhead{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
   .condhead .flag{font-family:var(--mono);font-size:.6rem;color:var(--accent);letter-spacing:.05em}
   .condhead button{margin-left:auto;text-transform:none;letter-spacing:0}
@@ -318,9 +318,17 @@ function cardProduto(p) {
     inp.onchange = () => { if (inp.checked) st.canais.add(o.id); else st.canais.delete(o.id); render(); };
     ch.append(el('label', { className: 'chip' }, inp, o.label));
   });
+  // Os digitados entram na MESMA fila dos do catálogo, e o campo de digitar é o
+  // último item dela. Sem bloco separado: canal é uma coisa só, venha da lista
+  // ou do teclado.
+  st.canaisOutros.forEach((nome, i) => {
+    const rm = el('button', { className: 'x', type: 'button', textContent: '×', title: 'remover' });
+    rm.onclick = () => { st.canaisOutros.splice(i, 1); render(); };
+    ch.append(el('span', { className: 'chip digitado' }, nome, rm));
+  });
+  ch.append(campoOutro(st));
   b.append(el('label', { className: 'f' }, 'Canais monitorados', ch,
-    el('span', { className: 'hint' }, 'Vazio usa o padrão do produto, que é o texto que o modelo já traz.')));
-  b.append(outrosCanais(st));
+    el('span', { className: 'hint' }, 'Vazio usa o padrão do produto. Para plataforma fora da lista, digite no campo ao lado — Enter ou vírgula adiciona mais de uma.')));
 
   // Só App Store muda o formato do documento: sai a linha de palavras-chave e
   // o canal vai pro título. Por isso a quantidade some da tela nesse caso.
@@ -347,37 +355,25 @@ function cardProduto(p) {
 }
 
 /**
- * Canais digitados. A lista fixa nunca cobre tudo — as propostas reais do time
- * trazem 18 combinações distintas de plataforma — e sem isto o closer teria que
- * escolher um canal errado ou montar a proposta à mão.
+ * O campo de digitar canal, encaixado na fila de chips como último item.
+ *
+ * Existe porque a lista fixa nunca vai cobrir tudo: as propostas reais do time
+ * trazem 18 combinações distintas de plataforma, e obrigar o closer a escolher
+ * só o que está cadastrado o faria mandar a proposta errada ou montar à mão.
  */
-function outrosCanais(st) {
-  const box = el('div', { className: 'outros' });
-  const chips = el('div', { className: 'chips' });
-  st.canaisOutros.forEach((nome, i) => {
-    const rm = el('button', { className: 'mini', type: 'button', textContent: '×', title: 'remover' });
-    rm.onclick = () => { st.canaisOutros.splice(i, 1); render(); };
-    chips.append(el('span', { className: 'chip fixo' }, nome, rm));
-  });
-  if (st.canaisOutros.length) box.append(chips);
-
-  const inp = el('input', { type: 'text', placeholder: 'Shopee, Magalu, TikTok Shop…' });
-  const add = el('button', { className: 'mini', type: 'button', textContent: '+ adicionar' });
+function campoOutro(st) {
+  const inp = el('input', { type: 'text', className: 'outro', placeholder: '+ outro canal' });
   const guarda = () => {
-    // Vírgula e ponto e vírgula separam: quem cola uma lista não precisa
-    // adicionar um por um.
+    // Vírgula e ponto e vírgula separam: quem cola uma lista não adiciona um a um.
     const novos = inp.value.split(/[,;]/).map((x) => x.trim()).filter(Boolean)
       .filter((x) => !st.canaisOutros.includes(x));
-    if (!novos.length) return;
+    if (!novos.length) { inp.value = ''; return; }
     st.canaisOutros.push(...novos);
-    inp.value = '';
     render();
   };
-  add.onclick = guarda;
-  inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); guarda(); } };
-  box.append(el('div', { className: 'addrow' }, inp, add));
-  return el('label', { className: 'f' }, 'Outros canais', box,
-    el('span', { className: 'hint' }, 'Para plataforma que não está na lista. Enter ou vírgula adiciona mais de uma.'));
+  inp.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); guarda(); } };
+  inp.onblur = guarda;
+  return inp;
 }
 
 function escada(code, st, qtdCfg) {
