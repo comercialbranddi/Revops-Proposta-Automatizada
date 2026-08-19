@@ -91,9 +91,15 @@ function produtosOrdenados(spec) {
 
 /** Rótulo de canal no idioma; nome próprio de plataforma não se traduz. */
 function canaisTexto(p, idioma) {
-    const labels = (p.canais || [])
+    const doCatalogo = (p.canais || [])
         .map((id) => CANAIS_LABEL_POR_IDIOMA[idioma]?.[id] || CANAIS_OPTION_TO_LABEL[id])
         .filter(Boolean);
+    // Canal digitado no formulario. Existe porque a lista fixa nunca vai cobrir
+    // tudo: as propostas reais do time trazem 18 combinacoes distintas de
+    // plataforma, e obrigar o closer a escolher so o que ja esta cadastrado o
+    // faria mandar a proposta errada ou montar a mao.
+    const digitados = (p.canaisOutros || []).map((c) => String(c).trim()).filter(Boolean);
+    const labels = [...doCatalogo, ...digitados];
     return labels.length ? labels.join(', ') : null;
 }
 
@@ -190,6 +196,7 @@ function clausulaEscopo(ctx) {
         [t.marcas, (spec.marcas || []).join(', ')],
         ...modalidades,
         [t.idiomaRelatorios, t.idiomaRelatoriosValor],
+        [t.requisito, t.requisitoValor],
     ])}
     <h4>${esc(t.entregaveis)}</h4>
     <div class="tw"><table>
@@ -226,25 +233,29 @@ function clausulaInvestimento(ctx) {
     return `<div class="tw"><table>
       <thead><tr><th scope="col">${esc(t.thItem)}</th><th scope="col">${esc(t.thEscopo)}</th><th scope="col" style="text-align:right">${esc(t.thMensal)}</th></tr></thead>
       <tbody>${linhas}${fecho}</tbody></table></div>
-    ${tabela([[t.setup, t.setupValor], [t.impostos, t.impostosValor]])}`;
+    ${tabela([[t.setup, cond(ctx, 'setup', t.setupValor)], [t.impostos, t.impostosValor]])}`;
+}
+
+/**
+ * Condicao negociada vence a padrao. O formulario manda em `spec.condicoes` so
+ * o que o closer alterou — o que nao vier continua sendo a condicao padrao da
+ * Branddi, e e isso que evita que um esquecimento no formulario apague uma
+ * clausula do contrato.
+ */
+function cond(ctx, chave, padrao) {
+    const v = ctx.spec.condicoes?.[chave];
+    return (typeof v === 'string' && v.trim()) ? v.trim() : padrao;
 }
 
 function clausulaCondicoes(ctx) {
     const { t, meta } = ctx;
     return tabela([
-        [t.pagamento, t.pagamentoValor],
-        [t.vigencia, t.vigenciaValor],
-        [t.rescisao, t.rescisaoValor],
-        [t.implantacao, t.implantacaoValor],
+        [t.pagamento, cond(ctx, 'pagamento', t.pagamentoValor)],
+        [t.vigencia, cond(ctx, 'vigencia', t.vigenciaValor)],
+        [t.rescisao, cond(ctx, 'rescisao', t.rescisaoValor)],
+        [t.implantacao, cond(ctx, 'implantacao', t.implantacaoValor)],
         [t.validadeProposta, t.validadeValor(VALIDADE_DIAS, meta.validade)],
     ]);
-}
-
-function clausulaLegal(ctx) {
-    const { t } = ctx;
-    return `<p>${esc(t.legalP1)}</p>
-  <blockquote>${esc(t.legalCitacao)}<cite>${esc(t.legalFonte)}</cite></blockquote>
-  <p class="fine">${esc(t.legalP2)}</p>`;
 }
 
 function clausulaAceite(ctx) {
@@ -323,7 +334,7 @@ function blocoAceite(ctx, vencida) {
 
 const CLAUSULAS = [
     clausulaIdentificacao, clausulaObjetivo, clausulaAbordagem, clausulaInvestimento,
-    clausulaEscopo, clausulaCondicoes, clausulaLegal, clausulaAceite,
+    clausulaEscopo, clausulaCondicoes, clausulaAceite,
 ];
 
 /**
@@ -378,6 +389,13 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
      busca. noindex fecha esse caminho. -->
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
+<!-- Montserrat e a fonte da proposta que o time envia hoje: 110 dos 112
+     trechos do MODELO BB no Drive usam ela. preconnect + display=swap pra a
+     pagina nao ficar em branco esperando a fonte, e stack de reserva pro caso
+     de a rede do cliente bloquear o Google Fonts. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 <style>${cssLimpo()}</style></head><body><div class="wrap"><article class="sheet">
 <header class="masthead">
   <div class="logo">Brand<span>di</span></div>
@@ -408,8 +426,8 @@ const CSS = `
 --accent:#0891B2;--turquoise:#0E7490;--rule:#D8E0E8;--rule-soft:#EAEFF4;--petrol:#002B36;
 --on-petrol:#fff;--on-petrol-dim:#94A3B8;--logo-accent:#4BBECD;
 --shadow:0 1px 2px rgba(15,23,42,.04),0 18px 44px -24px rgba(15,23,42,.2);
---display:"Segoe UI Semibold","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
---sans:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+--display:"Montserrat","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+--sans:"Montserrat","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
 --mono:"Cascadia Mono",Consolas,ui-monospace,SFMono-Regular,monospace;--measure:72ch}
 @media (prefers-color-scheme:dark){:root{--bg:#001721;--surface:#002B36;--surface-2:#00323F;--text:#fff;
 --muted:#B6C2CF;--dim:#8A97A6;--accent:#00E5FF;--turquoise:#4BBECD;--rule:#004052;--rule-soft:#00323F;

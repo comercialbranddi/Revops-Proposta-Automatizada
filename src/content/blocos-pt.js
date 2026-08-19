@@ -87,6 +87,10 @@ export const BLOCOS_PT = {
         titulo: 'Buy Box Protection',
         objetivo: 'a loja oficial perde a posição de compra nos marketplaces para sellers não autorizados, o que desloca receita sem que haja qualquer infração de marca',
         temModalidade: false,
+        // A linha "Suporte"/"Support"/"Apoyo" saiu em 18/08/2026: descrevia o
+        // COMO da entrega, que é assunto do relatório mensal, não da proposta.
+        // O que a proposta precisa dizer sobre isso já está na prosa — a
+        // atuação comercial é conduzida pela Contratante.
         // O modelo antigo intitulava esta lista "Formas de atuação", o que
         // sugeria que a Branddi atuava. Ela não atua: apoia, cruza e dá
         // suporte. Corrigido em 18/08/2026 — a promessa fica igual ao serviço.
@@ -99,7 +103,6 @@ export const BLOCOS_PT = {
             { rotulo: 'Frequência', valor: 'Diária' },
             { rotulo: 'Coleta', valor: 'Sellers que disputam o Buy Box dos produtos da marca; posição da loja oficial; reincidência e padrões de disputa; perfil, histórico e relevância de cada seller' },
             { rotulo: 'Tratamento', valor: 'Classificação das ocorrências por relevância e comportamento comercial, por equipe especializada da Contratada' },
-            { rotulo: 'Suporte', valor: 'Identificação de sellers não autorizados; cruzamento com bases fornecidas pela Contratante; apoio à atuação comercial junto aos canais e parceiros' },
             { rotulo: 'Implantação', valor: 'Definição do portfólio de SKUs; configuração dos robôs de monitoramento; alinhamento de critérios de análise e priorização; integração às políticas comerciais da marca' },
         ],
         sla: [

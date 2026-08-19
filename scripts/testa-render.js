@@ -217,6 +217,68 @@ const CASOS_VERSAO = [
     },
 ];
 
+const CASOS_NOVOS = [
+    {
+        nome: 'canais digitados entram junto dos do catálogo',
+        args: {},
+        spec: spec(['BBP'], {}, { BBP: { canaisOutros: ['Shopee', 'Magalu'] } }),
+        checa: [contem('Marketplaces, Shopee, Magalu')],
+    },
+    {
+        nome: 'só canais digitados, sem nenhum do catálogo',
+        args: {},
+        spec: spec(['BBP'], {}, { BBP: { canais: [], canaisOutros: ['TikTok Shop'] } }),
+        checa: [contem('TikTok Shop'), semPlaceholder],
+    },
+    {
+        nome: 'canal digitado com HTML sai escapado',
+        args: {},
+        spec: spec(['BBP'], {}, { BBP: { canaisOutros: ['<b>Shopee</b>'] } }),
+        checa: [naoContem('<b>Shopee</b>'), contem('&lt;b&gt;Shopee')],
+    },
+    {
+        nome: 'condição negociada substitui a padrão',
+        args: {},
+        spec: spec(['BB'], { condicoes: { rescisao: 'Fidelidade de 12 meses, multa de 3 mensalidades' } }),
+        checa: [contem('Fidelidade de 12 meses'), naoContem('Sem fidelidade')],
+    },
+    {
+        nome: 'condição não tocada continua sendo a padrão',
+        args: {},
+        spec: spec(['BB'], { condicoes: { pagamento: 'Trimestral, antecipado' } }),
+        checa: [contem('Trimestral, antecipado'), contem('Sem fidelidade'),
+            contem('3 dias úteis a contar do aceite')],
+    },
+    {
+        nome: 'condição em branco não apaga a cláusula',
+        args: {},
+        spec: spec(['BB'], { condicoes: { rescisao: '   ', vigencia: '' } }),
+        checa: [contem('Sem fidelidade'), contem('renovação automática')],
+    },
+    {
+        nome: 'setup também é negociável',
+        args: {},
+        spec: spec(['BB'], { condicoes: { setup: 'Isento' } }),
+        checa: [contem('Isento'), naoContem('01 mensalidade')],
+    },
+    {
+        nome: 'o que saiu do modelo não volta',
+        args: {},
+        spec: spec(['BBP', 'BB']),
+        // cláusula legal removida a pedido; requisito do INPI ficou, virou escopo
+        checa: [naoContem('Lei 9.279'), naoContem('Fundamentação legal'),
+            contem('registro no INPI'),
+            // a linha "Suporte" do BBP descrevia o COMO da entrega
+            naoContem('cruzamento com bases'), naoContem('apoio à atuação comercial junto aos canais')],
+    },
+    {
+        nome: 'a fonte da proposta é Montserrat',
+        args: { slug: 'x' },
+        spec: spec(['BB']),
+        checa: [contem('family=Montserrat'), contem('"Montserrat"')],
+    },
+];
+
 const ERROS = [
     // 'fr' não tem catálogo. Antes este caso usava 'en', que passou a ter.
     { nome: 'idioma sem catálogo é recusado', spec: spec(['BB'], { idioma: 'fr' }), esperado: /não existe modelo/ },
@@ -240,7 +302,7 @@ const IDIOMAS = [
         idioma: 'en',
         checa: [
             contem('Technical and commercial proposal'), contem('Identification'),
-            contem('Purpose of the agreement'), contem('Commercial terms'), contem('Legal basis'),
+            contem('Purpose of the agreement'), contem('Commercial terms'), naoContem('Legal basis'), contem('Requirement'),
             contem('Client'), contem('Deliverable'), contem('Monitoring + Enforcement'),
             contem('No minimum term'), contem('Accept proposal'), contem('Download PDF'),
             // A data em inglês sai com o mês escrito: "08/18" e "18/08" são a
@@ -256,7 +318,7 @@ const IDIOMAS = [
         idioma: 'es',
         checa: [
             contem('Propuesta técnica y comercial'), contem('Identificación'),
-            contem('Objeto del contrato'), contem('Condiciones comerciales'), contem('Fundamento legal'),
+            contem('Objeto del contrato'), contem('Condiciones comerciales'), naoContem('Fundamento legal'), contem('Requisito'),
             contem('Entregable'), contem('Monitoreo + Actuación'), contem('Sin permanencia'),
             contem('Aceptar propuesta'), contem('Descargar en PDF'),
             // O defeito real do espanhol antigo: "para cancelamento sem multa"
@@ -315,6 +377,15 @@ for (const caso of CASOS) {
 for (const caso of CASOS_VERSAO) {
     let html;
     try { html = renderProposta({ deal: DEAL, spec: spec(['BB']), ...caso.args }); }
+    catch (e) { falhas.push([caso.nome, `estourou: ${e.message}`]); continue; }
+    const erros = caso.checa.map((f) => f(html)).filter((r) => r !== true);
+    if (erros.length) falhas.push([caso.nome, erros.join(' | ')]);
+    else { ok++; console.log(`✅ ${caso.nome}`); }
+}
+
+for (const caso of CASOS_NOVOS) {
+    let html;
+    try { html = renderProposta({ deal: DEAL, spec: caso.spec, ...caso.args }); }
     catch (e) { falhas.push([caso.nome, `estourou: ${e.message}`]); continue; }
     const erros = caso.checa.map((f) => f(html)).filter((r) => r !== true);
     if (erros.length) falhas.push([caso.nome, erros.join(' | ')]);

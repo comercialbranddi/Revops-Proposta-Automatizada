@@ -64,6 +64,10 @@ export const BLOCOS_EN = {
         titulo: 'Buy Box Protection',
         objetivo: 'the official store loses the buy box position on marketplaces to unauthorized sellers, which diverts revenue without any trademark infringement taking place',
         temModalidade: false,
+        // A linha "Suporte"/"Support"/"Apoyo" saiu em 18/08/2026: descrevia o
+        // COMO da entrega, que é assunto do relatório mensal, não da proposta.
+        // O que a proposta precisa dizer sobre isso já está na prosa — a
+        // atuação comercial é conduzida pela Contratante.
         prosa: {
             unica: 'Governance over the conversion of the brand’s products on marketplaces, acting on buy box dynamics to reduce sales diverted to unauthorized sellers. Unlike price-driven approaches, the service provides visibility, control and intelligence over who competes for the buy box position. <strong>Commercial action with the channels is conducted by the Client</strong>, with Branddi’s support.',
         },
@@ -73,7 +77,6 @@ export const BLOCOS_EN = {
             { rotulo: 'Frequency', valor: 'Daily' },
             { rotulo: 'Data captured', valor: 'Sellers competing for the buy box on the brand’s products; the official store’s position; recurrence and competition patterns; profile, history and relevance of each seller' },
             { rotulo: 'Screening', valor: 'Classification of occurrences by relevance and commercial behaviour, carried out by Branddi’s specialist team' },
-            { rotulo: 'Support', valor: 'Identification of unauthorized sellers; cross-referencing against databases provided by the Client; support for commercial action with channels and partners' },
             { rotulo: 'Onboarding', valor: 'Definition of the monitored SKU portfolio; configuration of monitoring crawlers; alignment of analysis and prioritization criteria; integration with the brand’s commercial policies' },
         ],
         sla: [

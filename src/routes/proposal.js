@@ -12,7 +12,9 @@ import {
     parseServicoOferecido,
     idiomaDoDeal,
     catalogoDoFormulario,
+    IDIOMAS_COM_BLOCOS,
 } from '../config/proposal.js';
+import { condicoesPadrao } from '../content/textos.js';
 import { exigeLogin } from '../lib/auth-google.js';
 import { ultimaSpec, salvarSpec, porSlug, marcarGerada, aberturasDoDeal, registrarAceite, aceiteDe } from '../services/spec-store.js';
 import { renderProposta } from '../services/render-proposta.js';
@@ -84,6 +86,11 @@ router.get('/config', (req, res) => {
         clientId: process.env.GOOGLE_OAUTH_CLIENT_ID || null,
         dominio: process.env.PROPOSAL_FORM_DOMAIN || 'branddi.com',
         catalogo: catalogoDoFormulario('pt'),
+        // As condicoes padrao de cada idioma. O formulario mostra as do idioma
+        // escolhido e manda de volta SO o que o closer alterou — assim o que
+        // ninguem tocou continua sendo a condicao padrao da Branddi, e mudar o
+        // padrao depois alcanca as propostas novas sem reeditar nada.
+        condicoes: Object.fromEntries(IDIOMAS_COM_BLOCOS.map((i) => [i, condicoesPadrao(i)])),
     });
 });
 

@@ -69,6 +69,10 @@ export const BLOCOS_ES = {
         titulo: 'Buy Box Protection',
         objetivo: 'la tienda oficial pierde la posición de compra en los marketplaces frente a sellers no autorizados, lo que desvía ingresos sin que exista ninguna infracción de marca',
         temModalidade: false,
+        // A linha "Suporte"/"Support"/"Apoyo" saiu em 18/08/2026: descrevia o
+        // COMO da entrega, que é assunto do relatório mensal, não da proposta.
+        // O que a proposta precisa dizer sobre isso já está na prosa — a
+        // atuação comercial é conduzida pela Contratante.
         prosa: {
             unica: 'Gobernanza de la conversión de los productos de la marca en los marketplaces, actuando sobre la dinámica del Buy Box para reducir el desvío de ventas hacia sellers no autorizados. A diferencia de los enfoques centrados en el precio, el servicio ofrece visibilidad, control e inteligencia sobre quién disputa la posición de compra. <strong>La actuación comercial ante los canales es conducida por la Contratante</strong>, con el apoyo de Branddi.',
         },
@@ -78,7 +82,6 @@ export const BLOCOS_ES = {
             { rotulo: 'Frecuencia', valor: 'Diaria' },
             { rotulo: 'Datos capturados', valor: 'Sellers que disputan el Buy Box de los productos de la marca; posición de la tienda oficial; reincidencia y patrones de disputa; perfil, historial y relevancia de cada seller' },
             { rotulo: 'Clasificación', valor: 'Clasificación de las ocurrencias por relevancia y comportamiento comercial, realizada por el equipo especializado de Branddi' },
-            { rotulo: 'Apoyo', valor: 'Identificación de sellers no autorizados; cruce con bases proporcionadas por la Contratante; apoyo a la actuación comercial ante canales y socios' },
             { rotulo: 'Implantación', valor: 'Definición del portafolio de SKUs monitoreados; configuración de los robots de monitoreo; alineación de criterios de análisis y priorización; integración con las políticas comerciales de la marca' },
         ],
         sla: [

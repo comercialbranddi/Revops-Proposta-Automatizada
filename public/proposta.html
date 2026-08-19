@@ -5,12 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Montar proposta — Branddi</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#F1F5F9;--surface:#fff;--surface-2:#F8FAFC;--text:#0F172A;--muted:#475569;--dim:#64748B;
     --accent:#0891B2;--rule:#D8E0E8;--alert:#DC2626;--ok:#15803D;
     --petrol:#002B36;--on-petrol:#fff;--on-petrol-dim:#94A3B8;--logo-accent:#4BBECD;
-    --sans:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    --sans:"Montserrat","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
     --mono:"Cascadia Mono",Consolas,ui-monospace,monospace;
   }
   @media (prefers-color-scheme:dark){:root{
@@ -47,6 +50,15 @@
   .hint{font:400 .76rem/1.45 var(--sans);color:var(--dim);text-transform:none;letter-spacing:0}
 
   .chips{display:flex;flex-wrap:wrap;gap:.4rem}
+  .chip.fixo{cursor:default;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+  .chip.fixo button{margin-left:.1rem;padding:0 .2rem;border:0;background:transparent;color:var(--dim);cursor:pointer;font-size:.9rem}
+  .chip.fixo button:hover{color:var(--alert)}
+  .outros{display:flex;flex-direction:column;gap:.45rem}
+  .addrow{display:flex;gap:.4rem;align-items:center}
+  .addrow input{flex:1}
+  .condhead{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+  .condhead .flag{font-family:var(--mono);font-size:.6rem;color:var(--accent);letter-spacing:.05em}
+  .condhead button{margin-left:auto;text-transform:none;letter-spacing:0}
   .chip{display:inline-flex;align-items:center;gap:.4rem;border:1px solid var(--rule);border-radius:3px;
     padding:.35rem .6rem;font-size:.85rem;color:var(--text);cursor:pointer;background:var(--surface-2);user-select:none}
   .chip:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);font-weight:600}
@@ -121,8 +133,8 @@ const el = (t, a = {}, ...kids) => {
 const brl = n => (n == null || n === '') ? '—'
   : Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
-const estado = { marcas: '', idioma: 'pt', produtos: new Set(), porProduto: {}, pacote: '', observacoes: '' };
-const vazio = (code) => ({ modalidade: CFG.catalogo.modalidades[code] ? CFG.catalogo.modalidadePadrao : null, canais: new Set(), quantidade: '', preco: '', faixas: [], sobConsulta: false });
+const estado = { marcas: '', idioma: 'pt', produtos: new Set(), porProduto: {}, pacote: '', observacoes: '', condicoes: {} };
+const vazio = (code) => ({ modalidade: CFG.catalogo.modalidades[code] ? CFG.catalogo.modalidadePadrao : null, canais: new Set(), canaisOutros: [], quantidade: '', preco: '', faixas: [], sobConsulta: false });
 
 // ─── Login ──────────────────────────────────────────────────────────
 // O script do Google entra com `async defer`, então pode chegar DEPOIS deste
@@ -180,9 +192,14 @@ function aplicarSeed() {
     estado.idioma = disp.includes(a.idioma) ? a.idioma : 'pt';
     estado.pacote = a.pacote == null ? '' : a.pacote;
     estado.observacoes = a.observacoes || '';
+    estado.condicoes = Object.assign({}, a.condicoes || {});
     (a.produtos || []).forEach(c => estado.produtos.add(c));
     Object.entries(a.porProduto || {}).forEach(([c, p]) => {
-      estado.porProduto[c] = Object.assign(vazio(c), p, { canais: new Set(p.canais || []), quantidade: p.quantidade == null ? '' : p.quantidade });
+      estado.porProduto[c] = Object.assign(vazio(c), p, {
+        canais: new Set(p.canais || []),
+        canaisOutros: Array.isArray(p.canaisOutros) ? p.canaisOutros.slice() : [],
+        quantidade: p.quantidade == null ? '' : p.quantidade,
+      });
     });
     return;
   }
@@ -223,6 +240,7 @@ function render() {
   app.append(cardEscopo());
   CFG.catalogo.produtos.filter(p => estado.produtos.has(p.code)).forEach(p => app.append(cardProduto(p)));
   if (estado.produtos.size > 1) app.append(cardPacote());
+  app.append(cardCondicoes());
   atualizarPendencias();
 }
 
@@ -245,7 +263,14 @@ function cardEscopo() {
       selected: i.code === estado.idioma && i.disponivel,
     }));
   });
-  sel.onchange = () => { estado.idioma = sel.value; };
+  sel.onchange = () => {
+    // As condições são mostradas no idioma da proposta. Trocar o idioma tem que
+    // redesenhar o cartão, senão o closer edita em português uma proposta que
+    // vai sair em inglês.
+    estado.idioma = sel.value;
+    estado.condicoes = {};
+    render();
+  };
   b.append(el('label', { className: 'f' }, 'Idioma da proposta', sel,
     indisponiveis.length ? el('span', { className: 'hint' },
       indisponiveis.join(' e ') + ' ainda não tem o texto dos blocos escrito.') : null));
@@ -295,6 +320,7 @@ function cardProduto(p) {
   });
   b.append(el('label', { className: 'f' }, 'Canais monitorados', ch,
     el('span', { className: 'hint' }, 'Vazio usa o padrão do produto, que é o texto que o modelo já traz.')));
+  b.append(outrosCanais(st));
 
   // Só App Store muda o formato do documento: sai a linha de palavras-chave e
   // o canal vai pro título. Por isso a quantidade some da tela nesse caso.
@@ -318,6 +344,40 @@ function cardProduto(p) {
 
   c.append(b);
   return c;
+}
+
+/**
+ * Canais digitados. A lista fixa nunca cobre tudo — as propostas reais do time
+ * trazem 18 combinações distintas de plataforma — e sem isto o closer teria que
+ * escolher um canal errado ou montar a proposta à mão.
+ */
+function outrosCanais(st) {
+  const box = el('div', { className: 'outros' });
+  const chips = el('div', { className: 'chips' });
+  st.canaisOutros.forEach((nome, i) => {
+    const rm = el('button', { className: 'mini', type: 'button', textContent: '×', title: 'remover' });
+    rm.onclick = () => { st.canaisOutros.splice(i, 1); render(); };
+    chips.append(el('span', { className: 'chip fixo' }, nome, rm));
+  });
+  if (st.canaisOutros.length) box.append(chips);
+
+  const inp = el('input', { type: 'text', placeholder: 'Shopee, Magalu, TikTok Shop…' });
+  const add = el('button', { className: 'mini', type: 'button', textContent: '+ adicionar' });
+  const guarda = () => {
+    // Vírgula e ponto e vírgula separam: quem cola uma lista não precisa
+    // adicionar um por um.
+    const novos = inp.value.split(/[,;]/).map((x) => x.trim()).filter(Boolean)
+      .filter((x) => !st.canaisOutros.includes(x));
+    if (!novos.length) return;
+    st.canaisOutros.push(...novos);
+    inp.value = '';
+    render();
+  };
+  add.onclick = guarda;
+  inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); guarda(); } };
+  box.append(el('div', { className: 'addrow' }, inp, add));
+  return el('label', { className: 'f' }, 'Outros canais', box,
+    el('span', { className: 'hint' }, 'Para plataforma que não está na lista. Enter ou vírgula adiciona mais de uma.'));
 }
 
 function escada(code, st, qtdCfg) {
@@ -348,6 +408,43 @@ function escada(code, st, qtdCfg) {
     box.append(el('label', { className: 'chip' }, inp, 'Acrescentar linha final "Sob consulta"'));
   }
   return box;
+}
+
+/**
+ * Condições comerciais, editáveis. Vêm preenchidas com o padrão da Branddi no
+ * idioma escolhido — o closer só toca no que foi negociado.
+ *
+ * No envio, só vai o que DIFERE do padrão. Assim uma condição não alterada
+ * continua sendo a padrão de verdade, e mudar o padrão depois alcança as
+ * propostas novas sem ninguém reeditar nada.
+ */
+function cardCondicoes() {
+  const padrao = CFG.condicoes[estado.idioma] || CFG.condicoes.pt;
+  const c = el('div', { className: 'card' }, el('h2', {}, 'Condições comerciais'));
+  const b = el('div', { className: 'body' });
+  b.append(el('div', { className: 'hint' },
+    'Já vêm com a condição padrão da Branddi. Altere só o que foi negociado — o que ficar como está sai como padrão.'));
+
+  Object.entries(padrao).forEach(([chave, def]) => {
+    const atual = estado.condicoes[chave];
+    const ta = el('textarea', { value: atual == null ? def.valor : atual, rows: 2 });
+    const alterado = () => ta.value.trim() !== def.valor.trim();
+    const marca = el('span', { className: 'flag' });
+    const pinta = () => { marca.textContent = alterado() ? '● negociado' : ''; };
+    ta.oninput = () => {
+      if (alterado()) estado.condicoes[chave] = ta.value;
+      else delete estado.condicoes[chave];
+      pinta();
+    };
+    pinta();
+    const reset = el('button', { className: 'mini', type: 'button', textContent: 'voltar ao padrão' });
+    reset.onclick = () => { ta.value = def.valor; delete estado.condicoes[chave]; pinta(); };
+    b.append(el('label', { className: 'f' },
+      el('span', { className: 'condhead' }, el('span', {}, def.rotulo), marca, reset), ta));
+  });
+
+  c.append(b);
+  return c;
 }
 
 function cardPacote() {
@@ -441,6 +538,7 @@ $('#salvar').onclick = async () => {
       return [c, {
         modalidade: s.modalidade,
         canais: [...s.canais],
+        canaisOutros: s.canaisOutros.slice(),
         quantidade: s.quantidade === '' ? null : Number(s.quantidade),
         preco: Number(s.preco),
         faixas: s.faixas.map(f => ({ qtd: Number(f.qtd), preco: Number(f.preco) })),
@@ -449,6 +547,8 @@ $('#salvar').onclick = async () => {
     })),
     pacote: estado.pacote === '' ? null : Number(estado.pacote),
     observacoes: estado.observacoes,
+    // Só o que foi negociado. Chave ausente = condição padrão da Branddi.
+    condicoes: estado.condicoes,
   };
   try {
     const r = await fetch('/api/proposal/form/' + DEAL_ID, {

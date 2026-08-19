@@ -53,9 +53,14 @@ export const TEXTOS = {
         rodape: 'Combata o uso indevido da sua marca e maximize seus resultados',
         rodapeValida: 'válida até',
 
+        // "Fundamentação legal" saiu em 18/08/2026, a pedido da Jessica. O
+        // REQUISITO que estava dentro dela ficou — virou linha de escopo, porque
+        // é pré-condição contratual, não argumentação jurídica.
         clausulas: ['Identificação', 'Objetivo do contrato', 'Abordagem', 'Investimento',
-            'Escopo e níveis de serviço', 'Condições comerciais', 'Fundamentação legal',
-            'Aceite e implantação'],
+            'Escopo e níveis de serviço', 'Condições comerciais', 'Aceite e implantação'],
+        requisito: 'Requisito',
+        requisitoValor: 'A marca deve possuir registro no INPI de titularidade da Contratante. Toda ocorrência tratada gera registro de evidência — captura de tela, data, canal e identificação do infrator — arquivado e disponibilizado como subsídio a eventual medida judicial.',
+        outrosCanais: 'Outros',
 
         contratante: 'Contratante',
         destinatario: 'Destinatário',
@@ -160,8 +165,10 @@ export const TEXTOS = {
         rodapeValida: 'valid until',
 
         clausulas: ['Identification', 'Purpose of the agreement', 'Approach', 'Investment',
-            'Scope and service levels', 'Commercial terms', 'Legal basis',
-            'Acceptance and onboarding'],
+            'Scope and service levels', 'Commercial terms', 'Acceptance and onboarding'],
+        requisito: 'Requirement',
+        requisitoValor: 'The trademark must be registered with the Brazilian INPI in the Client name. Every occurrence handled generates an evidence record — screenshot, date, channel and identification of the infringer — archived and made available as support for any legal action.',
+        outrosCanais: 'Other',
 
         contratante: 'Client',
         destinatario: 'Attention',
@@ -267,8 +274,10 @@ export const TEXTOS = {
         rodapeValida: 'válida hasta',
 
         clausulas: ['Identificación', 'Objeto del contrato', 'Enfoque', 'Inversión',
-            'Alcance y niveles de servicio', 'Condiciones comerciales', 'Fundamento legal',
-            'Aceptación e implantación'],
+            'Alcance y niveles de servicio', 'Condiciones comerciales', 'Aceptación e implantación'],
+        requisito: 'Requisito',
+        requisitoValor: 'La marca debe estar registrada en el INPI brasileño a nombre de la Contratante. Cada ocurrencia tratada genera un registro de evidencia — captura de pantalla, fecha, canal e identificación del infractor — archivado y puesto a disposición como respaldo para eventuales medidas judiciales.',
+        outrosCanais: 'Otros',
 
         contratante: 'Contratante',
         destinatario: 'Destinatario',
@@ -358,6 +367,26 @@ export const TEXTOS = {
         vencidaTexto: 'Los valores y condiciones deben reconfirmarse — hable con su contacto en Branddi para recibir una versión actualizada.',
     },
 };
+
+/**
+ * As condições que o formulário deixa o closer mudar. A chave é o campo do
+ * spec; o valor é o texto padrão, no idioma. Sai preenchido na tela — o closer
+ * só toca no que foi negociado, e o que não tocar continua sendo a condição
+ * padrão da Branddi.
+ */
+export const CONDICOES_EDITAVEIS = ['pagamento', 'vigencia', 'rescisao', 'implantacao', 'setup'];
+
+/** Os textos padrão das condições editáveis, num idioma. */
+export function condicoesPadrao(idioma) {
+    const t = TEXTOS[idioma] || TEXTOS.pt;
+    return {
+        pagamento: { rotulo: t.pagamento, valor: t.pagamentoValor },
+        vigencia: { rotulo: t.vigencia, valor: t.vigenciaValor },
+        rescisao: { rotulo: t.rescisao, valor: t.rescisaoValor },
+        implantacao: { rotulo: t.implantacao, valor: t.implantacaoValor },
+        setup: { rotulo: t.setup, valor: t.setupValor },
+    };
+}
 
 /** O vocabulário do idioma, ou o português se o idioma não existir. */
 export function textosDoDocumento(idioma) {
