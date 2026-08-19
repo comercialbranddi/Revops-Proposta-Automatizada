@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { generateProposalForDeal } from '../services/proposal-generator.js';
-import { ensureProposalActivity } from '../services/proposal-activity.js';
 import { pdGet, pdPut, pdPost } from '../services/pipedrive.js';
 import {
     SALES_PIPELINE_ID,
@@ -8,7 +7,6 @@ import {
     isProposalAutomationEnabledForDeal,
     PROPOSAL_ADMIN_TOKEN,
     PROPOSAL_WEBHOOK_SECRET,
-    PROPOSAL_ACTIVITY_ENABLED,
     PROPOSAL_DEAL_FIELDS,
     PROPOSAL_FORM_BASE_URL,
     parseServicoOferecido,
@@ -29,14 +27,17 @@ const router = Router();
 // fora. Reage a QUALQUER update do card enquanto ele está na stage "Envio
 // de proposta" (pipe "5. Vendas"), não só à entrada.
 //
-// O que ele faz mudou em 18/08/2026: em vez de tentar gerar a proposta a
-// partir dos campos do card, ele cria uma ATIVIDADE para o dono do negócio
-// com o link do formulário. A geração automática por campo saiu porque não
-// havia o que ler — ver o bloco "Formulário de proposta" na config, com os
-// números de preenchimento real.
+// REVERTIDO em 19/08/2026, pedido da Jessica: o desvio pro formulário
+// (18/08) criou bagunça na prática — o time seguiu preenchendo os campos do
+// card esperando a proposta no modelo antigo, e nada saía. O webhook volta a
+// GERAR a proposta a partir dos campos (copyTemplate + replaceAllText,
+// modelo antigo do Google Docs), como antes de eecb221. A atividade
+// "Gerar proposta pelo formulário" NÃO é mais criada; o formulário continua
+// no ar mas deixa de ser o caminho de entrada.
 //
-// ensureProposalActivity é idempotente (não cria se já houver uma aberta),
-// que é o que torna seguro reagir a todo update em vez de só à entrada.
+// notifyOnEntry só é true na ENTRADA — evita spam de nota a cada update
+// enquanto o SDR ainda está preenchendo outros campos do card. É ele que
+// libera as notas de "falta campo" e de "proposta já existe".
 //
 // afterResponse é OBRIGATÓRIO aqui: no Vercel a função serverless congela
 // assim que res.json() é chamado — sem isso o trabalho async é interrompido
@@ -58,37 +59,19 @@ router.post('/webhook/deal', (req, res) => {
         const dealId = payload?.current?.id || payload?.meta?.id;
         const pipelineId = payload?.current?.pipeline_id;
         const stageId = payload?.current?.stage_id;
+        const prevStageId = payload?.previous?.stage_id;
 
         if (!dealId || pipelineId !== SALES_PIPELINE_ID) return;
         if (stageId !== ENVIO_PROPOSTA_STAGE_ID) return;
 
-        if (!PROPOSAL_ACTIVITY_ENABLED) {
-            log.info(`deal #${dealId} em Envio de proposta — atividade desligada (PROPOSAL_ACTIVITY_ENABLED)`);
+        if (!isProposalAutomationEnabledForDeal(dealId)) {
+            log.info(`Deal #${dealId} em Envio de proposta — automação desligada/fora do piloto`);
             return;
         }
 
-        // O payload do webhook traz o deal, mas nem sempre com user_id no
-        // formato esperado — buscar é uma chamada e evita atividade órfã.
-        const deal = (await pdGet(`/deals/${dealId}`))?.data;
-        if (!deal) return log.warn(`deal #${dealId} não encontrado`);
-
-        // Proposta já gerada? Então não há tarefa a pedir.
-        //
-        // Isto fecha um CICLO real, visto em produção em 18/08/2026: gerar a
-        // proposta grava o link no card, gravar dispara este webhook, e o card
-        // seguia na etapa sem atividade aberta (as abertas acabavam de ser
-        // fechadas pela própria geração) — então nascia outra, quatro segundos
-        // depois, pedindo pra fazer o que tinha acabado de ser feito.
-        //
-        // Pra gerar de novo, é só limpar "Link Proposta": o card volta a pedir
-        // atividade no próximo update.
-        const link = String(deal[PROPOSAL_DEAL_FIELDS.LINK_PROPOSTA] || '');
-        if (/^https?:\/\//.test(link)) {
-            log.info(`deal #${dealId}: proposta já gerada (${link}) — sem atividade`);
-            return;
-        }
-
-        await ensureProposalActivity(dealId, deal);
+        const isEntry = prevStageId !== ENVIO_PROPOSTA_STAGE_ID;
+        log.info(`Deal #${dealId} em Envio de proposta (${isEntry ? 'entrada' : 'campo atualizado'}) — avaliando geração`);
+        await generateProposalForDeal(dealId, { notifyOnEntry: isEntry });
     });
 });
 
