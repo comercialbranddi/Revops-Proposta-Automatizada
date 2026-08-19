@@ -29,7 +29,8 @@ import 'dotenv/config';
 import {
     SALES_PIPELINE_ID, PROPOSAL_DEAL_FIELDS as F, PRODUCT_PRICE_FIELDS as P,
     CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD, VALOR_PACOTE_FIELD,
-    CANAIS_FIELDS as C, FAIXAS_BB_FIELDS, IDIOMA_FIELD,
+    CANAIS_FIELDS as C, FAIXAS_BB_FIELDS, FAIXAS_BBP_FIELDS, SOB_CONSULTA_BBP_FIELD,
+    IDIOMA_FIELD,
 } from '../src/config/proposal.js';
 
 const APPLY = process.argv.includes('--apply');
@@ -59,7 +60,15 @@ const CHAVES = [
     FAIXAS_BB_FIELDS[0].qtd, FAIXAS_BB_FIELDS[0].preco,
     FAIXAS_BB_FIELDS[1].qtd, FAIXAS_BB_FIELDS[1].preco,
     C.BB,
-    P.BBP, CATALOGO_BBP_FIELD, C.BBP,
+    P.BBP, CATALOGO_BBP_FIELD,
+    // Faixas do BBP na mesma lógica das de BB: logo abaixo do par que é a
+    // faixa 1 (Preço BBP + Catálogo BBP), em ordem crescente, e "Sob
+    // Consulta?" por último — é a faixa final da escada.
+    FAIXAS_BBP_FIELDS[0].qtd, FAIXAS_BBP_FIELDS[0].preco,
+    FAIXAS_BBP_FIELDS[1].qtd, FAIXAS_BBP_FIELDS[1].preco,
+    FAIXAS_BBP_FIELDS[2].qtd, FAIXAS_BBP_FIELDS[2].preco,
+    SOB_CONSULTA_BBP_FIELD,
+    C.BBP,
     P.GD, C.GD,
     P.VM, PLATAFORMAS_VM_FIELD, C.VM,
     IDIOMA_FIELD, VALOR_PACOTE_FIELD, F.LINK_PROPOSTA,
