@@ -655,8 +655,23 @@ section.aceito{break-inside:avoid}
 /* Cada produto inteiro na mesma folha. Se não couber no que sobrou, desce
    inteiro — é o único lugar onde vale abrir espaço em branco, porque tabela
    separada da prosa que a explica é pior que folha com folga. */
-.bloco{break-inside:avoid}
-.bloco+.bloco{margin-top:6mm}
+.bloco{break-inside:avoid;gap:0}
+.bloco+.bloco{margin-top:8mm}
+
+/* ── Respiro ────────────────────────────────────────────────────────
+   O bloco estava colado: título encostado na prosa, prosa encostada na
+   tabela. Na tela o gap do flex resolve; no papel ele fica curto porque a
+   medida de referencia muda. Aqui o espaco e declarado em milimetros, que e a
+   unidade da folha. */
+.bloco h3{margin:0 0 2.5mm}
+.bloco>.fine{margin:0 0 3mm}
+h2{margin-bottom:3mm}
+h4{margin:5mm 0 2mm}
+.pad{gap:9mm}
+body{line-height:1.5}
+/* Linha de tabela com ar: 1.6mm de altura deixava o texto grudado na regua. */
+th,td{padding:2.2mm 3mm}
+.doctitle{padding-bottom:2mm}
 /* No papel a prosa acompanha a largura das tabelas. Medida curta ao lado de
    tabela de largura total faz cada bloco começar e terminar num lugar
    diferente, e é isso que lê como desalinhado. */
