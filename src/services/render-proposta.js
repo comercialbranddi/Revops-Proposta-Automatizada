@@ -207,9 +207,13 @@ function clausulaAbordagem(ctx) {
         const linhas = linhasDaModalidade(b.especificacoes, mod)
             .map((l) => [l.rotulo, valorLinha(l.valor, p, idioma)])
             .filter(([, v]) => v != null);
-        return `<h3><span class="idx">3.${i + 1}</span> ${esc(b.titulo)} ${badge}</h3>
+        // Um produto é UMA unidade de leitura: título, o que é, e a ficha
+        // técnica. Quebrar isso ao meio da folha deixa a tabela órfã da prosa
+        // que a explica. Envolvido pra o CSS de impressão poder mantê-lo
+        // inteiro — cada bloco ocupa menos de meia página, então cabe.
+        return `<div class="bloco"><h3><span class="idx">3.${i + 1}</span> ${esc(b.titulo)} ${badge}</h3>
       <p class="fine">${rich(prosaDoBloco(blocos, code, mod))}</p>
-      ${tabela(linhas)}`;
+      ${tabela(linhas)}</div>`;
     }).join('');
 }
 
@@ -645,6 +649,11 @@ td,th{break-inside:avoid}
    de ar entre elas, senão a régua de fim de uma cola na de início da outra. */
 .tw+.tw{margin-top:3mm}
 section.aceito{break-inside:avoid}
+/* Cada produto inteiro na mesma folha. Se não couber no que sobrou, desce
+   inteiro — é o único lugar onde vale abrir espaço em branco, porque tabela
+   separada da prosa que a explica é pior que folha com folga. */
+.bloco{break-inside:avoid}
+.bloco+.bloco{margin-top:6mm}
 /* No papel a prosa acompanha a largura das tabelas. Medida curta ao lado de
    tabela de largura total faz cada bloco começar e terminar num lugar
    diferente, e é isso que lê como desalinhado. */
