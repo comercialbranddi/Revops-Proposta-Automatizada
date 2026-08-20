@@ -100,11 +100,6 @@ export const BLOCOS_ES = {
         },
         especificacoes: [
             { rotulo: 'Canales', valor: '{{CANAIS}}' },
-            // Linha nova em 19/08/2026, junto com a escada de preço de GD. A
-            // UNIDADE ("marcas") está por confirmar com o comercial: nenhum
-            // modelo antigo cita número em Golpes Digitais. Só aparece no
-            // documento se o closer preencher a quantidade.
-            { rotulo: 'Marcas monitoreadas', valor: 'Hasta {{QUANTIDADE}} marcas' },
             { rotulo: 'Cobertura', valor: 'Más de 2.800 registradores de dominio, 746 TLDs y 1.510 ccTLDs; cerca de 250.000 dominios nuevos analizados por día; plataformas de comercio electrónico, de checkout y pasarelas de pago; proveedores de alojamiento; bibliotecas de anuncios y resultados patrocinados' },
             { rotulo: 'Frecuencia', valor: 'Monitoreo continuo' },
             { rotulo: 'Datos capturados', valor: 'Cuentas falsas en redes sociales; sitios que imitan el sitio oficial; dominios registrados con similitud a la marca; anuncios engañosos en redes sociales y en resultados patrocinados' },
