@@ -740,7 +740,10 @@ export const PROPOSAL_ACTIVITY_ENABLED = process.env.PROPOSAL_ACTIVITY_ENABLED =
 export const CANAIS_POR_PRODUTO = {
     BB:  [1592, 1593, 1594, 1595, 1609],
     BBP: [1596, 1597, 1598],
-    GD:  [1599, 1600, 1601, 1602],
+    // 1602 (Marketplaces) saiu em 19/08/2026: Golpes Digitais não olha
+    // marketplace. A opção segue existindo no campo do Pipedrive, então card
+    // antigo pode ter o id gravado — some da tela e do documento, sem quebrar.
+    GD:  [1599, 1600, 1601],
     VM:  [1604, 1605, 1606, 1607],
 };
 
@@ -771,13 +774,29 @@ export const MODALIDADE_POR_PRODUTO = { BB: MODALIDADES, BBP: null, GD: MODALIDA
 export const QUANTIDADE_POR_PRODUTO = {
     BB:  { rotulo: 'Palavras-chave', unidade: 'palavras' },
     BBP: { rotulo: 'Catálogo', unidade: 'SKUs' },
-    GD:  null,
+    // GD era `null`: nenhum modelo antigo cita número em Golpes Digitais, ele
+    // era vendido no valor cheio. Ganhou quantidade em 19/08/2026 pra poder ter
+    // escada de preço.
+    //
+    // A UNIDADE está por confirmar com o comercial. "marcas" é a leitura mais
+    // provável — foi a dimensão que a Jessica levantou no começo do projeto —
+    // mas não está escrita em nenhum documento, então NÃO é fato. Se for outra
+    // coisa (domínios, perfis, ocorrências), é trocar aqui.
+    GD:  { rotulo: 'Marcas', unidade: 'marcas', aConfirmar: true },
     VM:  { rotulo: 'Plataformas', unidade: 'marketplaces simultâneos' },
 };
 
 // Quantas faixas de preço cada produto aceita, contando a primeira (que é a
-// quantidade + preço principais). Bate com FAIXAS_BB_FIELDS/FAIXAS_BBP_FIELDS.
-export const MAX_FAIXAS = { BB: 3, BBP: 4 };
+// quantidade + preço principais).
+//
+// Dez em todos os quatro, a pedido da Jessica em 19/08/2026. Antes eram 3 no BB
+// e 4 no BBP, números que vinham dos CAMPOS que existiam no Pipedrive — e o
+// Pipedrive deixou de ser a fonte quando o formulário virou a interface. Aqui o
+// limite é só pra tela não crescer sem fim.
+//
+// GD e VM ganharam escada agora. Ver QUANTIDADE_POR_PRODUTO: a escada precisa
+// de uma unidade pra dizer "até N do quê", e a de GD está por confirmar.
+export const MAX_FAIXAS = { BB: 10, BBP: 10, GD: 10, VM: 10 };
 
 // Idiomas com catálogo de blocos ESCRITO. Os 45 Google Docs antigos tinham
 // en e es traduzidos; o catálogo novo (content/blocos-pt.js) só tem português.

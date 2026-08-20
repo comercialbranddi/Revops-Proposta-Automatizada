@@ -42,7 +42,7 @@ import {
     modalidadeNoIdioma, MODALIDADE_AMBOS, MODALIDADE_MONITORIA,
 } from '../content/blocos.js';
 import { logo } from '../content/logo.js';
-import { CANAIS_OPTION_TO_LABEL, CANAIS_LABEL_POR_IDIOMA, PRODUCT_CASCADE_ORDER, IDIOMAS_COM_BLOCOS, IDIOMA_LABEL } from '../config/proposal.js';
+import { CANAIS_OPTION_TO_LABEL, CANAIS_LABEL_POR_IDIOMA, PRODUCT_CASCADE_ORDER, IDIOMAS_COM_BLOCOS, IDIOMA_LABEL, QUANTIDADE_POR_PRODUTO } from '../config/proposal.js';
 
 const TZ = 'America/Sao_Paulo';
 const VALIDADE_DIAS = 15;
@@ -157,6 +157,11 @@ function opcoesDePacote(spec, codes) {
         .sort((a, b) => a.preco - b.preco);
 }
 
+/** A unidade da quantidade do produto, pra escada dizer "até N do quê". */
+function unidadeDe(code) {
+    return QUANTIDADE_POR_PRODUTO[code]?.unidade || null;
+}
+
 /** A modalidade efetiva de um produto: null quando o produto não tem essa dimensão. */
 function modalidadeDo(blocos, code, p) {
     return blocos[code].temModalidade ? (p?.modalidade || MODALIDADE_AMBOS) : null;
@@ -247,8 +252,10 @@ function clausulaInvestimento(ctx) {
             return [{ qtd: p.quantidade, preco: p.preco }, ...p.faixas]
                 .filter((f) => Number(f.qtd) > 0 && Number(f.preco) > 0)
                 .sort((a, b) => a.qtd - b.qtd)
+                // "Até 10" sozinho não diz 10 do quê. Com a unidade a linha se
+                // explica: "Até 10 palavras", "Até 200 SKUs".
                 .map((f, i) => `<tr><td>${i === 0 ? `<strong>${esc(blocos[c].titulo)}</strong>` : ''}</td>
-          <td>${esc(t.ate(f.qtd))}</td><td class="n-cell">${brl(f.preco)}</td></tr>`).join('');
+          <td>${esc(t.ate(f.qtd))}${unidadeDe(c) ? ' ' + esc(unidadeDe(c)) : ''}</td><td class="n-cell">${brl(f.preco)}</td></tr>`).join('');
         }
         return `<tr><td><strong>${esc(blocos[c].titulo)}</strong></td><td>${esc(escopo)}</td>
       <td class="n-cell">${brl(p.preco)}</td></tr>`;
