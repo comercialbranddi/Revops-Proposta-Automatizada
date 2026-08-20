@@ -83,7 +83,7 @@ const CASOS = [
     {
         nome: 'BBP sozinho — não tem modalidade',
         spec: spec(['BBP']),
-        checa: [semPlaceholder, semVazamento(['BBP']), contem('Monitoria e inteligência'),
+        checa: [semPlaceholder, semVazamento(['BBP']), contem('Monitoria e inteligência'),  // agora vem como selo ao lado do título
             contem('atuação comercial junto aos canais é conduzida pela Contratante'),
             naoContem('Aprovação'), contem('Até 25 SKUs'),
             contem('relação de SKUs prioritários')],

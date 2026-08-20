@@ -199,7 +199,11 @@ function clausulaAbordagem(ctx) {
         const b = blocos[code];
         const p = ctx.spec.porProduto[code] || {};
         const mod = modalidadeDo(blocos, code, p);
-        const badge = mod ? `<span class="mode">${esc(modalidadeNoIdioma(mod, idioma))}</span>` : '';
+        // Todo bloco diz o seu modo ao lado do título, inclusive BBP — que não
+        // tem modalidade e por isso levava a informação numa linha da cláusula
+        // 5. Tirada a duplicação de lá, o selo é o único lugar onde isso
+        // aparece; sem ele, BBP não dizia nada sobre como atua.
+        const badge = `<span class="mode">${esc(mod ? modalidadeNoIdioma(mod, idioma) : t.semModalidade)}</span>`;
         const linhas = linhasDaModalidade(b.especificacoes, mod)
             .map((l) => [l.rotulo, valorLinha(l.valor, p, idioma)])
             .filter(([, v]) => v != null);
@@ -209,14 +213,21 @@ function clausulaAbordagem(ctx) {
     }).join('');
 }
 
+/**
+ * Escopo e níveis de serviço.
+ *
+ * NÃO repete o que as cláusulas 1 e 3 já disseram. A versão anterior trazia de
+ * novo as marcas monitoradas (que estão na Identificação) e a modalidade de
+ * cada produto (que já é um selo ao lado do título de cada bloco na
+ * Abordagem) — numa proposta de quatro produtos isso somava cinco linhas de
+ * informação repetida, e repetição em documento comercial cansa antes de
+ * informar.
+ *
+ * Fica aqui o que não está em nenhum outro lugar: o idioma dos relatórios, o
+ * requisito que o cliente precisa cumprir, e os entregáveis.
+ */
 function clausulaEscopo(ctx) {
-    const { codes, spec, t, blocos, slaGeral, idioma } = ctx;
-    const modalidades = codes.map((c) => {
-        const mod = modalidadeDo(blocos, c, spec.porProduto[c]);
-        return [t.modalidadeDe(blocos[c].titulo), mod
-            ? `<strong>${esc(modalidadeNoIdioma(mod, idioma))}</strong>`
-            : t.semModalidade];
-    });
+    const { codes, spec, t, blocos, slaGeral } = ctx;
 
     // SLA: o de cada produto, mais o do contrato inteiro. Sem repetir entregável
     // que dois produtos declaram igual — o cliente não precisa ler duas vezes
@@ -228,17 +239,14 @@ function clausulaEscopo(ctx) {
         ...linhasDaModalidade(slaGeral, modoContrato),
     ].filter((l) => (vistos.has(l.entregavel) ? false : vistos.add(l.entregavel)));
 
-    return `${tabela([
-        [t.marcas, (spec.marcas || []).join(', ')],
-        ...modalidades,
-        [t.idiomaRelatorios, t.idiomaRelatoriosValor],
-        [t.requisito, t.requisitoValor],
-    ])}
-    <h4>${esc(t.entregaveis)}</h4>
-    <div class="tw"><table>
+    return `<div class="tw"><table>
       <thead><tr><th scope="col">${esc(t.thEntregavel)}</th><th scope="col">${esc(t.thPeriodicidade)}</th><th scope="col">${esc(t.thCanal)}</th></tr></thead>
       <tbody>${sla.map((l) => `<tr><td>${esc(l.entregavel)}</td><td>${esc(l.periodicidade)}</td><td>${esc(l.canal)}</td></tr>`).join('')}</tbody>
-    </table></div>`;
+    </table></div>
+    ${tabela([
+        [t.idiomaRelatorios, t.idiomaRelatoriosValor],
+        [t.requisito, t.requisitoValor],
+    ])}`;
 }
 
 function clausulaInvestimento(ctx) {
@@ -597,7 +605,7 @@ section.aceito p strong{color:var(--text)}
    tela, paginada. */
 @page{size:A4;margin:14mm 12mm}
 html,body{background:#fff}
-body{font-size:9.5pt}
+body{font-size:10.5pt}
 .wrap{padding:0;display:block}
 .sheet{box-shadow:none;border:0;max-width:none;width:auto}
 /* Interface não é documento. */
