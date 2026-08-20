@@ -49,7 +49,7 @@ export const TEXTOS = {
         emissao: 'Emissão',
         validadeCurta: 'Validade',
         baixarPdf: 'Baixar em PDF',
-        baixarPdfDica: 'Abre a janela de impressão — escolha "Salvar como PDF".',
+        baixarPdfDica: 'Abre o PDF numa aba nova, pronto para salvar ou enviar.',
         rodape: 'Combata o uso indevido da sua marca e maximize seus resultados',
         rodapeValida: 'válida até',
 
@@ -172,7 +172,7 @@ export const TEXTOS = {
         emissao: 'Issued',
         validadeCurta: 'Valid until',
         baixarPdf: 'Download PDF',
-        baixarPdfDica: 'Opens the print dialog — choose "Save as PDF".',
+        baixarPdfDica: 'Opens the PDF in a new tab, ready to save or forward.',
         rodape: 'Fight the misuse of your brand and maximize your results',
         rodapeValida: 'valid until',
 
@@ -289,7 +289,7 @@ export const TEXTOS = {
         emissao: 'Emisión',
         validadeCurta: 'Validez',
         baixarPdf: 'Descargar en PDF',
-        baixarPdfDica: 'Abre la ventana de impresión — elija "Guardar como PDF".',
+        baixarPdfDica: 'Abre el PDF en una pestaña nueva, listo para guardar o enviar.',
         rodape: 'Combata el uso indebido de su marca y maximice sus resultados',
         rodapeValida: 'válida hasta',
 

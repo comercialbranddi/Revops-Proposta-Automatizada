@@ -14,11 +14,13 @@
   },
   "license": "UNLICENSED",
   "dependencies": {
+    "@sparticuz/chromium": "^149.0.0",
     "@supabase/supabase-js": "^2.99.2",
     "@vercel/functions": "^3.7.1",
     "cors": "^2.8.6",
     "dotenv": "^16.4.0",
     "express": "^5.2.1",
-    "google-auth-library": "^10.6.2"
+    "google-auth-library": "^10.6.2",
+    "puppeteer-core": "^25.8.0"
   }
 }

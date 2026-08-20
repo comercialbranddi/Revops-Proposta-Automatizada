@@ -475,8 +475,11 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
   <div class="ref"><b>${esc(meta.numero)}</b><br>${esc(t.emissao)} ${esc(meta.emissao)} · ${esc(t.validadeCurta)} ${esc(meta.validade)}</div>
 </header>
 <div class="acoes">
-  <button type="button" onclick="window.print()">${esc(t.baixarPdf)}</button>
-  <span>${esc(t.baixarPdfDica)}</span>
+  ${slug
+    ? `<a class="botao" href="/pdf/${esc(slug)}" target="_blank" rel="noopener">${esc(t.baixarPdf)}</a>
+       <span>${esc(t.baixarPdfDica)}</span>`
+    : `<button type="button" onclick="window.print()">${esc(t.baixarPdf)}</button>
+       <span>${esc(t.baixarPdfDica)}</span>`}
 </div>
 ${aviso}
 <div class="doctitle">
@@ -562,11 +565,11 @@ gap:.4rem 1rem;flex-wrap:wrap;font-family:var(--mono);font-size:.62rem;letter-sp
 .foot b{color:var(--on-petrol);font-weight:600}
 .acoes{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;padding:.7rem clamp(1rem,3.5vw,2.2rem);
 background:var(--surface-2);border-bottom:1px solid var(--rule);font-size:.76rem;color:var(--dim)}
-.acoes button{font:600 .8rem var(--sans);background:var(--accent);color:#fff;border:0;border-radius:3px;
-padding:.45rem 1rem;cursor:pointer}
+.acoes button,.acoes .botao{font:600 .8rem var(--sans);background:var(--accent);color:#fff;border:0;
+border-radius:3px;padding:.45rem 1rem;cursor:pointer;text-decoration:none;display:inline-block}
 @media (prefers-color-scheme:dark){.acoes button{color:#00212B}}
-.acoes button:hover{filter:brightness(1.08)}
-.acoes button:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.acoes button:hover,.acoes .botao:hover{filter:brightness(1.08)}
+.acoes button:focus-visible,.acoes .botao:focus-visible{outline:2px solid var(--text);outline-offset:2px}
 .substituida{padding:.75rem clamp(1rem,3.5vw,2.2rem);background:#FEF3C7;color:#78350F;
 border-bottom:1px solid #FCD34D;font-size:.84rem}
 .substituida b{color:#78350F}
