@@ -626,7 +626,24 @@ li,tr{break-inside:avoid}
 /* Cabeçalho de tabela repete quando ela vira a folha — senão a metade de baixo
    aparece sem dizer o que é cada coluna. */
 thead{display:table-header-group}
-.tw{overflow:visible;break-inside:auto}
+/* ── Tabela no papel: régua, não moldura ────────────────────────────
+   O .tw desenha uma caixa em volta da tabela. Caixa não sobrevive a quebra de
+   página: o navegador fecha a borda onde a folha acaba e abre outra na
+   seguinte, e o resultado é uma tabela que parece rasgada no meio — foi o que
+   aconteceu na primeira página de Brand Bidding.
+
+   Documento impresso resolve isso com régua horizontal: cada linha se fecha
+   sozinha, então quebrar no meio da tabela deixa de ser defeito visual. A
+   moldura fica só na tela, onde não há quebra. */
+.tw{overflow:visible;break-inside:auto;border:0;border-radius:0}
+table{border-top:0.7pt solid #9fb0bd}
+tbody tr:last-child>*{border-bottom:0.7pt solid #9fb0bd}
+th,td{border-bottom:0.4pt solid #d5dee4}
+thead th{border-bottom:0.7pt solid #9fb0bd;background:transparent}
+td,th{break-inside:avoid}
+/* Duas tabelas seguidas (escopo e entregáveis, investimento e setup) precisam
+   de ar entre elas, senão a régua de fim de uma cola na de início da outra. */
+.tw+.tw{margin-top:3mm}
 section.aceito{break-inside:avoid}
 /* No papel a prosa acompanha a largura das tabelas. Medida curta ao lado de
    tabela de largura total faz cada bloco começar e terminar num lugar
