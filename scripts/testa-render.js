@@ -256,10 +256,19 @@ const CASOS_NOVOS = [
         checa: [contem('Sem fidelidade'), contem('renovação automática')],
     },
     {
-        nome: 'setup também é negociável',
+        // A Branddi não cobra setup (19/08/2026). Os modelos-base diziam
+        // "01 mensalidade" e a proposta enviada trazia riscado — o padrão
+        // estava cobrando o que ninguém cobra.
+        nome: 'setup sai bonificado por padrão, não cobrado',
         args: {},
-        spec: spec(['BB'], { condicoes: { setup: 'Isento' } }),
-        checa: [contem('Isento'), naoContem('01 mensalidade')],
+        spec: spec(['BB']),
+        checa: [contem('Bonificado'), naoContem('cobrada uma única vez')],
+    },
+    {
+        nome: 'setup segue negociável, se um dia for cobrado',
+        args: {},
+        spec: spec(['BB'], { condicoes: { setup: '01 mensalidade, cobrada no início' } }),
+        checa: [contem('01 mensalidade, cobrada no início'), naoContem('Bonificado')],
     },
     {
         nome: 'o que saiu do modelo não volta',
@@ -305,6 +314,7 @@ const IDIOMAS = [
             contem('Purpose of the agreement'), contem('Commercial terms'), naoContem('Legal basis'), contem('Requirement'),
             contem('Client'), contem('Deliverable'), contem('Monitoring + Enforcement'),
             contem('No minimum term'), contem('Accept proposal'), contem('Download PDF'),
+            contem('Waived'), naoContem('charged once'),
             // A data em inglês sai com o mês escrito: "08/18" e "18/08" são a
             // mesma string com sentidos diferentes.
             (h) => MESES_EN.some((m) => h.includes(m))
@@ -321,6 +331,7 @@ const IDIOMAS = [
             contem('Objeto del contrato'), contem('Condiciones comerciales'), naoContem('Fundamento legal'), contem('Requisito'),
             contem('Entregable'), contem('Monitoreo + Actuación'), contem('Sin permanencia'),
             contem('Aceptar propuesta'), contem('Descargar en PDF'),
+            contem('Bonificado'), naoContem('cobrada una única vez'),
             // O defeito real do espanhol antigo: "para cancelamento sem multa"
             // embutido no meio da cláusula de contrato.
             naoContem('cancelamento'), naoContem('sem multa'),

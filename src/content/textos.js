@@ -105,7 +105,11 @@ export const TEXTOS = {
         total: 'Valor contratado',
         descontoDe: (v) => `Desconto de ${v}/mês`,
         setup: 'Setup (implantação)',
-        setupValor: '01 mensalidade, cobrada uma única vez no início da vigência',
+        // Não é cobrado (confirmado em 19/08/2026). Os modelos-base dizem
+        // "01 mensalidade", mas a proposta que o time envia traz isso riscado:
+        // é bonificação. O valor segue escrito pro cliente ver o que está sendo
+        // dado — era o que o risco comunicava.
+        setupValor: 'Bonificado (01 mensalidade, não cobrada)',
         impostos: 'Impostos',
         impostosValor: 'Valores líquidos; tributos conforme legislação vigente',
 
@@ -221,7 +225,7 @@ export const TEXTOS = {
         total: 'Contracted value',
         descontoDe: (v) => `Discount of ${v}/month`,
         setup: 'Setup (onboarding)',
-        setupValor: 'One monthly fee, charged once at the start of the term',
+        setupValor: 'Waived (one monthly fee, not charged)',
         impostos: 'Taxes',
         impostosValor: 'Net values; taxes as per applicable law',
 
@@ -338,7 +342,7 @@ export const TEXTOS = {
         total: 'Valor contratado',
         descontoDe: (v) => `Descuento de ${v}/mes`,
         setup: 'Setup (implantación)',
-        setupValor: '01 mensualidad, cobrada una única vez al inicio de la vigencia',
+        setupValor: 'Bonificado (01 mensualidad, no cobrada)',
         impostos: 'Impuestos',
         impostosValor: 'Valores netos; tributos según la legislación vigente',
 
