@@ -589,7 +589,69 @@ border-radius:3px;padding:.6rem 1.2rem;cursor:pointer;margin-top:.2rem}
 @media (prefers-color-scheme:dark){:root{--alert:#F87171}}
 section.aceito h2{border-bottom-color:var(--accent)}
 section.aceito p strong{color:var(--text)}
-@media print{body{background:#fff;font-size:10pt}.wrap{padding:0}.acoes{display:none}
-#aceite .aceite-form{display:none}
-.sheet{box-shadow:none;border:0;max-width:none}section,.tw{break-inside:avoid}}
+@media print{
+/* A4 com as margens do MODELO BB no Drive (99/100/57/71pt ≈ 35/35/20/25mm),
+   arredondadas pra baixo porque aqui o cabeçalho e o rodapé são faixas
+   coloridas de largura total, e não texto na margem. */
+@page{size:A4;margin:16mm 15mm}
+html,body{background:#fff}
+body{font-size:10pt;line-height:1.45;color:#1a1a1a}
+.wrap{padding:0;display:block}
+.sheet{box-shadow:none;border:0;max-width:none;width:auto}
+/* Interface não é documento. */
+.acoes,#aceite .aceite-form{display:none}
+
+/* As faixas petrol são identidade, não decoração — têm que sair impressas. */
+.masthead,.foot{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.masthead{padding:8mm 0 5mm;border-bottom:2pt solid #002B36;background:#fff}
+.masthead svg{height:22px}
+.masthead .ref{color:#444}
+.masthead .ref b{color:#002B36}
+.foot{background:#fff;border-top:1pt solid #002B36;color:#555;padding:4mm 0 0}
+.foot b{color:#002B36}
+.doctitle{background:#fff;padding:0 0 5mm;border-bottom:0}
+.pad{padding:0;gap:7mm}
+
+/* ── O buraco no fim da página vinha daqui ──────────────────────────
+   break-inside:avoid no SECTION inteiro joga a clausula toda pra folha
+   seguinte quando ela não cabe no que sobrou — e deixa meia página branca.
+   O que precisa ficar junto é menor: uma tabela, uma linha, um título com o
+   que vem depois dele. */
+section{break-inside:auto;display:block}
+h2{break-after:avoid;break-inside:avoid;font-size:11.5pt;border-bottom:1.5pt solid #002B36;color:#002B36}
+h2 .idx{color:#0E7490}
+h3{break-after:avoid;break-inside:avoid;font-size:10.5pt;margin-top:5mm}
+h4{break-after:avoid;color:#555}
+p,ul{orphans:3;widows:3}
+/* Na tela a prosa tem medida curta pra ler bem. No papel, a mesma medida ao
+   lado de tabelas de largura total é o que dá a impressão de bagunça: cada
+   bloco começa e termina num lugar diferente. */
+p,ul,blockquote,.fine{max-width:none}
+li{break-inside:avoid}
+
+/* Tabela: cabeçalho repete se ela virar a página, e nenhuma linha é cortada
+   no meio. */
+.tw{overflow:visible;break-inside:auto;border:0.5pt solid #c9d2da}
+table{font-size:9pt}
+thead{display:table-header-group}
+tfoot{display:table-footer-group}
+tr{break-inside:avoid}
+th,td{padding:1.6mm 2.2mm;border-bottom:0.5pt solid #e3e8ed;color:#1a1a1a}
+thead th{background:#f2f5f7;color:#555;font-size:7.5pt;border-bottom:0.5pt solid #c9d2da}
+th[scope=row]{color:#555;width:34mm}
+tr.sub>*{background:#f2f5f7;color:#555}
+tr.total>*{background:#f2f5f7;border-top:1.5pt solid #002B36}
+tr.total td:first-child,tr.total .n-cell{color:#002B36}
+.eco{color:#0E7490}
+.mode{color:#0E7490;border-color:#0E7490}
+.kicker{color:#0E7490}
+h1{font-size:14pt;color:#002B36}
+strong{color:#000}
+blockquote{border-left:1.5pt solid #0E7490}
+/* Aviso de vencida ou substituída é informação, não enfeite: sai impresso. */
+.vencida,.substituida{-webkit-print-color-adjust:exact;print-color-adjust:exact;
+border:0.5pt solid #b8860b;padding:3mm;margin-bottom:4mm}
+section.aceito{break-inside:avoid}
+a{color:#0E7490;text-decoration:none}
+}
 `;
