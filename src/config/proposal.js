@@ -811,6 +811,25 @@ export const MAX_FAIXAS = { BB: 10, BBP: 10, VM: 10 };
 // oposto do que a Branddi pratica.
 export const IDIOMAS_COM_BLOCOS = ['pt', 'en', 'es'];
 
+// Frentes que a proposta pode incluir num pacote além dos quatro produtos —
+// sugeridas no formulário, mas o campo segue aceitando qualquer texto. NÃO
+// repetem BB/BBP/GD/VM: esses são serviços marcáveis, e vê-los aqui de novo é a
+// confusão que o Victor apontou ("fraude, golpes, golpes digitais"). São coisas
+// que o time já vende fora do catálogo — as opções "sem modelo" do Pipedrive
+// (App Store, Bing, Novos Termos) mais o que aparece nas propostas reais.
+//
+// A lista existe pra padronizar o nome: sem ela, cada closer escreve "App",
+// "App Store", "Loja de aplicativos", e o mesmo serviço vira três coisas na
+// planilha e no documento.
+export const FRENTES_SUGERIDAS = [
+    'App Store',
+    'Bing',
+    'Novos Termos',
+    'Google Shopping',
+    'Marketplaces adicionais',
+    'Redes sociais',
+];
+
 /** Catálogo pronto pro front, já no idioma pedido. */
 export function catalogoDoFormulario(idioma = IDIOMA_PADRAO) {
     const rotulo = (id) => CANAIS_LABEL_POR_IDIOMA[idioma]?.[id] || CANAIS_OPTION_TO_LABEL[id];
@@ -829,5 +848,6 @@ export function catalogoDoFormulario(idioma = IDIOMA_PADRAO) {
             code, label, disponivel: IDIOMAS_COM_BLOCOS.includes(code),
         })),
         canalAppStore: CANAL_BB_APP_STORE_ID,
+        frentesSugeridas: FRENTES_SUGERIDAS,
     };
 }

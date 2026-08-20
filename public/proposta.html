@@ -129,6 +129,16 @@
 
 <script>
 const DEAL_ID = location.pathname.split('/').filter(Boolean).pop();
+
+/** A lista de sugestões de frente, criada uma vez e reusada por todo campo. */
+function datalistFrentes() {
+  let dl = document.getElementById('frentes-sugeridas');
+  if (dl) return dl;
+  dl = el('datalist', { id: 'frentes-sugeridas' });
+  (CFG.frentesSugeridas || []).forEach((f) => dl.append(el('option', { value: f })));
+  document.body.append(dl);
+  return dl;
+}
 let CFG = null, SEED = null, TOKEN = null;
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -530,7 +540,9 @@ function cardPacote() {
       x.onclick = () => { o.extras.splice(j, 1); render(); };
       chips.append(el('span', { className: 'chip digitado' }, nome, x));
     });
-    const novo = el('input', { type: 'text', className: 'outro', placeholder: '+ outra frente' });
+    datalistFrentes();
+    const novo = el('input', { type: 'text', className: 'outro', placeholder: '+ frente (ex.: App Store)',
+      list: 'frentes-sugeridas', autocomplete: 'off' });
     const guarda = () => {
       const add = novo.value.split(/[,;]/).map((x) => x.trim()).filter(Boolean).filter((x) => !o.extras.includes(x));
       if (!add.length) { novo.value = ''; return; }
@@ -539,7 +551,8 @@ function cardPacote() {
     novo.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); guarda(); } };
     novo.onblur = guarda;
     chips.append(novo);
-    box.append(el('label', { className: 'f' }, 'O que entra', chips));
+    box.append(el('label', { className: 'f' }, 'O que entra', chips,
+      el('span', { className: 'hint' }, 'Marque os serviços desta proposta. Para algo fora deles, digite em "+ frente" — há sugestões ao clicar.')));
 
     const pr = el('input', { type: 'number', min: '0', step: '100', value: o.preco });
     pr.oninput = () => { o.preco = pr.value; atualizarPendencias(); };
