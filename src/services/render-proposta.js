@@ -203,9 +203,14 @@ function clausulaIdentificacao(ctx) {
 function clausulaObjetivo(ctx) {
     const { codes, deal, t, blocos } = ctx;
     const varios = codes.length > 1;
-    const itens = codes.map((c) => `<li>${esc(blocos[c].objetivo)}</li>`).join('');
-    const corpo = `<div class="card prosa"><p>${esc(t.objetivoAbre(varios))}</p><ul>${itens}</ul>
-    <p>${esc(t.objetivoFecha(varios, deal.organizacao))}</p></div>`;
+    // Um produto: prosa corrida, com o problema em destaque no meio da frase
+    // (como no modelo). Vários: uma linha por produto.
+    const corpo = varios
+        ? `<div class="card prosa"><p>${esc(t.objetivoAbre(true))}</p>
+        <ul>${codes.map((c) => `<li>${esc(blocos[c].objetivo)}</li>`).join('')}</ul>
+        <p>${esc(t.objetivoFecha(true, deal.organizacao))}</p></div>`
+        : `<div class="card prosa"><p>${esc(t.objetivoAbre(false))} <strong>${esc(blocos[codes[0]].objetivo)}</strong>.</p>
+        <p>${esc(t.objetivoFecha(false, deal.organizacao))}</p></div>`;
     // Nota-insight opcional: só do produto principal e só se houver texto.
     const insight = t.insight?.[codes[0]];
     const nota = insight ? `<div class="note"><span class="note-ic">i</span><p>${rich(insight)}</p></div>` : '';
@@ -213,8 +218,11 @@ function clausulaObjetivo(ctx) {
 }
 
 function clausulaAbordagem(ctx) {
-    const { t, blocos, idioma, spec } = ctx;
-    const blocosHtml = ctx.codes.map((code, i) => {
+    const { t, blocos, idioma, spec, codes } = ctx;
+    // Um produto: o título/modalidade já estão no subtítulo da seção (3.1 — …),
+    // então o bloco não repete o h3. Vários: cada produto ganha seu 3.x.
+    const solo = codes.length === 1;
+    const blocosHtml = codes.map((code, i) => {
         const b = blocos[code];
         const p = spec.porProduto[code] || {};
         const mod = modalidadeDo(blocos, code, p);
@@ -222,12 +230,13 @@ function clausulaAbordagem(ctx) {
         const linhas = linhasDaModalidade(b.especificacoes, mod)
             .map((l) => [l.rotulo, valorLinha(l.valor, p, idioma)])
             .filter(([, v]) => v != null);
-        const spec_rows = linhas.map(([r, v]) =>
+        const rows = linhas.map(([r, v]) =>
             `<div class="spec"><span class="specl">${esc(r)}</span><span class="specv">${rich(v)}</span></div>`).join('');
-        return `<div class="bloco">
-      <h3><span class="idx">3.${i + 1}</span> ${esc(b.titulo)} <span class="mode">${esc(modLabel)}</span></h3>
+        const h3 = solo ? '' :
+            `<h3><span class="idx">3.${i + 1}</span> ${esc(b.titulo)} <span class="mode">${esc(modLabel)}</span></h3>`;
+        return `<div class="bloco">${h3}
       <p class="prosa-p">${rich(prosaDoBloco(blocos, code, mod))}</p>
-      <div class="card spectable">${spec_rows}</div></div>`;
+      <div class="card spectable">${rows}</div></div>`;
     }).join('');
     // Loop da Branddi: notifica/remove só quando algum produto atua.
     const steps = contratoTemAtuacao(spec.porProduto) ? t.loop : t.loopMonitoria;
@@ -273,8 +282,9 @@ function clausulaInvestimento(ctx) {
     // Tabela item a item (com escada de faixas quando houver).
     const linhas = codes.map((c) => {
         const p = spec.porProduto[c] || {};
-        const escopo = [canaisTexto(p, idioma), Number(p.quantidade) > 0 ? t.ate(p.quantidade) : null]
-            .filter(Boolean).join(' · ') || '—';
+        const qtdTxt = Number(p.quantidade) > 0
+            ? `${t.ate(p.quantidade)}${unidadeDe(c) ? ' ' + unidadeDe(c) : ''}` : null;
+        const escopo = [canaisTexto(p, idioma), qtdTxt].filter(Boolean).join(' · ') || '—';
         if (p.faixas?.length) {
             return [{ qtd: p.quantidade, preco: p.preco }, ...p.faixas]
                 .filter((f) => Number(f.qtd) > 0 && Number(f.preco) > 0)
@@ -306,16 +316,22 @@ function clausulaInvestimento(ctx) {
     // recomendada ficar à direita — como no modelo validado.
     const minPreco = opcoes[0]?.preco;
     const ordenadas = [...opcoes].sort((a, b) => b.preco - a.preco);
+    let bundleN = 0;
     const cards = (!unica && opcoes.length) ? `<p class="minihead">${esc(t.opcoesPacote)}</p>
     <div class="pacotes">${ordenadas.map((o) => {
         const rec = opcoes.length > 1 && o.preco === minPreco;
+        const bundle = (o.produtos.length + o.extras.length) > 1;
         const partes = [...o.produtos.map((c) => blocos[c].titulo), ...o.extras];
+        // Avulso (1 item) leva o rótulo "Avulso"; pacote (bundle) leva "Opção N ·
+        // Pacote", com a composição no título — como no modelo.
+        const tag = bundle ? `${t.pacoteN(++bundleN)} · ${t.pacoteLabel}` : t.avulso;
+        const nome = o.rotulo || partes.join(' + ');
+        const desc = bundle ? (o.descricao || '') : t.avulsoDesc;
         const eco = o.soma > o.preco + 0.01 ? t.economiaDe(brl(o.soma - o.preco)) : '';
-        const tag = rec ? (o.rotulo ? `${t.pacoteLabel} · ${o.rotulo}` : t.pacoteLabel) : t.avulso;
         return `<div class="pcard${rec ? ' rec' : ''}">
           <div class="pcard-top"><span class="ptag">${esc(tag)}</span>${rec ? `<span class="badge-rec">${esc(t.recomendado)}</span>` : ''}</div>
-          <h4 class="pname">${esc(partes.join(' + '))}</h4>
-          <p class="pdesc">${esc(rec ? (o.descricao || t.opcoesNota) : t.avulsoDesc)}</p>
+          <h4 class="pname">${esc(nome)}</h4>
+          ${desc ? `<p class="pdesc">${esc(desc)}</p>` : ''}
           ${precoGrande(o.preco, t)}
           ${eco ? `<span class="badge-eco">● ${esc(eco)}</span>` : ''}</div>`;
     }).join('')}</div>
@@ -367,14 +383,15 @@ function blocoAceite(ctx, vencida) {
     if (ctx.aceite) {
         const locale = idioma === 'en' ? 'en-US' : (idioma === 'es' ? 'es-ES' : 'pt-BR');
         const q = new Date(ctx.aceite.quando).toLocaleString(locale, { timeZone: TZ, dateStyle: 'long', timeStyle: 'short' });
-        return `<div class="note aceito"><span class="note-ic ok">✓</span>
-      <div><p><strong>${esc(t.aceiteAceitaTitulo)}.</strong> ${t.aceitaPor(esc(ctx.aceite.nome), esc(ctx.aceite.cargo || ''), esc(ctx.aceite.email), esc(q))}</p>
+        return `<div class="note aceito"><span class="note-ic ok big">✓</span>
+      <div><p class="note-h">${esc(t.aceiteAceitaTitulo)}</p>
+      <p>${t.aceitaPor(esc(ctx.aceite.nome), esc(ctx.aceite.cargo || ''), esc(ctx.aceite.email), esc(q))}</p>
       <p class="fine">${esc(t.aceitaNota)}</p></div></div>`;
     }
     if (vencida || ctx.substituida) return '';
     return `<section id="aceite">
-    <div class="note"><span class="note-ic ok">✓</span>
-      <div><p><strong>${esc(t.aceiteTitulo)}.</strong> ${esc(t.aceiteProsa)}</p></div></div>
+    <div class="note acao"><span class="note-ic big">✓</span>
+      <div><p class="note-h">${esc(t.aceiteTitulo)}</p><p>${esc(t.aceiteProsa)}</p></div></div>
     <form id="fAceite" class="aceite-form" autocomplete="on">
       <label>${esc(t.aceiteNome)}<input name="nome" required autocomplete="name"></label>
       <label>${esc(t.aceiteEmail)}<input name="email" type="email" required autocomplete="email"></label>
@@ -450,10 +467,19 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
             ? `<div class="aviso vencida"><b>${esc(t.vencidaTitulo(meta.validade))}</b> ${esc(t.vencidaTexto)}</div>`
             : '';
 
-    // Cláusulas 1–7 (aceite = 7, mas o corpo do aceite é o timeline; o painel de
-    // ação vem depois, fora da numeração).
+    // Subtítulo da seção. A Abordagem (índice 2), quando há um só produto, traz
+    // o produto e a modalidade no próprio subtítulo — "3.1 — Brand Bidding ·
+    // Monitoria + Atuação", como no modelo — em vez do subtítulo genérico.
+    const subDaClausula = (i) => {
+        if (i === 2 && codes.length === 1) {
+            const c = codes[0];
+            const mod = modalidadeDo(blocos, c, spec.porProduto[c]);
+            return `3.1 — ${blocos[c].titulo} · ${mod ? modalidadeNoIdioma(mod, idioma) : t.semModalidade}`;
+        }
+        return t.clausulasSub?.[i];
+    };
     const corpo = CLAUSULAS.map((fn, i) =>
-        `<section class="clausula">${sechead(i + 1, t.clausulas[i], t.clausulasSub?.[i])}${fn(ctx)}</section>`).join('\n');
+        `<section class="clausula">${sechead(i + 1, t.clausulas[i], subDaClausula(i))}${fn(ctx)}</section>`).join('\n');
 
     // Capa: título hero em duas linhas — serviços + conector, e a marca do
     // cliente em destaque (gradiente) na segunda.
@@ -502,13 +528,13 @@ ${acoes}
   </div>
   <div class="watermark">${marca(560)}</div>
   <div class="cover-mid">
-    <span class="eyebrow">${esc(t.kicker)}</span>
-    <h1 class="hero">${esc(heroL1)}<br><span class="grad">${esc(deal.organizacao)}</span></h1>
+    <span class="eyebrow">${esc(t.capaEyebrow || t.kicker)}</span>
+    <h1 class="hero"><span class="l1">${esc(heroL1)}</span><br><span class="grad">${esc(deal.organizacao)}</span></h1>
     <p class="herosub">${esc(chamada)}</p>
     <div class="strip">${strip}</div>
   </div>
   <div class="cover-foot">
-    <div>${esc(t.contratadaValor)}<br><span class="cf-dim">${deal.contato ? `${esc(t.destinatario)}: ${esc(deal.contato)} — ` : ''}${esc(deal.organizacao)}</span></div>
+    <div>${esc(t.contratadaValor)}<br><span class="cf-dim">${deal.contato ? `${esc(t.capaPara)} ${esc(deal.contato)} — ` : ''}${esc(deal.organizacao)}</span></div>
     <div class="cf-right"><b>${esc(t.tagline)}</b><br><span class="cf-dim">${esc(t.rodapeValida)} ${esc(meta.validade)}</span></div>
   </div>
 </section>
@@ -584,11 +610,15 @@ opacity:.5;filter:blur(.3px);pointer-events:none;
 .eyebrow{display:inline-block;font-family:var(--mono);font-size:.66rem;font-weight:600;letter-spacing:.14em;
 text-transform:uppercase;color:var(--cyan);border:1px solid rgba(10,207,222,.35);
 background:rgba(10,207,222,.08);border-radius:var(--radius-pill);padding:.4rem .9rem}
-.hero{font-size:clamp(2.2rem,6.5vw,3.8rem);font-weight:800;line-height:1.04;letter-spacing:-.03em;
-color:var(--text);margin:1.1rem 0 0;max-width:16ch;text-wrap:balance}
-/* Nome do cliente em cyan sólido — o gradiente clip-to-text deixa um artefato
-   de caixa no Skia (o motor do PDF), e o modelo validado usa cyan cheio. */
-.hero .grad{color:var(--cyan)}
+/* Gradiente aplicado ao H1 inteiro (branco→cyan→turquesa) e clipado ao texto —
+   no bloco o Skia clipa aos glifos sem pintar a caixa (o artefato aparecia com
+   o clip num <span> inline). A linha 1 é forçada em branco sólido; só o nome do
+   cliente (linha 2) mostra o gradiente, como no modelo. */
+.hero{font-size:clamp(2rem,5.6vw,3.35rem);font-weight:800;line-height:1.06;letter-spacing:-.03em;
+margin:1.1rem 0 0;max-width:20ch;text-wrap:balance;
+background:linear-gradient(90deg,#EAFEFF 0%,#0ACFDE 52%,#299FB1 100%);
+-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.hero .l1{-webkit-text-fill-color:var(--text);color:var(--text)}
 .herosub{margin:1.1rem 0 0;max-width:46ch;font-size:1.05rem;line-height:1.55;color:#CBD5E1;font-weight:300}
 .herosub strong{color:var(--text);font-weight:600}
 .strip{margin-top:2rem;display:grid;grid-template-columns:repeat(4,1fr);gap:0;max-width:40rem;
@@ -647,7 +677,12 @@ border:1px solid rgba(10,207,222,.20);border-radius:var(--radius);padding:1rem 1
 .note-ic{flex:none;width:1.5rem;height:1.5rem;display:grid;place-items:center;border-radius:var(--radius-sm);
 background:rgba(10,207,222,.12);color:var(--cyan);font-family:var(--mono);font-weight:700;font-size:.8rem;font-style:normal}
 .note-ic.ok{background:rgba(34,197,94,.14);color:var(--success)}
-.note.aceito{border-color:rgba(34,197,94,.30);background:rgba(34,197,94,.06)}
+/* Ícone grande e preenchido do painel de aceite, como no modelo. */
+.note-ic.big{width:2.1rem;height:2.1rem;font-size:1.05rem;border-radius:.6rem;background:var(--cyan);color:var(--navy)}
+.note-ic.ok.big{background:var(--success);color:var(--navy)}
+.note.acao{border-color:rgba(10,207,222,.28);align-items:center}
+.note.aceito{border-color:rgba(34,197,94,.30);background:rgba(34,197,94,.06);align-items:center}
+.note-h{font-family:var(--display);font-weight:700;color:var(--text);font-size:.98rem;margin-bottom:.15rem}
 .note .fine{color:var(--muted);font-size:.8rem;margin-top:.25rem}
 
 /* Tabela de especificações (Abordagem) */
@@ -659,7 +694,7 @@ border:1px solid rgba(10,207,222,.4);border-radius:var(--radius-pill);padding:.1
 .spectable{padding:.3rem 0}
 .spec{display:grid;grid-template-columns:11rem 1fr;gap:1rem;padding:.75rem 1.15rem;border-bottom:1px solid var(--line-2)}
 .spectable .spec:last-child{border-bottom:0}
-.specl{font-family:var(--mono);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);padding-top:.1rem}
+.specl{font-family:var(--mono);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-top:.1rem}
 .specv{font-size:.88rem;line-height:1.5;color:#D7E0E6}
 
 /* Loop da Branddi */
@@ -696,7 +731,7 @@ font-weight:700;margin:.4rem 0 -.2rem}
 .pacotes{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .pcard{background:var(--card-bg);border:1px solid var(--line);border-radius:var(--radius);padding:1.3rem 1.3rem 1.4rem;
 display:flex;flex-direction:column;gap:.55rem;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
-.pcard.rec{border-color:transparent;box-shadow:var(--glow)}
+.pcard.rec{border-color:rgba(10,207,222,.55)}
 .pcard-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
 .ptag{font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
 .pcard.rec .ptag{color:var(--cyan)}
@@ -719,13 +754,13 @@ border-radius:var(--radius-pill);padding:.28rem .7rem;margin-top:.15rem}
 
 /* Timeline (Aceite) */
 .timeline{display:flex;flex-direction:column}
-.tl-item{display:grid;grid-template-columns:auto 1fr auto;gap:.9rem;padding:.55rem 0 1rem;position:relative}
-.tl-item:not(:last-child)::before{content:"";position:absolute;left:.44rem;top:1.1rem;bottom:-.1rem;width:1px;background:var(--line)}
-.tl-dot{width:.95rem;height:.95rem;border-radius:50%;border:2px solid var(--cyan);background:var(--navy);margin-top:.15rem}
+.tl-item{display:grid;grid-template-columns:auto 1fr auto;gap:.9rem;padding:.5rem 0 .95rem;position:relative}
+.tl-item:not(:last-child)::before{content:"";position:absolute;left:.44rem;top:1.05rem;bottom:-.1rem;width:1.5px;background:rgba(10,207,222,.4)}
+.tl-dot{width:.95rem;height:.95rem;border-radius:50%;border:2px solid var(--cyan);background:var(--navy);margin-top:.15rem;z-index:1}
 .tl-body{display:flex;flex-direction:column;gap:.15rem}
 .tl-etapa{font-size:.95rem;font-weight:600;color:var(--text)}
 .tl-resp{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.tl-prazo{font-family:var(--mono);font-size:.8rem;color:var(--cyan);white-space:nowrap;text-align:right}
+.tl-prazo{font-family:var(--mono);font-size:.8rem;color:var(--cyan);white-space:nowrap;text-align:right;padding-left:.75rem}
 
 /* Formulário de aceite */
 #aceite{display:flex;flex-direction:column;gap:1rem}
@@ -744,8 +779,10 @@ border-radius:var(--radius-pill);padding:.7rem 1.4rem;cursor:pointer;margin-top:
 
 /* Chamada de fechamento */
 .cta{text-align:center;padding:1.5rem 0 1rem;display:flex;flex-direction:column;gap:.7rem;align-items:center}
-/* Cyan sólido: o gradiente clip-to-text deixa artefato de caixa no Skia (PDF). */
-.cta-h{font-size:clamp(1.4rem,4vw,2rem);font-weight:800;line-height:1.15;max-width:24ch;color:var(--cyan)}
+/* Cyan sólido: no CTA (h2 centralizado, texto direto) o clip-to-text volta a
+   pintar a caixa no Skia; o hero escapa por ter a estrutura com <span>. Sólido
+   fica limpo e pertíssimo do gradiente do modelo. */
+.cta-h{font-size:clamp(1.4rem,4vw,2rem);font-weight:800;line-height:1.18;max-width:22ch;color:var(--cyan)}
 .cta-sub{font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;color:var(--muted)}
 
 /* Rodapé de página. Na tela sai uma vez, no fim; na impressão vira fixo e o

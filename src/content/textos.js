@@ -55,9 +55,11 @@ export const TEXTOS = {
 
         // ── Moldura do novo modelo (capa, rodapé de página, seções) ──────
         docTipo: 'Proposta comercial',
+        capaEyebrow: 'Proposta técnica & comercial',
         tagline: 'Blinde a sua marca.',
         site: 'branddi.com',
         heroConector: 'para',
+        capaPara: 'Para',
         pagina: 'pág.',
         porMesCurto: '/mês',
         // Subtítulo abaixo do título de cada cláusula, na ordem de `clausulas`.
@@ -212,9 +214,11 @@ export const TEXTOS = {
         rodapeValida: 'valid until',
 
         docTipo: 'Commercial proposal',
+        capaEyebrow: 'Technical & commercial proposal',
         tagline: 'Shield your brand.',
         site: 'branddi.com',
         heroConector: 'for',
+        capaPara: 'For',
         pagina: 'p.',
         porMesCurto: '/month',
         clausulasSub: ['Parties and contractual scope', 'The problem this proposal solves',
@@ -356,9 +360,11 @@ export const TEXTOS = {
         rodapeValida: 'válida hasta',
 
         docTipo: 'Propuesta comercial',
+        capaEyebrow: 'Propuesta técnica & comercial',
         tagline: 'Blinde su marca.',
         site: 'branddi.com',
         heroConector: 'para',
+        capaPara: 'Para',
         pagina: 'pág.',
         porMesCurto: '/mes',
         clausulasSub: ['Partes y alcance contractual', 'El problema que esta propuesta resuelve',

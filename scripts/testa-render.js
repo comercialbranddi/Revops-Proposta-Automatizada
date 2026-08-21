@@ -331,7 +331,7 @@ const IDIOMAS = [
     {
         idioma: 'en',
         checa: [
-            contem('Technical and commercial proposal'), contem('Identification'),
+            contem('Technical &amp; commercial proposal'), contem('Identification'),
             contem('Purpose of the proposal'), contem('Commercial terms'), naoContem('Legal basis'), contem('Requirement'),
             contem('Client'), contem('Deliverable'), contem('Monitoring + Enforcement'),
             contem('No minimum term'), contem('Accept proposal'), contem('Download PDF'),
@@ -348,7 +348,7 @@ const IDIOMAS = [
     {
         idioma: 'es',
         checa: [
-            contem('Propuesta técnica y comercial'), contem('Identificación'),
+            contem('Propuesta técnica &amp; comercial'), contem('Identificación'),
             contem('Objeto de la propuesta'), contem('Condiciones comerciales'), naoContem('Fundamento legal'), contem('Requisito'),
             contem('Entregable'), contem('Monitoreo + Actuación'), contem('Sin permanencia'),
             contem('Aceptar propuesta'), contem('Descargar en PDF'),
