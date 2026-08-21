@@ -487,9 +487,13 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
     // Capa: título hero em duas linhas — serviços + conector, e a marca do
     // cliente em destaque (gradiente) na segunda.
     const heroL1 = `${codes.map((c) => blocos[c].titulo).join(' + ')} ${t.heroConector}`;
-    // Subtítulo (hero) só quando há copy aprovada pro produto principal — senão
-    // a capa sai sem a linha, em vez de inventar/repropósito de outro texto.
-    const chamada = t.chamada?.[codes[0]] || null;
+    // Subtítulo (hero): a chamada aprovada do produto principal quando existe (só
+    // Brand Bidding hoje) ou, senão, o OBJETIVO já definido do produto — que é o
+    // problema que ele resolve. Conteúdo definido do catálogo, não inventado, e
+    // toda capa passa a ter a linha. O objetivo é fragmento em minúscula; como
+    // hero, ganha a primeira letra maiúscula.
+    const obj = blocos[codes[0]].objetivo;
+    const chamada = t.chamada?.[codes[0]] || (obj.charAt(0).toUpperCase() + obj.slice(1));
     const titulo = `${codes.map((c) => blocos[c].titulo).join(' · ')} — ${deal.organizacao}`;
 
     const strip = [
