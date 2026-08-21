@@ -238,9 +238,12 @@ function clausulaAbordagem(ctx) {
       <p class="prosa-p">${rich(prosaDoBloco(blocos, code, mod))}</p>
       <div class="card spectable">${rows}</div></div>`;
     }).join('');
-    // Loop da Branddi: notifica/remove só quando algum produto atua.
-    const steps = contratoTemAtuacao(spec.porProduto) ? t.loop : t.loopMonitoria;
-    const ribbon = `<div class="loop">${steps.map((s) => `<span class="loop-step">${esc(s)}</span>`).join('')}</div>`;
+    // Loop da Branddi SÓ na atuação — copy aprovada (modelo). Em monitoria a
+    // Branddi não notifica nem remove, e não há loop aprovado pra essa
+    // modalidade, então a faixa não sai (não inventar processo).
+    const ribbon = contratoTemAtuacao(spec.porProduto)
+        ? `<div class="loop">${t.loop.map((s) => `<span class="loop-step">${esc(s)}</span>`).join('')}</div>`
+        : '';
     return blocosHtml + ribbon;
 }
 
@@ -484,7 +487,9 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
     // Capa: título hero em duas linhas — serviços + conector, e a marca do
     // cliente em destaque (gradiente) na segunda.
     const heroL1 = `${codes.map((c) => blocos[c].titulo).join(' + ')} ${t.heroConector}`;
-    const chamada = t.chamada?.[codes[0]] || blocos[codes[0]].objetivo;
+    // Subtítulo (hero) só quando há copy aprovada pro produto principal — senão
+    // a capa sai sem a linha, em vez de inventar/repropósito de outro texto.
+    const chamada = t.chamada?.[codes[0]] || null;
     const titulo = `${codes.map((c) => blocos[c].titulo).join(' · ')} — ${deal.organizacao}`;
 
     const strip = [
@@ -530,7 +535,7 @@ ${acoes}
   <div class="cover-mid">
     <span class="eyebrow">${esc(t.capaEyebrow || t.kicker)}</span>
     <h1 class="hero"><span class="l1">${esc(heroL1)}</span><br><span class="grad">${esc(deal.organizacao)}</span></h1>
-    <p class="herosub">${esc(chamada)}</p>
+    ${chamada ? `<p class="herosub">${esc(chamada)}</p>` : ''}
     <div class="strip">${strip}</div>
   </div>
   <div class="cover-foot">
@@ -598,7 +603,7 @@ background:rgba(255,59,48,.10);border:1px solid rgba(255,59,48,.28);color:#FFD7D
 /* Fundo próprio e opaco + z-index: na impressão a capa cobre o rodapé fixo, que
    por isso não aparece sobre a primeira folha (a capa tem o rodapé dela). */
 .cover{position:relative;z-index:2;overflow:hidden;min-height:100vh;display:flex;flex-direction:column;
-padding:clamp(1.6rem,5vw,3rem);background:radial-gradient(circle at 50% -8%,#0A4B57 0%,#002B36 62%)}
+padding:clamp(1.6rem,5vw,3rem);background:radial-gradient(circle at 50% 0%,#004C54 0%,#002B36 60%)}
 .watermark{position:absolute;right:-6%;top:44%;transform:translateY(-50%);z-index:-1;
 opacity:.5;filter:blur(.3px);pointer-events:none;
 --logo-fill:#0A3A47;--logo-accent:#0C4657;--logo-counter:#002B36}
@@ -794,8 +799,11 @@ padding:1rem clamp(1rem,4vw,2.4rem) 2rem;border-top:1px solid var(--line)}
 
 /* ── Impressão / PDF ────────────────────────────────────────────────── */
 @media print{
-/* Margem inferior deixa a faixa do rodapé livre; o resto define a caixa da folha. */
-@page{size:A4;margin:14mm 16mm 14mm}
+/* Margens laterais ZERO na folha: a contenção do conteúdo é feita por CSS (coluna
+   central de largura fixa), não pelo @page — o Chrome não honra a margem lateral
+   de forma confiável com preferCSSPageSize, e o resultado era conteúdo de borda a
+   borda. Só topo/base ficam na folha, pro fluxo entre páginas. */
+@page{size:A4;margin:14mm 0}
 html,body{background:var(--navy)}
 body{font-size:10.5pt}
 /* O gradiente e as cores de fundo são identidade — saem no papel. */
@@ -804,10 +812,13 @@ body{font-size:10.5pt}
 /* Interface não vai pro papel. */
 .acoes,.aceite-form{display:none}
 /* A capa ocupa a primeira folha inteira; o conteúdo começa na seguinte. Fundo
-   opaco + z-index (na regra base) cobrem o rodapé fixo nesta folha. */
-.cover{min-height:auto;height:calc(297mm - 28mm);break-after:page}
+   opaco + z-index (na regra base) cobrem o rodapé fixo nesta folha. Full-bleed;
+   o conteúdo dela fica contido pelo padding lateral, alinhado à coluna. */
+.cover{min-height:auto;height:calc(297mm - 28mm);break-after:page;padding:22mm 21mm}
 .watermark{opacity:.5}
-.pad{padding:0;gap:8mm}
+/* Coluna central de ~168mm numa folha A4 de 210mm => ~21mm de margem de cada
+   lado, contido e central, como o modelo. */
+.pad{max-width:168mm;margin:0 auto;padding:0;gap:8mm}
 /* Cada cláusula tenta ficar inteira; título nunca órfão do que vem depois. */
 .clausula{break-inside:avoid}
 .sechead,h2,h3,h4{break-after:avoid}
@@ -815,11 +826,11 @@ body{font-size:10.5pt}
 p,li{orphans:3;widows:3}
 .cta{break-before:avoid}
 /* Rodapé: o Chrome repete elementos position:fixed no pé de cada folha impressa.
-   bottom pequeno e positivo o pousa no rodapé (posição confiável); fundo petrol
-   opaco mascara qualquer conteúdo que chegue perto; z-index baixo pra a capa
-   (z-index:2, fundo opaco) cobri-lo inteiro na 1a folha. */
-.pagefoot{position:fixed;left:0;right:0;bottom:0;max-width:none;margin:0;z-index:1;
-border-top:0;padding:2mm 16mm;background:#002B36}
+   Alinhado à coluna (168mm central); fundo petrol opaco mascara qualquer conteúdo
+   que chegue perto; z-index baixo pra a capa (z-index:2, fundo opaco) cobri-lo
+   inteiro na 1a folha. */
+.pagefoot{position:fixed;left:0;right:0;bottom:0;max-width:168mm;margin:0 auto;z-index:1;
+border-top:0;padding:2mm 0;background:#002B36}
 .pf-ref{font-size:8px}
 a{text-decoration:none}
 }

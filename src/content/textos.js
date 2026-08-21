@@ -69,22 +69,22 @@ export const TEXTOS = {
             'Etapa · responsável · prazo'],
         // O loop da Branddi, exibido como faixa ao pé da Abordagem. A versão de
         // monitoria não notifica nem remove — entrega evidência pra Contratante agir.
+        // Loop da Branddi (faixa da Abordagem). SÓ na modalidade de atuação — em
+        // monitoria a Branddi não notifica nem remove, então a faixa não sai (não
+        // inventar processo). Copy aprovada no modelo validado.
         loop: ['Detectar', 'Classificar', 'Notificar', 'Remover'],
-        loopMonitoria: ['Detectar', 'Classificar', 'Documentar', 'Entregar'],
         // Cards de pacote na cláusula de Investimento.
         avulso: 'Avulso',
         recomendado: 'Recomendado',
         pacoteLabel: 'Pacote',
         avulsoDesc: 'Serviço contratado separadamente, pelo valor individual.',
-        // Subtítulo (hero) da capa, por produto. É a chamada comercial do serviço.
+        // Subtítulo (hero) da capa e nota-insight do Objetivo: SÓ por produto que
+        // tem copy aprovada. Sem chave = elemento não aparece (nada inventado).
+        // Só Brand Bidding tem texto validado (do modelo); os demais entram quando
+        // a Jessica aprovar a copy de cada um.
         chamada: {
             BB: 'Recupere o tráfego que concorrentes capturam ao comprar o nome da sua marca — do monitoramento ao takedown.',
-            BBP: 'Retome a posição de compra dos seus produtos nos marketplaces e pare de perder venda para sellers não autorizados.',
-            GD: 'Tire do ar sites, domínios e perfis falsos que se passam pela sua marca para aplicar golpes — do monitoramento ao takedown.',
-            VM: 'Impeça que terceiros usem o sinal da sua marca sem autorização e diluam o que ela vale — do monitoramento ao takedown.',
         },
-        // Nota-insight opcional na cláusula Objetivo, por produto. Só sai onde há
-        // texto — produto sem chave não renderiza a nota, em vez de sair vazia.
         insight: {
             BB: 'No brand bidding, o anúncio do concorrente aparece acima do seu resultado orgânico — você paga mais caro pelo próprio nome, ou perde o clique. A atuação da Branddi remove o anunciante e devolve o terreno à marca.',
         },
