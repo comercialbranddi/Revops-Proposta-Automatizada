@@ -783,11 +783,12 @@ border-radius:var(--radius-pill);padding:.7rem 1.4rem;cursor:pointer;margin-top:
 .aceite-form .msg{font-size:.82rem;color:var(--alert);margin:0}
 
 /* Chamada de fechamento */
-.cta{text-align:center;padding:1.5rem 0 1rem;display:flex;flex-direction:column;gap:.7rem;align-items:center}
+.cta{text-align:center;padding:1rem 0 .6rem;display:flex;flex-direction:column;gap:.5rem;align-items:center}
 /* Cyan sólido: no CTA (h2 centralizado, texto direto) o clip-to-text volta a
    pintar a caixa no Skia; o hero escapa por ter a estrutura com <span>. Sólido
-   fica limpo e pertíssimo do gradiente do modelo. */
-.cta-h{font-size:clamp(1.4rem,4vw,2rem);font-weight:800;line-height:1.18;max-width:22ch;color:var(--cyan)}
+   fica limpo e pertíssimo do gradiente do modelo. Compacto (2 linhas) pra o fecho
+   caber junto do aceite, sem sobrar folha. */
+.cta-h{font-size:clamp(1.2rem,3.2vw,1.6rem);font-weight:800;line-height:1.2;max-width:34ch;color:var(--cyan)}
 .cta-sub{font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;color:var(--muted)}
 
 /* Rodapé de página. Na tela sai uma vez, no fim; na impressão vira fixo e o
@@ -821,11 +822,14 @@ body{font-size:10.5pt;background-image:radial-gradient(circle at 50% 0%,#004C54 
 /* Respiro de topo em CADA página: padding (ao contrário de margin) não é
    descartado pelo Chrome quando o elemento inicia uma folha, então toda cláusula
    que abre página ganha esse espaço no topo — e serve de gap entre cláusulas. */
-.clausula{break-inside:avoid;padding:9mm 0}
+.clausula{break-inside:avoid;padding:6.5mm 0}
 .sechead,h2,h3,h4{break-after:avoid}
 .card,.note,.pcard,.tl-item,.loop{break-inside:avoid}
 p,li{orphans:3;widows:3}
-.cta{break-before:avoid;padding-bottom:12mm}
+/* O fecho (CTA) fica junto do aceite — nunca sozinho numa folha. break-before
+   avoid + o aceite pede pra não quebrar depois dele. Compacto pra caber. */
+.note.acao,.note.aceito{break-after:avoid}
+.cta{break-before:avoid;padding:4mm 0 8mm}
 /* Rodapé fixo, repetido pelo Chrome no pé de cada folha; alinhado à coluna, com
    fundo petrol pra mascarar conteúdo próximo; z-index baixo pra a capa (fundo
    próprio) cobri-lo na 1a folha. */
