@@ -799,38 +799,38 @@ padding:1rem clamp(1rem,4vw,2.4rem) 2rem;border-top:1px solid var(--line)}
 
 /* ── Impressão / PDF ────────────────────────────────────────────────── */
 @media print{
-/* Margens laterais ZERO na folha: a contenção do conteúdo é feita por CSS (coluna
-   central de largura fixa), não pelo @page — o Chrome não honra a margem lateral
-   de forma confiável com preferCSSPageSize, e o resultado era conteúdo de borda a
-   borda. Só topo/base ficam na folha, pro fluxo entre páginas. */
-@page{size:A4;margin:14mm 0}
+/* Margem da folha ZERO. Com QUALQUER margem, o Chrome deixa a faixa da margem
+   BRANCA no PDF (o fundo não pinta a margem — nem via html/body — e elemento
+   fixo é recortado na área de conteúdo, não alcança a margem). Sem margem, o
+   fundo preenche a folha inteira de petrol: full-bleed, como o modelo. Todo o
+   respiro é por dentro (coluna central + padding). */
+@page{size:A4;margin:0}
 html,body{background:var(--navy)}
-body{font-size:10.5pt}
+body{font-size:10.5pt;background-image:radial-gradient(circle at 50% 0%,#004C54 0%,#002B36 60%);background-attachment:fixed}
 /* O gradiente e as cores de fundo são identidade — saem no papel. */
 *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .doc{max-width:none}
 /* Interface não vai pro papel. */
 .acoes,.aceite-form{display:none}
-/* A capa ocupa a primeira folha inteira; o conteúdo começa na seguinte. Fundo
-   opaco + z-index (na regra base) cobrem o rodapé fixo nesta folha. Full-bleed;
-   o conteúdo dela fica contido pelo padding lateral, alinhado à coluna. */
-.cover{min-height:auto;height:calc(297mm - 28mm);break-after:page;padding:22mm 21mm}
+/* A capa ocupa a folha inteira (full-bleed), com o conteúdo contido pelo padding. */
+.cover{min-height:auto;height:297mm;break-after:page;padding:24mm 21mm}
 .watermark{opacity:.5}
-/* Coluna central de ~168mm numa folha A4 de 210mm => ~21mm de margem de cada
-   lado, contido e central, como o modelo. */
-.pad{max-width:168mm;margin:0 auto;padding:0;gap:8mm}
-/* Cada cláusula tenta ficar inteira; título nunca órfão do que vem depois. */
-.clausula{break-inside:avoid}
+/* Coluna central de ~168mm numa A4 de 210mm => ~21mm de margem de cada lado,
+   contido e central como o modelo. O padding vertical dá o respiro de topo/base. */
+.pad{max-width:168mm;margin:0 auto;padding:0;gap:0}
+/* Respiro de topo em CADA página: padding (ao contrário de margin) não é
+   descartado pelo Chrome quando o elemento inicia uma folha, então toda cláusula
+   que abre página ganha esse espaço no topo — e serve de gap entre cláusulas. */
+.clausula{break-inside:avoid;padding:9mm 0}
 .sechead,h2,h3,h4{break-after:avoid}
 .card,.note,.pcard,.tl-item,.loop{break-inside:avoid}
 p,li{orphans:3;widows:3}
-.cta{break-before:avoid}
-/* Rodapé: o Chrome repete elementos position:fixed no pé de cada folha impressa.
-   Alinhado à coluna (168mm central); fundo petrol opaco mascara qualquer conteúdo
-   que chegue perto; z-index baixo pra a capa (z-index:2, fundo opaco) cobri-lo
-   inteiro na 1a folha. */
+.cta{break-before:avoid;padding-bottom:12mm}
+/* Rodapé fixo, repetido pelo Chrome no pé de cada folha; alinhado à coluna, com
+   fundo petrol pra mascarar conteúdo próximo; z-index baixo pra a capa (fundo
+   próprio) cobri-lo na 1a folha. */
 .pagefoot{position:fixed;left:0;right:0;bottom:0;max-width:168mm;margin:0 auto;z-index:1;
-border-top:0;padding:2mm 0;background:#002B36}
+border-top:0;padding:4mm 0 6mm;background:linear-gradient(to top,#002B36 60%,transparent)}
 .pf-ref{font-size:8px}
 a{text-decoration:none}
 }
