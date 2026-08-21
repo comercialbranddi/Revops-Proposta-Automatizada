@@ -281,10 +281,10 @@ const CASOS_NOVOS = [
             naoContem('cruzamento com bases'), naoContem('apoio à atuação comercial junto aos canais')],
     },
     {
-        nome: 'a fonte da proposta é Montserrat',
+        nome: 'a fonte da proposta é Inter (Branddi Design System)',
         args: { slug: 'x' },
         spec: spec(['BB']),
-        checa: [contem('family=Montserrat'), contem('"Montserrat"')],
+        checa: [contem('family=Inter'), contem('"Inter"'), contem('JetBrains+Mono')],
     },
 ];
 

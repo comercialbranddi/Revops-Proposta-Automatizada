@@ -75,7 +75,7 @@ export async function htmlParaPdf(html) {
         navegador = await abrirNavegador();
         const page = await navegador.newPage();
 
-        // `networkidle0` porque o documento carrega Montserrat do Google Fonts.
+        // `networkidle0` porque o documento carrega Inter do Google Fonts.
         // Sem esperar, o PDF sai na fonte de reserva — e a fonte é metade da
         // identidade que a gente acabou de acertar.
         await page.setContent(html, { waitUntil: 'networkidle0', timeout: 25000 });

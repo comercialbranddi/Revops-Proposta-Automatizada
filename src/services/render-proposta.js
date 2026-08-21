@@ -469,13 +469,13 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
      busca. noindex fecha esse caminho. -->
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<!-- Montserrat e a fonte da proposta que o time envia hoje: 110 dos 112
-     trechos do MODELO BB no Drive usam ela. preconnect + display=swap pra a
-     pagina nao ficar em branco esperando a fonte, e stack de reserva pro caso
-     de a rede do cliente bloquear o Google Fonts. -->
+<!-- Inter (corpo/titulo) + JetBrains Mono (numeros, refs, selos): as fontes do
+     Branddi Design System. preconnect + display=swap pra a pagina nao ficar em
+     branco esperando a fonte, e stack de reserva pro caso de a rede do cliente
+     bloquear o Google Fonts. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>${cssLimpo()}</style></head><body><div class="wrap"><article class="sheet">
 <header class="masthead">
   ${logo(26)}
@@ -505,16 +505,23 @@ ${blocoAceite(ctx, vencida)}
 }
 
 const CSS = `
+/* Cores da marca vindas do Branddi Design System (tokens.css). O petrol #002B36
+   e o cyan #0ACFDE sao os oficiais. Duas divergencias sao de proposito: sobre
+   papel branco (documento light) o cyan oficial perde contraste, entao --accent
+   e --turquoise usam versoes mais escuras (#0891B2 / #0E7490) pro texto ficar
+   legivel; o cyan oficial fica no que esta sobre a faixa petrol escura, onde
+   tem contraste de sobra (--logo-accent). No dark mode, --accent e --turquoise
+   voltam aos hex oficiais do design system. */
 :root{--bg:#F1F5F9;--surface:#fff;--surface-2:#F8FAFC;--text:#0F172A;--muted:#475569;--dim:#64748B;
 --accent:#0891B2;--turquoise:#0E7490;--rule:#D8E0E8;--rule-soft:#EAEFF4;--petrol:#002B36;
 --on-petrol:#fff;--on-petrol-dim:#94A3B8;
---logo-fill:#FFFFFF;--logo-accent:#4BBECD;--logo-counter:#001D2E;--logo-accent:#4BBECD;
+--logo-fill:#FFFFFF;--logo-accent:#0ACFDE;--logo-counter:#001D2E;
 --shadow:0 1px 2px rgba(15,23,42,.04),0 18px 44px -24px rgba(15,23,42,.2);
---display:"Montserrat","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
---sans:"Montserrat","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
---mono:"Cascadia Mono",Consolas,ui-monospace,SFMono-Regular,monospace;--measure:72ch}
+--display:"Inter","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+--sans:"Inter","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;--measure:72ch}
 @media (prefers-color-scheme:dark){:root{--bg:#001721;--surface:#002B36;--surface-2:#00323F;--text:#fff;
---muted:#B6C2CF;--dim:#8A97A6;--accent:#00E5FF;--turquoise:#4BBECD;--rule:#004052;--rule-soft:#00323F;
+--muted:#B6C2CF;--dim:#8A97A6;--accent:#0ACFDE;--turquoise:#299FB1;--rule:#004052;--rule-soft:#00323F;
 --shadow:0 1px 2px rgba(0,0,0,.5),0 18px 48px -24px rgba(0,0,0,.75)}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--muted);font:14.5px/1.52 var(--sans);-webkit-font-smoothing:antialiased}

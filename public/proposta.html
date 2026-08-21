@@ -7,19 +7,21 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#F1F5F9;--surface:#fff;--surface-2:#F8FAFC;--text:#0F172A;--muted:#475569;--dim:#64748B;
     --accent:#0891B2;--rule:#D8E0E8;--alert:#DC2626;--ok:#15803D;
     --petrol:#002B36;--on-petrol:#fff;--on-petrol-dim:#94A3B8;
-    --logo-fill:#FFFFFF;--logo-accent:#4BBECD;--logo-counter:#001D2E;
-    --sans:"Montserrat","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
-    --mono:"Cascadia Mono",Consolas,ui-monospace,monospace;
+    /* Cyan oficial (#0ACFDE) na marca sobre a faixa petrol; --accent fica escuro
+       (#0891B2) pro texto ter contraste em fundo claro — ver render-proposta.js. */
+    --logo-fill:#FFFFFF;--logo-accent:#0ACFDE;--logo-counter:#001D2E;
+    --sans:"Inter","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;
   }
   @media (prefers-color-scheme:dark){:root{
     --bg:#001721;--surface:#002B36;--surface-2:#00323F;--text:#fff;--muted:#B6C2CF;--dim:#8A97A6;
-    --accent:#00E5FF;--rule:#004052;--alert:#F87171;--ok:#4ADE80;
+    --accent:#0ACFDE;--rule:#004052;--alert:#F87171;--ok:#4ADE80;
   }}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--muted);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
