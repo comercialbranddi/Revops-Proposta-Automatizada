@@ -250,6 +250,13 @@ function clausulaEscopo(ctx) {
     ${tabela([
         [t.idiomaRelatorios, t.idiomaRelatoriosValor],
         [t.requisito, t.requisitoValor],
+        // O que o lead pediu e foi acordado — só aparece se o closer escreveu.
+        // spec.obsProposta, NÃO spec.observacoes: esta última é a anotação
+        // interna do time, que jamais pode vazar pro documento do cliente.
+        // Vai como texto puro (escapado): é fala do cliente, não marcação.
+        ...(String(spec.obsProposta || '').trim()
+            ? [[t.obsProposta, esc(spec.obsProposta.trim())]]
+            : []),
     ])}`;
 }
 

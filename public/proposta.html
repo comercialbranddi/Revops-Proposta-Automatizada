@@ -170,7 +170,7 @@ function textareaAuto(props = {}) {
 const brl = n => (n == null || n === '') ? '—'
   : Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
-const estado = { marcas: '', idioma: 'pt', produtos: new Set(), porProduto: {}, pacotes: [], observacoes: '', condicoes: {} };
+const estado = { marcas: '', idioma: 'pt', produtos: new Set(), porProduto: {}, pacotes: [], observacoes: '', obsProposta: '', condicoes: {} };
 const vazio = (code) => ({ modalidade: CFG.catalogo.modalidades[code] ? CFG.catalogo.modalidadePadrao : null, canais: new Set(), canaisOutros: [], quantidade: '', preco: '', faixas: [], sobConsulta: false });
 
 // ─── Login ──────────────────────────────────────────────────────────
@@ -243,6 +243,7 @@ function aplicarSeed() {
       estado.pacotes = [{ produtos: new Set(a.produtos || []), extras: [], preco: a.pacote, rotulo: '' }];
     }
     estado.observacoes = a.observacoes || '';
+    estado.obsProposta = a.obsProposta || '';
     estado.condicoes = Object.assign({}, a.condicoes || {});
     (a.produtos || []).forEach(c => estado.produtos.add(c));
     Object.entries(a.porProduto || {}).forEach(([c, p]) => {
@@ -575,9 +576,18 @@ function cardPacote() {
   };
   b.append(add);
 
+  // O que o lead pediu e foi acordado — ISSO SAI no documento, numa linha do
+  // escopo. É o que o Victor/Jessica pediram: condição específica do cliente
+  // que precisa constar na proposta, não some no meio das internas.
+  const tp = textareaAuto({ value: estado.obsProposta, placeholder: 'Ex.: relatórios quinzenais; incluir marca X a partir do 2º mês.' });
+  tp.oninput = () => { estado.obsProposta = tp.value; tp.cresce(); };
+  b.append(el('label', { className: 'f' }, 'Observações da proposta', tp,
+    el('span', { className: 'hint' }, 'SAI no documento, no fim do escopo. Para condições que o cliente pediu e foram acordadas.')));
+
   const ta = textareaAuto({ value: estado.observacoes, placeholder: 'Só para o time. Não sai no documento.' });
   ta.oninput = () => { estado.observacoes = ta.value; ta.cresce(); };
-  b.append(el('label', { className: 'f' }, 'Observações internas', ta));
+  b.append(el('label', { className: 'f' }, 'Observações internas', ta,
+    el('span', { className: 'hint' }, 'Não sai no documento — anotação do time.')));
 
   c.append(b);
   return c;
@@ -678,6 +688,7 @@ $('#salvar').onclick = async () => {
       preco: Number(o.preco), rotulo: o.rotulo.trim() || null,
     })),
     observacoes: estado.observacoes,
+    obsProposta: estado.obsProposta,
     // Só o que foi negociado. Chave ausente = condição padrão da Branddi.
     condicoes: estado.condicoes,
   };

@@ -288,6 +288,27 @@ const CASOS_NOVOS = [
     },
 ];
 
+const CASOS_OBS = [
+    {
+        nome: 'observação da proposta SAI no documento',
+        args: { slug: 'x' },
+        spec: spec(['BB'], { obsProposta: 'Relatórios quinzenais acordados com o cliente' }),
+        checa: [contem('Relatórios quinzenais acordados'), contem('>Observações<')],
+    },
+    {
+        nome: 'observação interna NUNCA sai',
+        args: { slug: 'x' },
+        spec: spec(['BB'], { observacoes: 'ANOTACAO INTERNA DO TIME', obsProposta: '' }),
+        checa: [naoContem('ANOTACAO INTERNA DO TIME'), naoContem('>Observações<')],
+    },
+    {
+        nome: 'observação com HTML sai escapada',
+        args: { slug: 'x' },
+        spec: spec(['BB'], { obsProposta: '<script>x</script>' }),
+        checa: [naoContem('<script>x'), contem('&lt;script&gt;x')],
+    },
+];
+
 const ERROS = [
     // 'fr' não tem catálogo. Antes este caso usava 'en', que passou a ter.
     { nome: 'idioma sem catálogo é recusado', spec: spec(['BB'], { idioma: 'fr' }), esperado: /não existe modelo/ },
@@ -422,6 +443,15 @@ for (const { idioma, checa } of IDIOMAS) {
 const pForma = mesmaForma();
 if (pForma.length) falhas.push(['os três catálogos têm a mesma forma', pForma.join(' | ')]);
 else { ok++; console.log('✅ os três catálogos têm a mesma forma'); }
+
+for (const caso of CASOS_OBS) {
+    let html;
+    try { html = renderProposta({ deal: DEAL, spec: caso.spec, ...caso.args }); }
+    catch (e) { falhas.push([caso.nome, ]); continue; }
+    const erros = caso.checa.map((f) => f(html)).filter((r) => r !== true);
+    if (erros.length) falhas.push([caso.nome, erros.join(' | ')]);
+    else { ok++; console.log(); }
+}
 
 for (const caso of ERROS) {
     try {

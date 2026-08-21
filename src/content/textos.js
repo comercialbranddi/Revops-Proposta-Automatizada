@@ -61,6 +61,7 @@ export const TEXTOS = {
         requisito: 'Requisito',
         requisitoValor: 'A marca deve possuir registro no INPI de titularidade da Contratante. Toda ocorrência tratada gera registro de evidência — captura de tela, data, canal e identificação do infrator — arquivado e disponibilizado como subsídio a eventual medida judicial.',
         outrosCanais: 'Outros',
+        obsProposta: 'Observações',
 
         contratante: 'Contratante',
         destinatario: 'Destinatário',
@@ -181,6 +182,7 @@ export const TEXTOS = {
         requisito: 'Requirement',
         requisitoValor: 'The trademark must be registered with the Brazilian INPI in the Client name. Every occurrence handled generates an evidence record — screenshot, date, channel and identification of the infringer — archived and made available as support for any legal action.',
         outrosCanais: 'Other',
+        obsProposta: 'Notes',
 
         contratante: 'Client',
         destinatario: 'Attention',
@@ -298,6 +300,7 @@ export const TEXTOS = {
         requisito: 'Requisito',
         requisitoValor: 'La marca debe estar registrada en el INPI brasileño a nombre de la Contratante. Cada ocurrencia tratada genera un registro de evidencia — captura de pantalla, fecha, canal e identificación del infractor — archivado y puesto a disposición como respaldo para eventuales medidas judiciales.',
         outrosCanais: 'Otros',
+        obsProposta: 'Observaciones',
 
         contratante: 'Contratante',
         destinatario: 'Destinatario',
