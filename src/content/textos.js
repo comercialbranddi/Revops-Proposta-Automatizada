@@ -56,7 +56,7 @@ export const TEXTOS = {
         // "Fundamentação legal" saiu em 18/08/2026, a pedido da Jessica. O
         // REQUISITO que estava dentro dela ficou — virou linha de escopo, porque
         // é pré-condição contratual, não argumentação jurídica.
-        clausulas: ['Identificação', 'Objetivo do contrato', 'Abordagem', 'Investimento',
+        clausulas: ['Identificação', 'Objetivo da proposta', 'Abordagem', 'Investimento',
             'Escopo e níveis de serviço', 'Condições comerciais', 'Aceite e implantação'],
         requisito: 'Requisito',
         requisitoValor: 'A marca deve possuir registro no INPI de titularidade da Contratante. Toda ocorrência tratada gera registro de evidência — captura de tela, data, canal e identificação do infrator — arquivado e disponibilizado como subsídio a eventual medida judicial.',
@@ -176,7 +176,7 @@ export const TEXTOS = {
         rodape: 'Fight the misuse of your brand and maximize your results',
         rodapeValida: 'valid until',
 
-        clausulas: ['Identification', 'Purpose of the agreement', 'Approach', 'Investment',
+        clausulas: ['Identification', 'Purpose of the proposal', 'Approach', 'Investment',
             'Scope and service levels', 'Commercial terms', 'Acceptance and onboarding'],
         requisito: 'Requirement',
         requisitoValor: 'The trademark must be registered with the Brazilian INPI in the Client name. Every occurrence handled generates an evidence record — screenshot, date, channel and identification of the infringer — archived and made available as support for any legal action.',
@@ -293,7 +293,7 @@ export const TEXTOS = {
         rodape: 'Combata el uso indebido de su marca y maximice sus resultados',
         rodapeValida: 'válida hasta',
 
-        clausulas: ['Identificación', 'Objeto del contrato', 'Enfoque', 'Inversión',
+        clausulas: ['Identificación', 'Objeto de la propuesta', 'Enfoque', 'Inversión',
             'Alcance y niveles de servicio', 'Condiciones comerciales', 'Aceptación e implantación'],
         requisito: 'Requisito',
         requisitoValor: 'La marca debe estar registrada en el INPI brasileño a nombre de la Contratante. Cada ocurrencia tratada genera un registro de evidencia — captura de pantalla, fecha, canal e identificación del infractor — archivado y puesto a disposición como respaldo para eventuales medidas judiciales.',
