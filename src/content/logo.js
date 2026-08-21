@@ -27,3 +27,14 @@ export function logo(alturaPx = 24, rotulo = 'Branddi') {
         + ` role="img" aria-label="${rotulo}" style="display:block;width:auto;height:${alturaPx}px">`
         + `${LOGO_SVG}</svg>`;
 }
+
+/**
+ * Só a marca (o "B"), sem o texto — pra usar como marca-d'água grande na capa.
+ * Mesmo desenho do logo, com o viewBox recortado no glifo (o wordmark começa em
+ * x≈179). Decorativa: aria-hidden, herda cor de quem a envolve.
+ */
+export function marca(alturaPx = 200) {
+    return `<svg viewBox="0 0 133 203" height="${alturaPx}" xmlns="http://www.w3.org/2000/svg"`
+        + ` aria-hidden="true" focusable="false" style="display:block;width:auto;height:${alturaPx}px">`
+        + `${LOGO_SVG}</svg>`;
+}

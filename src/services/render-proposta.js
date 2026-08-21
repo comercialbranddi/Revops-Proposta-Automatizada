@@ -1,57 +1,48 @@
 /**
  * Monta o documento da proposta a partir do spec do formulário e do catálogo
- * de blocos, em português, inglês ou espanhol. Saída: HTML autocontido — sem
- * CDN, sem fonte externa, com CSS de impressão, pra virar PDF direto do
- * navegador.
+ * de blocos, em português, inglês ou espanhol. Saída: HTML autocontido — só o
+ * Google Fonts como recurso externo, com CSS de impressão, pra virar PDF direto
+ * do navegador (Puppeteer, ver services/pdf.js).
  *
- * Por que HTML e não Google Doc (decisão de 18/08/2026): o modelo validado é
- * um documento HTML. Reproduzi-lo pela API do Docs é ordem de grandeza mais
- * trabalho e entrega um resultado visualmente pior que o já aprovado.
+ * ─── Identidade visual (Branddi Design System) ──────────────────────
  *
- * Nada aqui inventa texto. Prosa, especificações e SLA vêm de `content/`;
- * números e escolhas vêm do spec. É o que garante que o documento enviado seja
- * o que foi validado na tela de revisão.
+ * O documento segue o design system da marca: dark mode (petrol #002B36 com
+ * gradiente radial), acento cyan #0ACFDE, Inter no corpo/título e JetBrains
+ * Mono nos números/rótulos/refs. É uma peça de marca, não uma folha de contrato
+ * cinza: capa dedicada com hero, glass cards, cards de preço, timeline de
+ * aceite e chamada de fechamento. O modelo validado (PDF gerado em 20/08/2026)
+ * é a referência.
+ *
+ * Nada aqui inventa texto de negócio. Prosa, especificações e SLA vêm de
+ * `content/`; números e escolhas vêm do spec. A copy da moldura (hero, loop,
+ * subtítulos de seção, tagline) vem de `content/textos.js`, nos três idiomas.
  *
  * ─── Idioma ─────────────────────────────────────────────────────────
  *
- * Tudo que é texto sai de `catalogoDoIdioma(idioma)`: os blocos de produto e
- * também a moldura do documento — títulos de cláusula, cabeçalhos de tabela,
- * cláusula legal, bloco de aceite, faixas de aviso. Traduzir só os blocos
- * produziria proposta com cláusula em inglês e cabeçalho em português, que é
- * exatamente o defeito dos documentos antigos.
- *
- * DUAS coisas NÃO acompanham o idioma, de propósito:
- *
- * 1. **A moeda.** Fica em real, com formatação brasileira, nos três idiomas —
- *    "R$ 7.900,00/month" é como o comercial já escrevia. A escolha entre real e
- *    dólar segue aberta e é comercial: o espanhol antigo cobrava em USD quando
- *    era Brand Bidding sozinho e em real no combo. Manter real é o único
- *    comportamento que não inventa uma regra que ninguém definiu.
- *
- * 2. **A modalidade gravada no spec.** Fica em português ("Monitoria +
- *    Atuação"), que é o valor canônico do formulário e da planilha. Só a
- *    exibição traduz — assim uma proposta em inglês continua legível pra quem
- *    olha a planilha ou o Pipedrive.
- *
- * A cláusula "Situação apurada" (o diagnóstico do prospect) NÃO é gerada:
- * esse dado ainda não está conectado. Melhor a seção não existir do que sair
- * com número inventado num documento comercial.
+ * Tudo que é texto sai de `catalogoDoIdioma(idioma)`: os blocos de produto e a
+ * moldura do documento. DUAS coisas NÃO acompanham o idioma, de propósito: a
+ * moeda (real, formatação brasileira, nos três) e a modalidade gravada no spec
+ * (português, valor canônico do formulário/planilha; só a exibição traduz).
  */
 import {
     catalogoDoIdioma, linhasDaModalidade, prosaDoBloco, contratoTemAtuacao,
     modalidadeNoIdioma, MODALIDADE_AMBOS, MODALIDADE_MONITORIA,
 } from '../content/blocos.js';
-import { logo } from '../content/logo.js';
+import { logo, marca } from '../content/logo.js';
 import { CANAIS_OPTION_TO_LABEL, CANAIS_LABEL_POR_IDIOMA, PRODUCT_CASCADE_ORDER, IDIOMAS_COM_BLOCOS, IDIOMA_LABEL, QUANTIDADE_POR_PRODUTO } from '../config/proposal.js';
 
 const TZ = 'America/Sao_Paulo';
 const VALIDADE_DIAS = 15;
 const CLAUSULA_INVESTIMENTO = 4;
 
+// Regime abreviado pra faixa da capa (o valor completo — "Mensal recorrente,
+// sem fidelidade" — não cabe na célula). Curto, no idioma.
+const REGIME_CURTO = { pt: 'Mensal', en: 'Monthly', es: 'Mensual' };
+
 /**
- * O CSS sem os comentários de fonte. Eles explicam decisão interna, em
- * português, e iam parar no "ver código-fonte" do cliente — inclusive numa
- * proposta em inglês. Ficam no arquivo, saem do documento.
+ * O CSS sem os comentários. Eles explicam decisão interna, em português, e iam
+ * parar no "ver código-fonte" do cliente — inclusive numa proposta em inglês.
+ * Ficam no arquivo, saem do documento.
  */
 let _css = null;
 const cssLimpo = () => (_css ??= CSS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/[ \t]*\n[ \t]*\n+/g, '\n'));
@@ -63,19 +54,35 @@ const esc = (s) => String(s ?? '')
 // de usuário. Escapa tudo e devolve só essa tag.
 const rich = (s) => esc(s).replace(/&lt;strong&gt;/g, '<strong>').replace(/&lt;\/strong&gt;/g, '</strong>');
 
-// Formatação brasileira em qualquer idioma — ver o cabeçalho. O   que o
-// toLocaleString põe entre "R$" e o número vira espaço normal: visualmente
-// idêntico, e a saída deixa de depender de um caractere invisível pra quem for
-// ler o documento depois (busca, teste, extração de PDF).
+// Formatação brasileira em qualquer idioma. O   que o toLocaleString põe entre
+// "R$" e o número vira espaço normal: visualmente idêntico, e a saída deixa de
+// depender de um caractere invisível pra quem for ler o documento depois.
 const brl = (n) => Number(n)
     .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
-    .replace(/ /g, ' ');
+    // O que o toLocaleString põe entre "R$" e o número é um espaço não-quebrável
+    // (NBSP/narrow-NBSP). Vira espaço normal: visualmente idêntico e a saída deixa
+    // de depender de um caractere invisível pra busca, teste ou extração de PDF.
+    .replace(/\s/g, ' ');
+
+// Preço sem os centavos quando são zero — pra faixa da capa, onde o número
+// grande respira melhor sem ",00".
+const brlCurto = (n) => brl(n).replace(/,00$/, '');
+
+/**
+ * Preço grande dos cards de pacote: "R$ 45.546,00 /mês", com os centavos e o
+ * "/mês" menores, como no modelo. Mono, tabular, cor cyan (via CSS).
+ */
+function precoGrande(n, t) {
+    const s = brl(n);
+    const i = s.lastIndexOf(',');
+    const inteiro = i >= 0 ? s.slice(0, i) : s;
+    const cent = i >= 0 ? s.slice(i) : '';
+    return `<span class="preco"><span class="pv">${esc(inteiro)}</span><span class="pc">${esc(cent)}</span><span class="pm">${esc(t.porMesCurto)}</span></span>`;
+}
 
 /**
  * Data no idioma do documento. Inglês sai com o mês escrito ("August 18,
- * 2026") em vez de numérico: "08/18" e "18/08" são a mesma string com sentidos
- * diferentes, e proposta comercial não pode ter data ambígua. Português e
- * espanhol usam a mesma ordem, então numérico não confunde.
+ * 2026"); português e espanhol usam numérico (mesma ordem, não confunde).
  */
 function dataNoIdioma(d, idioma) {
     const opcoes = idioma === 'en'
@@ -95,19 +102,17 @@ function canaisTexto(p, idioma) {
     const doCatalogo = (p.canais || [])
         .map((id) => CANAIS_LABEL_POR_IDIOMA[idioma]?.[id] || CANAIS_OPTION_TO_LABEL[id])
         .filter(Boolean);
-    // Canal digitado no formulario. Existe porque a lista fixa nunca vai cobrir
-    // tudo: as propostas reais do time trazem 18 combinacoes distintas de
-    // plataforma, e obrigar o closer a escolher so o que ja esta cadastrado o
-    // faria mandar a proposta errada ou montar a mao.
+    // Canal digitado no formulário — a lista fixa nunca cobre as 18 combinações
+    // reais de plataforma que as propostas do time trazem.
     const digitados = (p.canaisOutros || []).map((c) => String(c).trim()).filter(Boolean);
     const labels = [...doCatalogo, ...digitados];
     return labels.length ? labels.join(', ') : null;
 }
 
 /**
- * Preenche os marcadores do catálogo com o que veio do formulário.
- * Devolve null quando o marcador não tem valor — a linha inteira some, em vez
- * de sair "Canais: {{CANAIS}}" no documento do cliente.
+ * Preenche os marcadores do catálogo com o que veio do formulário. Devolve null
+ * quando o marcador não tem valor — a linha inteira some, em vez de sair
+ * "Canais: {{CANAIS}}" no documento do cliente.
  */
 function valorLinha(valor, p, idioma) {
     let v = valor;
@@ -123,22 +128,10 @@ function valorLinha(valor, p, idioma) {
     return v;
 }
 
-function tabela(linhas) {
-    if (!linhas.length) return '';
-    return `<div class="tw"><table><tbody>${linhas
-        .map(([r, v]) => `<tr><th scope="row">${esc(r)}</th><td>${rich(v)}</td></tr>`).join('')}</tbody></table></div>`;
-}
-
 /**
- * As opções de pacote, normalizadas.
- *
- * Aceita as DUAS formas porque a planilha já tem propostas gravadas com a
- * antiga: `pacote: 15800` (um valor fechado pro contrato inteiro) e
- * `pacotes: [{produtos, extras, preco}]` (várias opções, cada uma com sua
- * composição). Sem isso, reabrir uma proposta de ontem renderizaria sem preço.
- *
- * Cada opção sai com `soma` — o preço cheio do que ela contém — pra dar o
- * "de/por" sem o renderizador recalcular em três lugares.
+ * As opções de pacote, normalizadas. Aceita as DUAS formas gravadas na planilha:
+ * `pacote: 15800` (valor fechado) e `pacotes: [{produtos, extras, preco}]`.
+ * Cada opção sai com `soma` — o preço cheio do que contém — pra dar o "de/por".
  */
 function opcoesDePacote(spec, codes) {
     const precoDe = (c) => Number(spec.porProduto?.[c]?.preco) || 0;
@@ -151,8 +144,6 @@ function opcoesDePacote(spec, codes) {
             const extras = (o.extras || []).map((x) => String(x).trim()).filter(Boolean);
             return { ...o, produtos, extras, soma: produtos.reduce((t, c) => t + precoDe(c), 0) };
         })
-        // Opção sem preço ou sem nada dentro não é opção — sai calada em vez de
-        // virar linha vazia no documento do cliente.
         .filter((o) => Number(o.preco) > 0 && (o.produtos.length + o.extras.length) > 0)
         .sort((a, b) => a.preco - b.preco);
 }
@@ -167,20 +158,44 @@ function modalidadeDo(blocos, code, p) {
     return blocos[code].temModalidade ? (p?.modalidade || MODALIDADE_AMBOS) : null;
 }
 
+/**
+ * Condição negociada vence a padrão. O formulário manda em `spec.condicoes` só
+ * o que o closer alterou; o que não vier segue sendo a condição padrão da
+ * Branddi — evita que um esquecimento no formulário apague uma cláusula.
+ */
+function cond(ctx, chave, padrao) {
+    const v = ctx.spec.condicoes?.[chave];
+    return (typeof v === 'string' && v.trim()) ? v.trim() : padrao;
+}
+
+// ─── Componentes ────────────────────────────────────────────────────
+
+/** Cabeçalho de cláusula: badge numerado + título + subtítulo. */
+function sechead(n, titulo, sub) {
+    return `<header class="sechead"><span class="secnum">${esc(n)}</span>
+    <div class="secttl"><h2>${esc(titulo)}</h2>${sub ? `<p class="secsub">${esc(sub)}</p>` : ''}</div></header>`;
+}
+
+/** Grade rótulo/valor em glass card (Identificação, Condições). */
+function kvGrid(pares) {
+    const cells = pares.filter(Boolean).map(([r, v, cyan]) =>
+        `<div class="kv"><span class="kvl">${esc(r)}</span><span class="kvv${cyan ? ' cyan' : ''}">${rich(v)}</span></div>`).join('');
+    return `<div class="card grid2">${cells}</div>`;
+}
+
 // ─── Cláusulas ──────────────────────────────────────────────────────
 
 function clausulaIdentificacao(ctx) {
     const { deal, spec, meta, codes, t, blocos } = ctx;
-    return tabela([
+    const valor = ctx.opcoes.length > 1 ? t.aPartirDe(brl(ctx.total)) : brl(ctx.total);
+    return kvGrid([
         [t.contratante, `<strong>${esc(deal.organizacao)}</strong>`],
         ...(deal.contato ? [[t.destinatario, deal.contato]] : []),
         [t.contratada, t.contratadaValor],
         [t.marcas, (spec.marcas || []).join(', ')],
         [t.servicos, codes.map((c) => blocos[c].titulo).join(' · ')],
         [t.regime, t.regimeValor],
-        // Com mais de uma opção de pacote, um valor único mentiria: o cliente
-        // ainda vai escolher. Sai "a partir de" com o menor.
-        [t.valorMensal, `<strong>${ctx.opcoes.length > 1 ? t.aPartirDe(brl(ctx.total)) : brl(ctx.total)}</strong> — ${t.verClausula(CLAUSULA_INVESTIMENTO)}`],
+        [t.valorMensal, `${valor} · ${t.verClausula(CLAUSULA_INVESTIMENTO)}`, true],
         [t.validade, t.validadeValor(VALIDADE_DIAS, meta.validade)],
     ]);
 }
@@ -189,53 +204,44 @@ function clausulaObjetivo(ctx) {
     const { codes, deal, t, blocos } = ctx;
     const varios = codes.length > 1;
     const itens = codes.map((c) => `<li>${esc(blocos[c].objetivo)}</li>`).join('');
-    return `<p>${esc(t.objetivoAbre(varios))}</p><ul>${itens}</ul>
-    <p>${esc(t.objetivoFecha(varios, deal.organizacao))}</p>`;
+    const corpo = `<div class="card prosa"><p>${esc(t.objetivoAbre(varios))}</p><ul>${itens}</ul>
+    <p>${esc(t.objetivoFecha(varios, deal.organizacao))}</p></div>`;
+    // Nota-insight opcional: só do produto principal e só se houver texto.
+    const insight = t.insight?.[codes[0]];
+    const nota = insight ? `<div class="note"><span class="note-ic">i</span><p>${rich(insight)}</p></div>` : '';
+    return corpo + nota;
 }
 
 function clausulaAbordagem(ctx) {
-    const { t, blocos, idioma } = ctx;
-    return ctx.codes.map((code, i) => {
+    const { t, blocos, idioma, spec } = ctx;
+    const blocosHtml = ctx.codes.map((code, i) => {
         const b = blocos[code];
-        const p = ctx.spec.porProduto[code] || {};
+        const p = spec.porProduto[code] || {};
         const mod = modalidadeDo(blocos, code, p);
-        // Todo bloco diz o seu modo ao lado do título, inclusive BBP — que não
-        // tem modalidade e por isso levava a informação numa linha da cláusula
-        // 5. Tirada a duplicação de lá, o selo é o único lugar onde isso
-        // aparece; sem ele, BBP não dizia nada sobre como atua.
-        const badge = `<span class="mode">${esc(mod ? modalidadeNoIdioma(mod, idioma) : t.semModalidade)}</span>`;
+        const modLabel = mod ? modalidadeNoIdioma(mod, idioma) : t.semModalidade;
         const linhas = linhasDaModalidade(b.especificacoes, mod)
             .map((l) => [l.rotulo, valorLinha(l.valor, p, idioma)])
             .filter(([, v]) => v != null);
-        // Um produto é UMA unidade de leitura: título, o que é, e a ficha
-        // técnica. Quebrar isso ao meio da folha deixa a tabela órfã da prosa
-        // que a explica. Envolvido pra o CSS de impressão poder mantê-lo
-        // inteiro — cada bloco ocupa menos de meia página, então cabe.
-        return `<div class="bloco"><h3><span class="idx">3.${i + 1}</span> ${esc(b.titulo)} ${badge}</h3>
-      <p class="fine">${rich(prosaDoBloco(blocos, code, mod))}</p>
-      ${tabela(linhas)}</div>`;
+        const spec_rows = linhas.map(([r, v]) =>
+            `<div class="spec"><span class="specl">${esc(r)}</span><span class="specv">${rich(v)}</span></div>`).join('');
+        return `<div class="bloco">
+      <h3><span class="idx">3.${i + 1}</span> ${esc(b.titulo)} <span class="mode">${esc(modLabel)}</span></h3>
+      <p class="prosa-p">${rich(prosaDoBloco(blocos, code, mod))}</p>
+      <div class="card spectable">${spec_rows}</div></div>`;
     }).join('');
+    // Loop da Branddi: notifica/remove só quando algum produto atua.
+    const steps = contratoTemAtuacao(spec.porProduto) ? t.loop : t.loopMonitoria;
+    const ribbon = `<div class="loop">${steps.map((s) => `<span class="loop-step">${esc(s)}</span>`).join('')}</div>`;
+    return blocosHtml + ribbon;
 }
 
 /**
- * Escopo e níveis de serviço.
- *
- * NÃO repete o que as cláusulas 1 e 3 já disseram. A versão anterior trazia de
- * novo as marcas monitoradas (que estão na Identificação) e a modalidade de
- * cada produto (que já é um selo ao lado do título de cada bloco na
- * Abordagem) — numa proposta de quatro produtos isso somava cinco linhas de
- * informação repetida, e repetição em documento comercial cansa antes de
- * informar.
- *
- * Fica aqui o que não está em nenhum outro lugar: o idioma dos relatórios, o
- * requisito que o cliente precisa cumprir, e os entregáveis.
+ * Escopo e níveis de serviço. NÃO repete o que 1 e 3 já disseram (marcas,
+ * modalidade). Fica aqui o SLA (de cada produto + o do contrato, sem repetir
+ * entregável), o idioma dos relatórios, o requisito e a observação do lead.
  */
 function clausulaEscopo(ctx) {
     const { codes, spec, t, blocos, slaGeral } = ctx;
-
-    // SLA: o de cada produto, mais o do contrato inteiro. Sem repetir entregável
-    // que dois produtos declaram igual — o cliente não precisa ler duas vezes
-    // que recebe relatório semanal.
     const modoContrato = contratoTemAtuacao(spec.porProduto) ? MODALIDADE_AMBOS : MODALIDADE_MONITORIA;
     const vistos = new Set();
     const sla = [
@@ -243,122 +249,117 @@ function clausulaEscopo(ctx) {
         ...linhasDaModalidade(slaGeral, modoContrato),
     ].filter((l) => (vistos.has(l.entregavel) ? false : vistos.add(l.entregavel)));
 
-    return `<div class="tw"><table>
-      <thead><tr><th scope="col">${esc(t.thEntregavel)}</th><th scope="col">${esc(t.thPeriodicidade)}</th><th scope="col">${esc(t.thCanal)}</th></tr></thead>
-      <tbody>${sla.map((l) => `<tr><td>${esc(l.entregavel)}</td><td>${esc(l.periodicidade)}</td><td>${esc(l.canal)}</td></tr>`).join('')}</tbody>
-    </table></div>
-    ${tabela([
-        [t.idiomaRelatorios, t.idiomaRelatoriosValor],
-        [t.requisito, t.requisitoValor],
-        // O que o lead pediu e foi acordado — só aparece se o closer escreveu.
-        // spec.obsProposta, NÃO spec.observacoes: esta última é a anotação
-        // interna do time, que jamais pode vazar pro documento do cliente.
-        // Vai como texto puro (escapado): é fala do cliente, não marcação.
-        ...(String(spec.obsProposta || '').trim()
-            ? [[t.obsProposta, esc(spec.obsProposta.trim())]]
-            : []),
-    ])}`;
+    const slaCard = `<div class="card slatable">
+      <div class="sla sla-head"><span>${esc(t.thEntregavel)}</span><span>${esc(t.thPeriodicidade)}</span><span>${esc(t.thCanal)}</span></div>
+      ${sla.map((l) => `<div class="sla"><span class="e">${esc(l.entregavel)}</span><span>${esc(l.periodicidade)}</span><span>${esc(l.canal)}</span></div>`).join('')}
+    </div>`;
+
+    // Requisito: nota legal (§) — pré-condição contratual.
+    const req = `<div class="note"><span class="note-ic">§</span><p><strong>${esc(t.requisito)}.</strong> ${esc(t.requisitoValor)}</p></div>`;
+
+    // Observação do lead — só se o closer escreveu. spec.obsProposta (fala do
+    // cliente, texto puro), NÃO spec.observacoes (anotação interna do time).
+    const obs = String(spec.obsProposta || '').trim()
+        ? kvGrid([[t.obsProposta, esc(spec.obsProposta.trim())]])
+        : '';
+    const idiomas = kvGrid([[t.idiomaRelatorios, t.idiomaRelatoriosValor]]);
+
+    return slaCard + idiomas + req + obs;
 }
 
 function clausulaInvestimento(ctx) {
-    const { codes, spec, soma, total, t, blocos, idioma } = ctx;
+    const { codes, spec, soma, t, blocos, idioma } = ctx;
+
+    // Tabela item a item (com escada de faixas quando houver).
     const linhas = codes.map((c) => {
         const p = spec.porProduto[c] || {};
         const escopo = [canaisTexto(p, idioma), Number(p.quantidade) > 0 ? t.ate(p.quantidade) : null]
             .filter(Boolean).join(' · ') || '—';
-        // Escada: uma linha por faixa, em vez de preço único. Exceção, não regra.
         if (p.faixas?.length) {
             return [{ qtd: p.quantidade, preco: p.preco }, ...p.faixas]
                 .filter((f) => Number(f.qtd) > 0 && Number(f.preco) > 0)
                 .sort((a, b) => a.qtd - b.qtd)
-                // "Até 10" sozinho não diz 10 do quê. Com a unidade a linha se
-                // explica: "Até 10 palavras", "Até 200 SKUs".
-                .map((f, i) => `<tr><td>${i === 0 ? `<strong>${esc(blocos[c].titulo)}</strong>` : ''}</td>
-          <td>${esc(t.ate(f.qtd))}${unidadeDe(c) ? ' ' + esc(unidadeDe(c)) : ''}</td><td class="n-cell">${brl(f.preco)}</td></tr>`).join('');
+                .map((f, i) => `<div class="itrow"><span class="i-item">${i === 0 ? `<strong>${esc(blocos[c].titulo)}</strong>` : ''}</span>
+          <span class="i-esc">${esc(t.ate(f.qtd))}${unidadeDe(c) ? ' ' + esc(unidadeDe(c)) : ''}</span><span class="i-val">${brl(f.preco)}</span></div>`).join('');
         }
-        return `<tr><td><strong>${esc(blocos[c].titulo)}</strong></td><td>${esc(escopo)}</td>
-      <td class="n-cell">${brl(p.preco)}</td></tr>`;
+        return `<div class="itrow"><span class="i-item"><strong>${esc(blocos[c].titulo)}</strong></span>
+      <span class="i-esc">${esc(escopo)}</span><span class="i-val">${brl(p.preco)}</span></div>`;
     }).join('');
 
     const { opcoes } = ctx;
-
-    // UMA opção cobrindo tudo é o caso comum: fecha a própria tabela com
-    // "de/por", como sempre fez. Duas ou mais viram um quadro de escolha
-    // separado — misturar as duas coisas na mesma tabela faria o cliente somar
-    // valores que são alternativas entre si.
     const unica = opcoes.length === 1 && opcoes[0].produtos.length === codes.length && !opcoes[0].extras.length;
+
+    // Fecho da tabela quando UMA opção cobre tudo (caso comum).
     const fecho = unica
         ? (opcoes[0].preco < soma - 0.01
-            ? `<tr class="sub"><td>${esc(t.subtotal)}</td><td></td><td class="n-cell">${brl(soma)}</td></tr>
-         <tr class="total"><td>${esc(t.totalCombinado)}</td><td>${esc(t.descontoDe(brl(soma - opcoes[0].preco)))}</td><td class="n-cell">${brl(opcoes[0].preco)}</td></tr>`
-            : `<tr class="total"><td>${esc(t.total)}</td><td></td><td class="n-cell">${brl(opcoes[0].preco)}</td></tr>`)
-        : (opcoes.length ? '' : `<tr class="total"><td>${esc(t.total)}</td><td></td><td class="n-cell">${brl(soma)}</td></tr>`);
+            ? `<div class="itrow sub"><span class="i-item">${esc(t.subtotal)}</span><span></span><span class="i-val">${brl(soma)}</span></div>
+         <div class="itrow total"><span class="i-item">${esc(t.totalCombinado)}</span><span class="i-esc">${esc(t.descontoDe(brl(soma - opcoes[0].preco)))}</span><span class="i-val">${brl(opcoes[0].preco)}</span></div>`
+            : `<div class="itrow total"><span class="i-item">${esc(t.total)}</span><span></span><span class="i-val">${brl(opcoes[0].preco)}</span></div>`)
+        : (opcoes.length ? '' : `<div class="itrow total"><span class="i-item">${esc(t.total)}</span><span></span><span class="i-val">${brl(soma)}</span></div>`);
 
-    const quadro = (!unica && opcoes.length) ? `<h4>${esc(t.opcoesPacote)}</h4>
-    <div class="tw"><table>
-      <thead><tr><th scope="col">${esc(t.thOpcao)}</th><th scope="col">${esc(t.thComposicao)}</th><th scope="col" style="text-align:right">${esc(t.thMensal)}</th></tr></thead>
-      <tbody>${opcoes.map((o, i) => {
+    const tabela = `<div class="card itable">
+      <div class="itrow ihead"><span>${esc(t.thItem)}</span><span>${esc(t.thEscopo)}</span><span class="i-val">${esc(t.thMensal)}</span></div>
+      ${linhas}${fecho}</div>`;
+
+    // Duas ou mais opções viram cards de escolha. A mais barata é a recomendada
+    // (bundle com desconto). Exibidas em ordem decrescente de preço, pra a
+    // recomendada ficar à direita — como no modelo validado.
+    const minPreco = opcoes[0]?.preco;
+    const ordenadas = [...opcoes].sort((a, b) => b.preco - a.preco);
+    const cards = (!unica && opcoes.length) ? `<p class="minihead">${esc(t.opcoesPacote)}</p>
+    <div class="pacotes">${ordenadas.map((o) => {
+        const rec = opcoes.length > 1 && o.preco === minPreco;
         const partes = [...o.produtos.map((c) => blocos[c].titulo), ...o.extras];
         const eco = o.soma > o.preco + 0.01 ? t.economiaDe(brl(o.soma - o.preco)) : '';
-        return `<tr><td><strong>${esc(o.rotulo || t.pacoteN(i + 1))}</strong></td>
-          <td>${esc(partes.join(' + '))}${eco ? `<br><span class="eco">${esc(eco)}</span>` : ''}</td>
-          <td class="n-cell">${brl(o.preco)}</td></tr>`;
-    }).join('')}</tbody></table></div>
-    <p class="fine">${esc(t.opcoesNota)}</p>` : '';
+        const tag = rec ? (o.rotulo ? `${t.pacoteLabel} · ${o.rotulo}` : t.pacoteLabel) : t.avulso;
+        return `<div class="pcard${rec ? ' rec' : ''}">
+          <div class="pcard-top"><span class="ptag">${esc(tag)}</span>${rec ? `<span class="badge-rec">${esc(t.recomendado)}</span>` : ''}</div>
+          <h4 class="pname">${esc(partes.join(' + '))}</h4>
+          <p class="pdesc">${esc(rec ? (o.descricao || t.opcoesNota) : t.avulsoDesc)}</p>
+          ${precoGrande(o.preco, t)}
+          ${eco ? `<span class="badge-eco">● ${esc(eco)}</span>` : ''}</div>`;
+    }).join('')}</div>
+    <div class="note"><span class="note-ic">i</span><p>${esc(t.opcoesNota)}</p></div>` : '';
 
-    return `<div class="tw"><table>
-      <thead><tr><th scope="col">${esc(t.thItem)}</th><th scope="col">${esc(t.thEscopo)}</th><th scope="col" style="text-align:right">${esc(t.thMensal)}</th></tr></thead>
-      <tbody>${linhas}${fecho}</tbody></table></div>
-    ${quadro}
-    ${tabela([[t.setup, cond(ctx, 'setup', t.setupValor)], [t.impostos, t.impostosValor]])}`;
-}
+    // Setup e impostos, dois cards pequenos lado a lado.
+    const extras = `<div class="grid2 gap">
+      <div class="card feat"><span class="featl">${esc(t.setup)}</span><p>${rich(cond(ctx, 'setup', t.setupValor))}</p></div>
+      <div class="card feat"><span class="featl">${esc(t.impostos)}</span><p>${rich(t.impostosValor)}</p></div></div>`;
 
-/**
- * Condicao negociada vence a padrao. O formulario manda em `spec.condicoes` so
- * o que o closer alterou — o que nao vier continua sendo a condicao padrao da
- * Branddi, e e isso que evita que um esquecimento no formulario apague uma
- * clausula do contrato.
- */
-function cond(ctx, chave, padrao) {
-    const v = ctx.spec.condicoes?.[chave];
-    return (typeof v === 'string' && v.trim()) ? v.trim() : padrao;
+    return tabela + cards + extras;
 }
 
 function clausulaCondicoes(ctx) {
     const { t, meta } = ctx;
-    return tabela([
+    return kvGrid([
         [t.pagamento, cond(ctx, 'pagamento', t.pagamentoValor)],
         [t.vigencia, cond(ctx, 'vigencia', t.vigenciaValor)],
         [t.rescisao, cond(ctx, 'rescisao', t.rescisaoValor)],
         [t.implantacao, cond(ctx, 'implantacao', t.implantacaoValor)],
-        [t.validadeProposta, t.validadeValor(VALIDADE_DIAS, meta.validade)],
+        [t.validadeProposta, t.validadeValor(VALIDADE_DIAS, meta.validade), true],
     ]);
 }
 
 function clausulaAceite(ctx) {
     const { codes, meta, t, insumos } = ctx;
-    // O que o cliente precisa mandar depende do que ele contratou: SKU só se
-    // tem BBP, safelist só se tem GD. Pedir tudo em toda proposta faz o cliente
-    // perguntar por que precisa de algo que não contratou.
     const lista = [...codes.map((c) => insumos[c]).filter(Boolean), t.insumoINPI].join('; ');
-    return `<div class="tw"><table>
-    <thead><tr><th scope="col">${esc(t.thEtapa)}</th><th scope="col">${esc(t.thResponsavel)}</th><th scope="col">${esc(t.thPrazo)}</th></tr></thead>
-    <tbody>
-      <tr><td>${esc(t.etapaAceite)}</td><td>${esc(t.respContratante)}</td><td>${esc(t.prazoAte(meta.validade))}</td></tr>
-      <tr><td>${esc(t.etapaEnvio(lista))}</td><td>${esc(t.respContratante)}</td><td>D+0</td></tr>
-      <tr><td>${esc(t.etapaConfig)}</td><td>Branddi</td><td>${esc(t.prazoUteis)}</td></tr>
-      <tr><td>${esc(t.etapaPrimeira)}</td><td>Branddi</td><td>D+7</td></tr>
-      <tr><td>${esc(t.etapaReuniao)}</td><td>${esc(t.respAmbas)}</td><td>D+30</td></tr>
-    </tbody></table></div>`;
+    const etapas = [
+        [t.etapaAceite, t.respContratante, t.prazoAte(meta.validade)],
+        [t.etapaEnvio(lista), t.respContratante, 'D+0'],
+        [t.etapaConfig, 'Branddi', t.prazoUteis],
+        [t.etapaPrimeira, 'Branddi', 'D+7'],
+        [t.etapaReuniao, t.respAmbas, 'D+30'],
+    ];
+    return `<div class="timeline">${etapas.map(([etapa, resp, prazo]) =>
+        `<div class="tl-item"><span class="tl-dot"></span>
+      <div class="tl-body"><span class="tl-etapa">${esc(etapa)}</span><span class="tl-resp">${esc(resp)}</span></div>
+      <span class="tl-prazo">${esc(prazo)}</span></div>`).join('')}</div>`;
 }
 
 /**
- * O aceite. Só aparece quando a proposta tem endereço (slug) — o preview
- * gerado no formulário não deve oferecer aceite a ninguém.
- *
- * É declaração do cliente, não assinatura qualificada: prova intenção e data,
- * não identidade certificada. O texto diz isso, pra ninguém achar que assinou
- * contrato ali.
+ * O aceite. Só aparece quando a proposta tem endereço (slug) — o preview do
+ * formulário não deve oferecer aceite a ninguém. É declaração de intenção, não
+ * assinatura qualificada; o texto diz isso.
  */
 function blocoAceite(ctx, vencida) {
     const { t, idioma } = ctx;
@@ -366,15 +367,14 @@ function blocoAceite(ctx, vencida) {
     if (ctx.aceite) {
         const locale = idioma === 'en' ? 'en-US' : (idioma === 'es' ? 'es-ES' : 'pt-BR');
         const q = new Date(ctx.aceite.quando).toLocaleString(locale, { timeZone: TZ, dateStyle: 'long', timeStyle: 'short' });
-        return `<section class="aceito"><h2><span class="idx">✓</span> ${esc(t.aceiteAceitaTitulo)}</h2>
-      <p>${t.aceitaPor(esc(ctx.aceite.nome), esc(ctx.aceite.cargo || ''), esc(ctx.aceite.email), esc(q))}</p>
-      <p class="fine">${esc(t.aceitaNota)}</p></section>`;
+        return `<div class="note aceito"><span class="note-ic ok">✓</span>
+      <div><p><strong>${esc(t.aceiteAceitaTitulo)}.</strong> ${t.aceitaPor(esc(ctx.aceite.nome), esc(ctx.aceite.cargo || ''), esc(ctx.aceite.email), esc(q))}</p>
+      <p class="fine">${esc(t.aceitaNota)}</p></div></div>`;
     }
-    // Substituída não aceita: o cliente estaria concordando com um valor que a
-    // Branddi já revisou. Se ele quiser fechar, é pela versão atual.
     if (vencida || ctx.substituida) return '';
-    return `<section id="aceite"><h2><span class="idx">✓</span> ${esc(t.aceiteTitulo)}</h2>
-    <p class="fine">${esc(t.aceiteProsa)}</p>
+    return `<section id="aceite">
+    <div class="note"><span class="note-ic ok">✓</span>
+      <div><p><strong>${esc(t.aceiteTitulo)}.</strong> ${esc(t.aceiteProsa)}</p></div></div>
     <form id="fAceite" class="aceite-form" autocomplete="on">
       <label>${esc(t.aceiteNome)}<input name="nome" required autocomplete="name"></label>
       <label>${esc(t.aceiteEmail)}<input name="email" type="email" required autocomplete="email"></label>
@@ -424,8 +424,6 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
     if (!codes.length) throw new Error('spec sem produtos — nada a renderizar');
     if (!deal?.organizacao) throw new Error('sem organização — o nome vai no corpo da proposta');
 
-    // Barrar aqui, e não só na tela: bloquear no formulário é interface, não
-    // garantia. Um POST direto com idioma sem catálogo sairia em português calado.
     const idioma = spec.idioma || 'pt';
     if (!IDIOMAS_COM_BLOCOS.includes(idioma)) {
         throw new Error(`ainda não existe modelo em ${IDIOMA_LABEL[idioma] || idioma} — a proposta só sai nos idiomas com catálogo escrito`);
@@ -435,8 +433,6 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
     const validade = new Date(emitidaEm.getTime() + VALIDADE_DIAS * 86400000);
     const soma = codes.reduce((acc, c) => acc + (Number(spec.porProduto[c]?.preco) || 0), 0);
     const opcoes = opcoesDePacote(spec, codes);
-    // O "valor mensal" da capa: a opção mais barata quando há pacote, senão a
-    // soma dos serviços. Já vem ordenado por preço.
     const total = opcoes.length ? opcoes[0].preco : soma;
     const meta = {
         numero: `${t.numeroPrefixo}-${deal.id}`,
@@ -445,28 +441,48 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
     };
     const ctx = { deal, spec, codes, meta, soma, total, opcoes, slug, aceite, substituida, idioma, t, blocos, slaGeral, insumos };
 
-    const vencida = Date.now() > validade.getTime() + 86400000; // até o fim do dia da validade
+    const vencida = Date.now() > validade.getTime() + 86400000;
 
-    // Substituída vem antes de vencida: se as duas valem, o que o cliente
-    // precisa é do endereço novo, não do aviso de prazo.
     const aviso = substituida
-        ? `<div class="substituida"><b>${esc(t.substituidaTitulo)}</b> ${esc(t.substituidaTexto(substituida.revisao))}
+        ? `<div class="aviso substituida"><b>${esc(t.substituidaTitulo)}</b> ${esc(t.substituidaTexto(substituida.revisao))}
            <a href="/p/${esc(substituida.slug)}">${esc(t.substituidaLink)}</a>.</div>`
         : vencida
-            ? `<div class="vencida"><b>${esc(t.vencidaTitulo(meta.validade))}</b> ${esc(t.vencidaTexto)}</div>`
+            ? `<div class="aviso vencida"><b>${esc(t.vencidaTitulo(meta.validade))}</b> ${esc(t.vencidaTexto)}</div>`
             : '';
 
+    // Cláusulas 1–7 (aceite = 7, mas o corpo do aceite é o timeline; o painel de
+    // ação vem depois, fora da numeração).
     const corpo = CLAUSULAS.map((fn, i) =>
-        `<section><h2><span class="idx">${i + 1}</span> ${esc(t.clausulas[i])}</h2>${fn(ctx)}</section>`).join('\n');
+        `<section class="clausula">${sechead(i + 1, t.clausulas[i], t.clausulasSub?.[i])}${fn(ctx)}</section>`).join('\n');
 
+    // Capa: título hero em duas linhas — serviços + conector, e a marca do
+    // cliente em destaque (gradiente) na segunda.
+    const heroL1 = `${codes.map((c) => blocos[c].titulo).join(' + ')} ${t.heroConector}`;
+    const chamada = t.chamada?.[codes[0]] || blocos[codes[0]].objetivo;
     const titulo = `${codes.map((c) => blocos[c].titulo).join(' · ')} — ${deal.organizacao}`;
+
+    const strip = [
+        [t.emissao, meta.emissao], [t.validadeCurta, meta.validade],
+        [t.regime, REGIME_CURTO[idioma] || REGIME_CURTO.pt], [t.valorMensal, brlCurto(total), true],
+    ].map(([l, v, cyan]) => `<div class="scell"><span class="scl">${esc(l)}</span><span class="scv${cyan ? ' cyan' : ''}">${esc(v)}</span></div>`).join('');
+
+    const cta = `<section class="cta">
+    <h2 class="cta-h">${esc(t.rodape)}.</h2>
+    <p class="cta-sub">${esc(t.tagline)} · ${esc(t.site)}</p></section>`;
+
+    const acoes = `<div class="acoes">
+  ${slug
+    ? `<a class="botao" href="/pdf/${esc(slug)}" target="_blank" rel="noopener">${esc(t.baixarPdf)}</a><span>${esc(t.baixarPdfDica)}</span>`
+    : `<button type="button" onclick="window.print()">${esc(t.baixarPdf)}</button><span>${esc(t.baixarPdfDica)}</span>`}
+</div>`;
 
     return `<!doctype html><html lang="${esc(idioma)}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(deal.organizacao)} — Branddi</title>
-<!-- Proposta com preço de cliente. O link é privado por ser imprevisível, mas
-     basta alguém colá-lo em qualquer lugar público pra virar resultado de
-     busca. noindex fecha esse caminho. -->
+<!-- Proposta com preco de cliente. Link privado por ser imprevisivel; noindex
+     fecha o caminho de virar resultado de busca se for colado em lugar publico.
+     Comentarios sem acento de proposito: eles vao pro "ver codigo-fonte" do
+     cliente, inclusive numa proposta em ingles, e o teste barra portugues la. -->
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <!-- Inter (corpo/titulo) + JetBrains Mono (numeros, refs, selos): as fontes do
@@ -476,220 +492,298 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<style>${cssLimpo()}</style></head><body><div class="wrap"><article class="sheet">
-<header class="masthead">
-  ${logo(26)}
-  <div class="ref"><b>${esc(meta.numero)}</b><br>${esc(t.emissao)} ${esc(meta.emissao)} · ${esc(t.validadeCurta)} ${esc(meta.validade)}</div>
-</header>
-<div class="acoes">
-  ${slug
-    ? `<a class="botao" href="/pdf/${esc(slug)}" target="_blank" rel="noopener">${esc(t.baixarPdf)}</a>
-       <span>${esc(t.baixarPdfDica)}</span>`
-    : `<button type="button" onclick="window.print()">${esc(t.baixarPdf)}</button>
-       <span>${esc(t.baixarPdfDica)}</span>`}
-</div>
+<style>${cssLimpo()}</style></head><body>
+${acoes}
+<main class="doc">
+<section class="cover">
+  <div class="cover-top">
+    <div class="cover-logo">${logo(30)}</div>
+    <div class="cover-ref"><div class="pcnum">${esc(meta.numero)}</div><div class="pctipo">${esc(t.docTipo)}</div></div>
+  </div>
+  <div class="watermark">${marca(560)}</div>
+  <div class="cover-mid">
+    <span class="eyebrow">${esc(t.kicker)}</span>
+    <h1 class="hero">${esc(heroL1)}<br><span class="grad">${esc(deal.organizacao)}</span></h1>
+    <p class="herosub">${esc(chamada)}</p>
+    <div class="strip">${strip}</div>
+  </div>
+  <div class="cover-foot">
+    <div>${esc(t.contratadaValor)}<br><span class="cf-dim">${deal.contato ? `${esc(t.destinatario)}: ${esc(deal.contato)} — ` : ''}${esc(deal.organizacao)}</span></div>
+    <div class="cf-right"><b>${esc(t.tagline)}</b><br><span class="cf-dim">${esc(t.rodapeValida)} ${esc(meta.validade)}</span></div>
+  </div>
+</section>
 ${aviso}
-<div class="doctitle">
-  <p class="kicker">${esc(t.kicker)}</p>
-  <h1>${esc(titulo)}</h1>
-</div>
 <div class="pad">
 ${corpo}
 ${blocoAceite(ctx, vencida)}
+${cta}
 </div>
-<footer class="foot">
-  <div><b>Branddi</b> — ${esc(t.rodape)}</div>
-  <div>${esc(meta.numero)} · ${esc(t.rodapeValida)} ${esc(meta.validade)}</div>
+</main>
+<footer class="pagefoot" aria-hidden="true">
+  <span class="pf-logo">${logo(16)}</span>
+  <span class="pf-ref">${esc(meta.numero)} · ${esc(t.rodapeValida)} ${esc(meta.validade)}</span>
 </footer>
-</article></div></body></html>`;
+</body></html>`;
 }
 
 const CSS = `
-/* Cores da marca vindas do Branddi Design System (tokens.css). O petrol #002B36
-   e o cyan #0ACFDE sao os oficiais. Duas divergencias sao de proposito: sobre
-   papel branco (documento light) o cyan oficial perde contraste, entao --accent
-   e --turquoise usam versoes mais escuras (#0891B2 / #0E7490) pro texto ficar
-   legivel; o cyan oficial fica no que esta sobre a faixa petrol escura, onde
-   tem contraste de sobra (--logo-accent). No dark mode, --accent e --turquoise
-   voltam aos hex oficiais do design system. */
-:root{--bg:#F1F5F9;--surface:#fff;--surface-2:#F8FAFC;--text:#0F172A;--muted:#475569;--dim:#64748B;
---accent:#0891B2;--turquoise:#0E7490;--rule:#D8E0E8;--rule-soft:#EAEFF4;--petrol:#002B36;
---on-petrol:#fff;--on-petrol-dim:#94A3B8;
---logo-fill:#FFFFFF;--logo-accent:#0ACFDE;--logo-counter:#001D2E;
---shadow:0 1px 2px rgba(15,23,42,.04),0 18px 44px -24px rgba(15,23,42,.2);
+/* ── Tokens da marca (Branddi Design System / tokens.css) ────────────
+   Dark mode é o default: o brand vive no escuro. Petrol #002B36 de fundo com
+   gradiente radial, acento cyan #0ACFDE, Inter + JetBrains Mono. */
+:root{
+--navy:#002B36;--teal:#004C54;--card:#003847;--cyan:#0ACFDE;--turq:#299FB1;
+--text:#FFFFFF;--muted:#94A3B8;--success:#22C55E;--alert:#F87171;
+--line:rgba(255,255,255,.10);--line-2:rgba(255,255,255,.06);
+--card-bg:rgba(0,56,71,.60);--field:rgba(0,32,42,.6);
+--logo-fill:#FFFFFF;--logo-accent:#0ACFDE;--logo-counter:#002B36;
+--radius:.75rem;--radius-sm:.5rem;--radius-pill:9999px;
+--shadow-card:0 8px 32px 0 rgba(10,207,222,.10);
+--glow:0 0 0 1px rgba(10,207,222,.45),0 12px 40px -12px rgba(10,207,222,.35);
 --display:"Inter","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
 --sans:"Inter","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
---mono:"JetBrains Mono",ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;--measure:72ch}
-@media (prefers-color-scheme:dark){:root{--bg:#001721;--surface:#002B36;--surface-2:#00323F;--text:#fff;
---muted:#B6C2CF;--dim:#8A97A6;--accent:#0ACFDE;--turquoise:#299FB1;--rule:#004052;--rule-soft:#00323F;
---shadow:0 1px 2px rgba(0,0,0,.5),0 18px 48px -24px rgba(0,0,0,.75)}}
+--mono:"JetBrains Mono",ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;
+--measure:70ch}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--muted);font:14.5px/1.52 var(--sans);-webkit-font-smoothing:antialiased}
-.wrap{display:flex;justify-content:center;padding:clamp(.7rem,2.5vw,1.8rem) clamp(.6rem,2.5vw,1.4rem) 3rem}
-.sheet{width:100%;max-width:47rem;background:var(--surface);border:1px solid var(--rule);
-box-shadow:var(--shadow);overflow:hidden}
-.masthead{background:var(--petrol);padding:1rem clamp(1rem,3.5vw,2.2rem);display:flex;
-align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
-.ref{font-family:var(--mono);font-size:.64rem;letter-spacing:.06em;line-height:1.65;
-color:var(--on-petrol-dim);text-align:right}
-.ref b{color:var(--on-petrol);font-weight:600}
-.doctitle{padding:clamp(1.1rem,3.5vw,1.8rem) clamp(1rem,3.5vw,2.2rem);border-bottom:1px solid var(--rule);
-background:var(--surface-2)}
-.kicker{font-family:var(--mono);font-size:.63rem;letter-spacing:.17em;text-transform:uppercase;
-color:var(--accent);font-weight:700;margin:0 0 .45rem}
-h1{font-family:var(--display);font-size:clamp(1.15rem,3vw,1.45rem);line-height:1.28;letter-spacing:-.012em;
-color:var(--text);font-weight:700;margin:0;max-width:46ch;text-wrap:balance}
-.pad{padding:clamp(1.2rem,3.5vw,2.2rem) clamp(1rem,3.5vw,2.2rem);display:flex;flex-direction:column;gap:1.7rem}
-section{display:flex;flex-direction:column;gap:.7rem}
-h2{font-family:var(--display);font-size:.95rem;line-height:1.3;color:var(--text);font-weight:700;margin:0;
-padding-bottom:.4rem;border-bottom:1.5px solid var(--petrol);display:flex;gap:.6rem;align-items:baseline}
-@media (prefers-color-scheme:dark){h2{border-bottom-color:var(--accent)}}
-h2 .idx{font-family:var(--mono);color:var(--accent);font-size:.82rem;font-weight:700}
-h3{font-family:var(--display);font-size:.85rem;color:var(--text);font-weight:700;margin:.5rem 0 0;
-display:flex;gap:.55rem;align-items:baseline;flex-wrap:wrap}
-h3 .idx{font-family:var(--mono);color:var(--dim);font-size:.75rem;font-weight:600}
-.mode{font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;
-color:var(--turquoise);border:1px solid var(--turquoise);border-radius:2px;padding:.05rem .3rem;font-weight:700}
-h4{font-family:var(--mono);font-size:.61rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
-font-weight:700;margin:.35rem 0 -.2rem}
-p{margin:0;max-width:var(--measure);font-size:.88rem}
-.fine{font-size:.83rem;color:var(--dim)}
-.fine strong,td strong,li strong{color:var(--text);font-weight:600}
-ul{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3rem;font-size:.87rem;max-width:var(--measure)}
-li::marker{color:var(--accent)}
-.tw{overflow-x:auto;border:1px solid var(--rule)}
-table{border-collapse:collapse;width:100%;font-size:.82rem}
-th,td{text-align:left;padding:.44rem .75rem;border-bottom:1px solid var(--rule-soft);vertical-align:top}
-tbody tr:last-child>*{border-bottom:0}
-thead th{font-family:var(--mono);font-size:.6rem;letter-spacing:.11em;text-transform:uppercase;color:var(--dim);
-font-weight:700;background:var(--surface-2);border-bottom:1px solid var(--rule);white-space:nowrap}
-th[scope=row]{font-family:var(--mono);font-size:.68rem;color:var(--dim);font-weight:400;width:12rem;white-space:nowrap}
-.eco{font-family:var(--mono);font-size:.68rem;color:var(--turquoise)}
-.n-cell{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--text);font-weight:600}
-tr.sub>*{border-top:1px solid var(--rule);background:var(--surface-2);color:var(--dim)}
-tr.sub .n-cell{color:var(--dim);font-weight:400}
-tr.total>*{border-top:1.5px solid var(--petrol);background:var(--surface-2);padding-top:.55rem;padding-bottom:.55rem}
-@media (prefers-color-scheme:dark){tr.total>*{border-top-color:var(--accent)}}
-tr.total td:first-child{color:var(--text);font-weight:700;font-family:var(--display)}
-tr.total .n-cell{color:var(--text);font-weight:700;font-size:1rem;font-family:var(--display)}
-blockquote{margin:0;padding:.05rem 0 .05rem .9rem;border-left:2px solid var(--accent);font-size:.84rem;max-width:var(--measure)}
-blockquote cite{display:block;margin-top:.35rem;font-family:var(--mono);font-size:.63rem;font-style:normal;color:var(--dim)}
-.foot{background:var(--petrol);padding:.8rem clamp(1rem,3.5vw,2.2rem);display:flex;justify-content:space-between;
-gap:.4rem 1rem;flex-wrap:wrap;font-family:var(--mono);font-size:.62rem;letter-spacing:.04em;color:var(--on-petrol-dim)}
-.foot b{color:var(--on-petrol);font-weight:600}
-.acoes{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;padding:.7rem clamp(1rem,3.5vw,2.2rem);
-background:var(--surface-2);border-bottom:1px solid var(--rule);font-size:.76rem;color:var(--dim)}
-.acoes button,.acoes .botao{font:600 .8rem var(--sans);background:var(--accent);color:#fff;border:0;
-border-radius:3px;padding:.45rem 1rem;cursor:pointer;text-decoration:none;display:inline-block}
-@media (prefers-color-scheme:dark){.acoes button{color:#00212B}}
-.acoes button:hover,.acoes .botao:hover{filter:brightness(1.08)}
-.acoes button:focus-visible,.acoes .botao:focus-visible{outline:2px solid var(--text);outline-offset:2px}
-.substituida{padding:.75rem clamp(1rem,3.5vw,2.2rem);background:#FEF3C7;color:#78350F;
-border-bottom:1px solid #FCD34D;font-size:.84rem}
-.substituida b{color:#78350F}
-.substituida a{color:#78350F;font-weight:700}
-@media (prefers-color-scheme:dark){.substituida{background:#3B2E0A;color:#FDE68A;border-bottom-color:#78350F}
-.substituida b,.substituida a{color:#FDE68A}}
-.vencida{padding:.75rem clamp(1rem,3.5vw,2.2rem);background:#FEF3C7;color:#78350F;
-border-bottom:1px solid #FCD34D;font-size:.84rem}
-.vencida b{color:#78350F}
-@media (prefers-color-scheme:dark){.vencida{background:#3B2E0A;color:#FDE68A;border-bottom-color:#78350F}
-.vencida b{color:#FDE68A}}
-/* O aceite é o fecho do documento, não mais uma cláusula: centralizado, ele
-   lê como painel de ação em vez de tabela que sobrou no rodapé. */
-#aceite{align-items:center;text-align:center}
-#aceite h2{align-self:stretch}
-#aceite .fine{max-width:46ch;margin-inline:auto}
-.aceite-form{display:flex;flex-direction:column;gap:.6rem;width:100%;max-width:26rem;
-margin-inline:auto;text-align:left;border:1px solid var(--accent);
-padding:1rem;border-radius:3px;background:var(--surface-2)}
-.aceite-form label{display:flex;flex-direction:column;gap:.25rem;font-family:var(--mono);font-size:.62rem;
-letter-spacing:.11em;text-transform:uppercase;color:var(--dim);font-weight:700}
+html,body{margin:0}
+body{background:var(--navy);color:var(--text);font:15px/1.6 var(--sans);font-weight:400;
+-webkit-font-smoothing:antialiased;
+background-image:radial-gradient(circle at 50% 0%,#004C54 0%,#002B36 60%);background-attachment:fixed}
+h1,h2,h3,h4{font-family:var(--display);margin:0;letter-spacing:-.02em;line-height:1.15}
+p{margin:0}
+strong{font-weight:700;color:var(--text)}
+
+.doc{max-width:52rem;margin:0 auto}
+
+/* ── Barra de ações (só tela) ───────────────────────────────────────── */
+.acoes{max-width:52rem;margin:0 auto;display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;
+padding:.9rem clamp(1rem,4vw,2.4rem);font-size:.78rem;color:var(--muted)}
+.acoes button,.acoes .botao{font:600 .82rem var(--sans);background:var(--cyan);color:var(--navy);border:0;
+border-radius:var(--radius-pill);padding:.5rem 1.2rem;cursor:pointer;text-decoration:none;display:inline-block}
+.acoes button:hover,.acoes .botao:hover{background:var(--turq)}
+.acoes button:focus-visible,.acoes .botao:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+/* ── Aviso (substituída / vencida) ──────────────────────────────────── */
+.aviso{margin:0 clamp(1rem,4vw,2.4rem) 1rem;padding:.8rem 1rem;border-radius:var(--radius);font-size:.85rem;
+background:rgba(255,59,48,.10);border:1px solid rgba(255,59,48,.28);color:#FFD7D3}
+.aviso b{color:#fff}
+.aviso a{color:var(--cyan);font-weight:600}
+
+/* ── Capa ───────────────────────────────────────────────────────────── */
+/* Fundo próprio e opaco + z-index: na impressão a capa cobre o rodapé fixo, que
+   por isso não aparece sobre a primeira folha (a capa tem o rodapé dela). */
+.cover{position:relative;z-index:2;overflow:hidden;min-height:100vh;display:flex;flex-direction:column;
+padding:clamp(1.6rem,5vw,3rem);background:radial-gradient(circle at 50% -8%,#0A4B57 0%,#002B36 62%)}
+.watermark{position:absolute;right:-6%;top:44%;transform:translateY(-50%);z-index:-1;
+opacity:.5;filter:blur(.3px);pointer-events:none;
+--logo-fill:#0A3A47;--logo-accent:#0C4657;--logo-counter:#002B36}
+.cover-top{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+.cover-ref{text-align:right;font-family:var(--mono)}
+.pcnum{font-size:1.15rem;font-weight:700;letter-spacing:.06em;color:var(--text)}
+.pctipo{font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-top:.2rem}
+.cover-mid{margin-top:auto;padding-top:3rem}
+.eyebrow{display:inline-block;font-family:var(--mono);font-size:.66rem;font-weight:600;letter-spacing:.14em;
+text-transform:uppercase;color:var(--cyan);border:1px solid rgba(10,207,222,.35);
+background:rgba(10,207,222,.08);border-radius:var(--radius-pill);padding:.4rem .9rem}
+.hero{font-size:clamp(2.2rem,6.5vw,3.8rem);font-weight:800;line-height:1.04;letter-spacing:-.03em;
+color:var(--text);margin:1.1rem 0 0;max-width:16ch;text-wrap:balance}
+/* Nome do cliente em cyan sólido — o gradiente clip-to-text deixa um artefato
+   de caixa no Skia (o motor do PDF), e o modelo validado usa cyan cheio. */
+.hero .grad{color:var(--cyan)}
+.herosub{margin:1.1rem 0 0;max-width:46ch;font-size:1.05rem;line-height:1.55;color:#CBD5E1;font-weight:300}
+.herosub strong{color:var(--text);font-weight:600}
+.strip{margin-top:2rem;display:grid;grid-template-columns:repeat(4,1fr);gap:0;max-width:40rem;
+background:var(--card-bg);border:1px solid var(--line);border-radius:var(--radius);
+-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);overflow:hidden}
+.scell{padding:.9rem 1rem;border-right:1px solid var(--line)}
+.scell:last-child{border-right:0}
+.scl{display:block;font-family:var(--mono);font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;
+color:var(--muted)}
+.scv{display:block;margin-top:.35rem;font-family:var(--mono);font-size:.92rem;color:var(--text);font-weight:500}
+.scv.cyan{color:var(--cyan)}
+.cover-foot{margin-top:auto;padding-top:2.2rem;display:flex;justify-content:space-between;gap:1rem;
+flex-wrap:wrap;border-top:1px solid var(--line);font-size:.82rem}
+.cover-foot b{color:var(--text)}
+.cover-foot .cf-right{text-align:right;font-family:var(--mono);font-size:.72rem;letter-spacing:.03em}
+.cf-dim{color:var(--muted)}
+
+/* ── Corpo ──────────────────────────────────────────────────────────── */
+.pad{padding:clamp(1.6rem,4.5vw,3rem) clamp(1rem,4vw,2.4rem) 2rem;display:flex;flex-direction:column;gap:2.4rem}
+.clausula{display:flex;flex-direction:column;gap:1rem}
+
+/* Cabeçalho de cláusula: badge + título + subtítulo */
+.sechead{display:flex;gap:.9rem;align-items:center}
+.secnum{flex:none;width:2.2rem;height:2.2rem;display:grid;place-items:center;border-radius:var(--radius-sm);
+border:1px solid rgba(10,207,222,.45);background:rgba(10,207,222,.08);color:var(--cyan);
+font-family:var(--mono);font-weight:700;font-size:.95rem}
+.secttl h2{font-size:1.4rem;font-weight:800;color:var(--text)}
+.secsub{font-size:.82rem;color:var(--muted);margin-top:.1rem}
+
+/* ── Glass card base ────────────────────────────────────────────────── */
+.card{background:var(--card-bg);border:1px solid var(--line);border-radius:var(--radius);
+-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:var(--shadow-card)}
+
+/* Grade rótulo/valor (Identificação, Condições) */
+.grid2{display:grid;grid-template-columns:1fr 1fr}
+.grid2.gap{background:none;border:0;box-shadow:none;gap:1rem;-webkit-backdrop-filter:none;backdrop-filter:none}
+.kv{padding:.95rem 1.15rem;border-bottom:1px solid var(--line-2);border-right:1px solid var(--line-2)}
+.grid2 .kv:nth-child(2n){border-right:0}
+.grid2 .kv:nth-last-child(-n+1){border-bottom:0}
+.kvl{display:block;font-family:var(--mono);font-size:.6rem;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)}
+.kvv{display:block;margin-top:.35rem;font-size:.95rem;color:var(--text);line-height:1.4}
+.kvv.cyan{color:var(--cyan);font-weight:500}
+
+/* Prosa em card (Objetivo) */
+.prosa{padding:1.3rem 1.4rem;display:flex;flex-direction:column;gap:.7rem}
+.prosa p,.prosa-p{font-size:.95rem;line-height:1.6;color:#D7E0E6;max-width:var(--measure)}
+.prosa ul{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.35rem}
+.prosa li{font-size:.95rem;color:#D7E0E6}
+.prosa li::marker{color:var(--cyan)}
+.prosa-p{margin:0}
+
+/* Nota / callout */
+.note{display:flex;gap:.85rem;align-items:flex-start;background:rgba(10,207,222,.05);
+border:1px solid rgba(10,207,222,.20);border-radius:var(--radius);padding:1rem 1.15rem}
+.note p{font-size:.86rem;line-height:1.55;color:#C6D2DA;max-width:var(--measure)}
+.note-ic{flex:none;width:1.5rem;height:1.5rem;display:grid;place-items:center;border-radius:var(--radius-sm);
+background:rgba(10,207,222,.12);color:var(--cyan);font-family:var(--mono);font-weight:700;font-size:.8rem;font-style:normal}
+.note-ic.ok{background:rgba(34,197,94,.14);color:var(--success)}
+.note.aceito{border-color:rgba(34,197,94,.30);background:rgba(34,197,94,.06)}
+.note .fine{color:var(--muted);font-size:.8rem;margin-top:.25rem}
+
+/* Tabela de especificações (Abordagem) */
+.bloco{display:flex;flex-direction:column;gap:.8rem}
+.bloco h3{font-size:1rem;font-weight:700;color:var(--text);display:flex;gap:.55rem;align-items:baseline;flex-wrap:wrap}
+.bloco h3 .idx{font-family:var(--mono);color:var(--muted);font-size:.8rem;font-weight:600}
+.mode{font-family:var(--mono);font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:var(--cyan);
+border:1px solid rgba(10,207,222,.4);border-radius:var(--radius-pill);padding:.15rem .55rem;font-weight:700}
+.spectable{padding:.3rem 0}
+.spec{display:grid;grid-template-columns:11rem 1fr;gap:1rem;padding:.75rem 1.15rem;border-bottom:1px solid var(--line-2)}
+.spectable .spec:last-child{border-bottom:0}
+.specl{font-family:var(--mono);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);padding-top:.1rem}
+.specv{font-size:.88rem;line-height:1.5;color:#D7E0E6}
+
+/* Loop da Branddi */
+.loop{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.2rem}
+.loop-step{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+color:var(--cyan);border:1px solid rgba(10,207,222,.35);border-radius:var(--radius-pill);padding:.4rem .85rem;
+display:inline-flex;align-items:center;gap:.4rem}
+.loop-step::before{content:"";width:.4rem;height:.4rem;border-radius:50%;background:var(--cyan)}
+
+/* Tabela SLA */
+.slatable{padding:.3rem 0}
+.sla{display:grid;grid-template-columns:2fr 1fr 1fr;gap:1rem;padding:.7rem 1.15rem;border-bottom:1px solid var(--line-2);font-size:.86rem;color:#D7E0E6}
+.slatable .sla:last-child{border-bottom:0}
+.sla-head span{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.sla .e{color:var(--text);font-weight:500}
+
+/* Tabela de investimento */
+.itable{padding:.3rem 0}
+.itrow{display:grid;grid-template-columns:1fr 1.4fr auto;gap:1rem;padding:.72rem 1.15rem;
+border-bottom:1px solid var(--line-2);align-items:baseline;font-size:.88rem;color:#D7E0E6}
+.itable .itrow:last-child{border-bottom:0}
+.ihead span{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.i-val{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--text);font-weight:500}
+.itrow.sub{color:var(--muted)}
+.itow.sub .i-val,.itrow.sub .i-val{color:var(--muted);font-weight:400}
+.itrow.total{border-top:1px solid rgba(10,207,222,.4);background:rgba(10,207,222,.05)}
+.itrow.total .i-item{font-weight:700;color:var(--text)}
+.itrow.total .i-val{color:var(--cyan);font-weight:700;font-size:1rem}
+.i-esc{color:var(--muted)}
+
+/* Cards de pacote */
+.minihead{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);
+font-weight:700;margin:.4rem 0 -.2rem}
+.pacotes{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.pcard{background:var(--card-bg);border:1px solid var(--line);border-radius:var(--radius);padding:1.3rem 1.3rem 1.4rem;
+display:flex;flex-direction:column;gap:.55rem;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+.pcard.rec{border-color:transparent;box-shadow:var(--glow)}
+.pcard-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.ptag{font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.pcard.rec .ptag{color:var(--cyan)}
+.badge-rec{font-family:var(--mono);font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+color:var(--success);border:1px solid rgba(34,197,94,.4);border-radius:var(--radius-pill);padding:.2rem .6rem}
+.pname{font-size:1.15rem;font-weight:700;color:var(--text);letter-spacing:-.01em}
+.pdesc{font-size:.82rem;line-height:1.5;color:var(--muted)}
+.preco{display:block;margin-top:.35rem;font-family:var(--mono);color:var(--cyan);white-space:nowrap}
+.preco .pv{font-size:2.05rem;font-weight:700;letter-spacing:-.02em}
+.preco .pc{font-size:1rem;font-weight:500}
+.preco .pm{font-size:.85rem;color:var(--muted);margin-left:.4rem;font-weight:400}
+.badge-eco{align-self:flex-start;font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;
+font-weight:700;color:var(--success);border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.08);
+border-radius:var(--radius-pill);padding:.28rem .7rem;margin-top:.15rem}
+
+/* Cards pequenos (setup, impostos) */
+.feat{padding:1.05rem 1.2rem}
+.featl{display:block;font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--cyan);font-weight:700}
+.feat p{margin-top:.4rem;font-size:.9rem;color:#D7E0E6;line-height:1.5}
+
+/* Timeline (Aceite) */
+.timeline{display:flex;flex-direction:column}
+.tl-item{display:grid;grid-template-columns:auto 1fr auto;gap:.9rem;padding:.55rem 0 1rem;position:relative}
+.tl-item:not(:last-child)::before{content:"";position:absolute;left:.44rem;top:1.1rem;bottom:-.1rem;width:1px;background:var(--line)}
+.tl-dot{width:.95rem;height:.95rem;border-radius:50%;border:2px solid var(--cyan);background:var(--navy);margin-top:.15rem}
+.tl-body{display:flex;flex-direction:column;gap:.15rem}
+.tl-etapa{font-size:.95rem;font-weight:600;color:var(--text)}
+.tl-resp{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tl-prazo{font-family:var(--mono);font-size:.8rem;color:var(--cyan);white-space:nowrap;text-align:right}
+
+/* Formulário de aceite */
+#aceite{display:flex;flex-direction:column;gap:1rem}
+.aceite-form{display:flex;flex-direction:column;gap:.7rem;max-width:28rem}
+.aceite-form label{display:flex;flex-direction:column;gap:.3rem;font-family:var(--mono);font-size:.6rem;
+letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:700}
 .aceite-form .opc{text-transform:none;letter-spacing:0;font-weight:400}
-.aceite-form input{font:400 .9rem var(--sans);color:var(--text);background:var(--surface);
-border:1px solid var(--rule);border-radius:3px;padding:.45rem .6rem}
-.aceite-form input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.aceite-form button{font:700 .9rem var(--sans);background:var(--accent);color:#fff;border:0;
-border-radius:3px;padding:.6rem 1.2rem;cursor:pointer;margin-top:.2rem}
-@media (prefers-color-scheme:dark){.aceite-form button{color:#00212B}}
+.aceite-form input{font:400 .95rem var(--sans);color:var(--text);background:var(--field);
+border:1px solid var(--line);border-radius:var(--radius-sm);padding:.6rem .75rem}
+.aceite-form input:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
+.aceite-form button{font:700 .95rem var(--sans);background:var(--cyan);color:var(--navy);border:0;
+border-radius:var(--radius-pill);padding:.7rem 1.4rem;cursor:pointer;margin-top:.3rem;align-self:flex-start}
+.aceite-form button:hover{background:var(--turq)}
 .aceite-form button:disabled{opacity:.5;cursor:not-allowed}
-.aceite-form .msg{font-size:.8rem;color:var(--alert);margin:0}
-:root{--alert:#DC2626}
-@media (prefers-color-scheme:dark){:root{--alert:#F87171}}
-section.aceito h2{border-bottom-color:var(--accent)}
-section.aceito p strong{color:var(--text)}
+.aceite-form .msg{font-size:.82rem;color:var(--alert);margin:0}
+
+/* Chamada de fechamento */
+.cta{text-align:center;padding:1.5rem 0 1rem;display:flex;flex-direction:column;gap:.7rem;align-items:center}
+/* Cyan sólido: o gradiente clip-to-text deixa artefato de caixa no Skia (PDF). */
+.cta-h{font-size:clamp(1.4rem,4vw,2rem);font-weight:800;line-height:1.15;max-width:24ch;color:var(--cyan)}
+.cta-sub{font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;color:var(--muted)}
+
+/* Rodapé de página. Na tela sai uma vez, no fim; na impressão vira fixo e o
+   Chrome o repete no pé de cada folha (ver bloco @media print). */
+.pagefoot{max-width:52rem;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:1rem;
+padding:1rem clamp(1rem,4vw,2.4rem) 2rem;border-top:1px solid var(--line)}
+.pf-logo{opacity:.85;display:flex}
+.pf-ref{font-family:var(--mono);font-size:.62rem;letter-spacing:.05em;color:var(--muted)}
+
+/* ── Impressão / PDF ────────────────────────────────────────────────── */
 @media print{
-/* Este bloco mexe SÓ no que quebra página, e no contraste do que o papel
-   precisa. A tentativa anterior redefiniu espaçamento, cor e margem também, e
-   o resultado ficou pior que a tela: as cláusulas grudaram umas nas outras e o
-   logo, que é branco, sumiu sobre o fundo branco. A folha tem que parecer a
-   tela, paginada. */
-@page{size:A4;margin:14mm 12mm}
-html,body{background:#fff}
+/* Margem inferior deixa a faixa do rodapé livre; o resto define a caixa da folha. */
+@page{size:A4;margin:14mm 16mm 14mm}
+html,body{background:var(--navy)}
 body{font-size:10.5pt}
-.wrap{padding:0;display:block}
-.sheet{box-shadow:none;border:0;max-width:none;width:auto}
-/* Interface não é documento. */
-.acoes,#aceite .aceite-form{display:none}
-/* A faixa petrol é identidade: sai impressa, e é o que mantém o logo (branco)
-   legível. Sem isso o logo desaparece — foi o que aconteceu. */
-.masthead,.foot,.vencida,.substituida{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-
-/* ── O que causava o buraco no fim da página ────────────────────────
-   break-inside:avoid no SECTION inteiro jogava a cláusula toda pra folha
-   seguinte quando ela não cabia no que sobrava, deixando meia página branca.
-   O que precisa ficar junto é menor: uma tabela, uma linha, um título com o
-   que vem depois dele. */
-section{break-inside:auto}
-h1,h2,h3,h4{break-after:avoid;break-inside:avoid}
-p,ul{orphans:3;widows:3}
-li,tr{break-inside:avoid}
-/* Cabeçalho de tabela repete quando ela vira a folha — senão a metade de baixo
-   aparece sem dizer o que é cada coluna. */
-thead{display:table-header-group}
-/* ── Tabela no papel: régua, não moldura ────────────────────────────
-   O .tw desenha uma caixa em volta da tabela. Caixa não sobrevive a quebra de
-   página: o navegador fecha a borda onde a folha acaba e abre outra na
-   seguinte, e o resultado é uma tabela que parece rasgada no meio — foi o que
-   aconteceu na primeira página de Brand Bidding.
-
-   Documento impresso resolve isso com régua horizontal: cada linha se fecha
-   sozinha, então quebrar no meio da tabela deixa de ser defeito visual. A
-   moldura fica só na tela, onde não há quebra. */
-.tw{overflow:visible;break-inside:auto;border:0;border-radius:0}
-table{border-top:0.7pt solid #9fb0bd}
-tbody tr:last-child>*{border-bottom:0.7pt solid #9fb0bd}
-th,td{border-bottom:0.4pt solid #d5dee4}
-thead th{border-bottom:0.7pt solid #9fb0bd;background:transparent}
-td,th{break-inside:avoid}
-/* Duas tabelas seguidas (escopo e entregáveis, investimento e setup) precisam
-   de ar entre elas, senão a régua de fim de uma cola na de início da outra. */
-.tw+.tw{margin-top:3mm}
-section.aceito{break-inside:avoid}
-/* Cada produto inteiro na mesma folha. Se não couber no que sobrou, desce
-   inteiro — é o único lugar onde vale abrir espaço em branco, porque tabela
-   separada da prosa que a explica é pior que folha com folga. */
-.bloco{break-inside:avoid;gap:0}
-.bloco+.bloco{margin-top:8mm}
-
-/* ── Respiro ────────────────────────────────────────────────────────
-   O bloco estava colado: título encostado na prosa, prosa encostada na
-   tabela. Na tela o gap do flex resolve; no papel ele fica curto porque a
-   medida de referencia muda. Aqui o espaco e declarado em milimetros, que e a
-   unidade da folha. */
-.bloco h3{margin:0 0 2.5mm}
-.bloco>.fine{margin:0 0 3mm}
-h2{margin-bottom:3mm}
-h4{margin:5mm 0 2mm}
-.pad{gap:9mm}
-body{line-height:1.5}
-/* Linha de tabela com ar: 1.6mm de altura deixava o texto grudado na regua. */
-th,td{padding:2.2mm 3mm}
-.doctitle{padding-bottom:2mm}
-/* No papel a prosa acompanha a largura das tabelas. Medida curta ao lado de
-   tabela de largura total faz cada bloco começar e terminar num lugar
-   diferente, e é isso que lê como desalinhado. */
-p,ul,blockquote,.fine{max-width:none}
+/* O gradiente e as cores de fundo são identidade — saem no papel. */
+*{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.doc{max-width:none}
+/* Interface não vai pro papel. */
+.acoes,.aceite-form{display:none}
+/* A capa ocupa a primeira folha inteira; o conteúdo começa na seguinte. Fundo
+   opaco + z-index (na regra base) cobrem o rodapé fixo nesta folha. */
+.cover{min-height:auto;height:calc(297mm - 28mm);break-after:page}
+.watermark{opacity:.5}
+.pad{padding:0;gap:8mm}
+/* Cada cláusula tenta ficar inteira; título nunca órfão do que vem depois. */
+.clausula{break-inside:avoid}
+.sechead,h2,h3,h4{break-after:avoid}
+.card,.note,.pcard,.tl-item,.loop{break-inside:avoid}
+p,li{orphans:3;widows:3}
+.cta{break-before:avoid}
+/* Rodapé: o Chrome repete elementos position:fixed no pé de cada folha impressa.
+   bottom pequeno e positivo o pousa no rodapé (posição confiável); fundo petrol
+   opaco mascara qualquer conteúdo que chegue perto; z-index baixo pra a capa
+   (z-index:2, fundo opaco) cobri-lo inteiro na 1a folha. */
+.pagefoot{position:fixed;left:0;right:0;bottom:0;max-width:none;margin:0;z-index:1;
+border-top:0;padding:2mm 16mm;background:#002B36}
+.pf-ref{font-size:8px}
 a{text-decoration:none}
 }
 `;

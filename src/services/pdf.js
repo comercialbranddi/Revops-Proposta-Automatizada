@@ -84,13 +84,15 @@ export async function htmlParaPdf(html) {
         await page.evaluate(() => document.fonts.ready);
 
         const pdf = await page.pdf({
-            // `preferCSSPageSize` faz valer o @page do documento (A4 e as
-            // margens do modelo) em vez de um tamanho decidido aqui — assim a
-            // paginação do PDF é a MESMA que o closer vê na pré-visualização.
+            // `preferCSSPageSize` faz valer o @page do documento (A4 e as margens)
+            // em vez de um tamanho decidido aqui — a paginação do PDF é a MESMA
+            // que o closer vê na pré-visualização.
             preferCSSPageSize: true,
             printBackground: true,
-            // Sem cabeçalho e sem rodapé do navegador. É exatamente o que a
-            // caixa marcada do Chrome fazia de errado.
+            // Sem cabeçalho/rodapé do Chrome (aquela caixa marcada que estampava
+            // URL e data). O rodapé de página é do próprio documento: um elemento
+            // position:fixed que o Chrome repete no pé de cada folha impressa, e
+            // que a capa (fundo opaco + z-index) cobre na primeira.
             displayHeaderFooter: false,
         });
         log.info(`PDF gerado em ${Date.now() - t0}ms, ${Math.round(pdf.length / 1024)}KB`);

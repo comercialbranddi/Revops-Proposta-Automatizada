@@ -53,6 +53,40 @@ export const TEXTOS = {
         rodape: 'Combata o uso indevido da sua marca e maximize seus resultados',
         rodapeValida: 'válida até',
 
+        // ── Moldura do novo modelo (capa, rodapé de página, seções) ──────
+        docTipo: 'Proposta comercial',
+        tagline: 'Blinde a sua marca.',
+        site: 'branddi.com',
+        heroConector: 'para',
+        pagina: 'pág.',
+        porMesCurto: '/mês',
+        // Subtítulo abaixo do título de cada cláusula, na ordem de `clausulas`.
+        clausulasSub: ['Partes e escopo contratual', 'O problema que esta proposta resolve',
+            'O que a Branddi monitora e como atua', 'Valores mensais recorrentes, em reais',
+            'Entregáveis, periodicidade e canal', 'Pagamento, vigência e rescisão',
+            'Etapa · responsável · prazo'],
+        // O loop da Branddi, exibido como faixa ao pé da Abordagem. A versão de
+        // monitoria não notifica nem remove — entrega evidência pra Contratante agir.
+        loop: ['Detectar', 'Classificar', 'Notificar', 'Remover'],
+        loopMonitoria: ['Detectar', 'Classificar', 'Documentar', 'Entregar'],
+        // Cards de pacote na cláusula de Investimento.
+        avulso: 'Avulso',
+        recomendado: 'Recomendado',
+        pacoteLabel: 'Pacote',
+        avulsoDesc: 'Serviço contratado separadamente, pelo valor individual.',
+        // Subtítulo (hero) da capa, por produto. É a chamada comercial do serviço.
+        chamada: {
+            BB: 'Recupere o tráfego que concorrentes capturam ao comprar o nome da sua marca — do monitoramento ao takedown.',
+            BBP: 'Retome a posição de compra dos seus produtos nos marketplaces e pare de perder venda para sellers não autorizados.',
+            GD: 'Tire do ar sites, domínios e perfis falsos que se passam pela sua marca para aplicar golpes — do monitoramento ao takedown.',
+            VM: 'Impeça que terceiros usem o sinal da sua marca sem autorização e diluam o que ela vale — do monitoramento ao takedown.',
+        },
+        // Nota-insight opcional na cláusula Objetivo, por produto. Só sai onde há
+        // texto — produto sem chave não renderiza a nota, em vez de sair vazia.
+        insight: {
+            BB: 'No brand bidding, o anúncio do concorrente aparece acima do seu resultado orgânico — você paga mais caro pelo próprio nome, ou perde o clique. A atuação da Branddi remove o anunciante e devolve o terreno à marca.',
+        },
+
         // "Fundamentação legal" saiu em 18/08/2026, a pedido da Jessica. O
         // REQUISITO que estava dentro dela ficou — virou linha de escopo, porque
         // é pré-condição contratual, não argumentação jurídica.
@@ -177,6 +211,32 @@ export const TEXTOS = {
         rodape: 'Fight the misuse of your brand and maximize your results',
         rodapeValida: 'valid until',
 
+        docTipo: 'Commercial proposal',
+        tagline: 'Shield your brand.',
+        site: 'branddi.com',
+        heroConector: 'for',
+        pagina: 'p.',
+        porMesCurto: '/month',
+        clausulasSub: ['Parties and contractual scope', 'The problem this proposal solves',
+            'What Branddi monitors and how it acts', 'Recurring monthly values, in BRL',
+            'Deliverables, frequency and channel', 'Payment, term and termination',
+            'Step · owner · timing'],
+        loop: ['Detect', 'Classify', 'Notify', 'Remove'],
+        loopMonitoria: ['Detect', 'Classify', 'Document', 'Deliver'],
+        avulso: 'Standalone',
+        recomendado: 'Recommended',
+        pacoteLabel: 'Bundle',
+        avulsoDesc: 'Service contracted separately, at its individual price.',
+        chamada: {
+            BB: 'Win back the traffic competitors capture by bidding on your brand name — from monitoring to takedown.',
+            BBP: 'Reclaim the buy box for your products across marketplaces and stop losing sales to unauthorized sellers.',
+            GD: 'Take down fake sites, domains and profiles impersonating your brand to scam customers — from monitoring to takedown.',
+            VM: 'Stop third parties from using your brand’s marks without authorization and diluting its value — from monitoring to takedown.',
+        },
+        insight: {
+            BB: 'In brand bidding, the competitor’s ad shows above your organic result — you pay more for your own name, or lose the click. Branddi’s enforcement removes the advertiser and gives the ground back to the brand.',
+        },
+
         clausulas: ['Identification', 'Purpose of the proposal', 'Approach', 'Investment',
             'Scope and service levels', 'Commercial terms', 'Acceptance and onboarding'],
         requisito: 'Requirement',
@@ -294,6 +354,32 @@ export const TEXTOS = {
         baixarPdfDica: 'Abre el PDF en una pestaña nueva, listo para guardar o enviar.',
         rodape: 'Combata el uso indebido de su marca y maximice sus resultados',
         rodapeValida: 'válida hasta',
+
+        docTipo: 'Propuesta comercial',
+        tagline: 'Blinde su marca.',
+        site: 'branddi.com',
+        heroConector: 'para',
+        pagina: 'pág.',
+        porMesCurto: '/mes',
+        clausulasSub: ['Partes y alcance contractual', 'El problema que esta propuesta resuelve',
+            'Qué monitorea Branddi y cómo actúa', 'Valores mensuales recurrentes, en reales',
+            'Entregables, periodicidad y canal', 'Pago, vigencia y rescisión',
+            'Etapa · responsable · plazo'],
+        loop: ['Detectar', 'Clasificar', 'Notificar', 'Eliminar'],
+        loopMonitoria: ['Detectar', 'Clasificar', 'Documentar', 'Entregar'],
+        avulso: 'Individual',
+        recomendado: 'Recomendado',
+        pacoteLabel: 'Paquete',
+        avulsoDesc: 'Servicio contratado por separado, a su valor individual.',
+        chamada: {
+            BB: 'Recupere el tráfico que la competencia captura al comprar el nombre de su marca — del monitoreo al takedown.',
+            BBP: 'Recupere la posición de compra de sus productos en los marketplaces y deje de perder ventas ante sellers no autorizados.',
+            GD: 'Elimine sitios, dominios y perfiles falsos que se hacen pasar por su marca para estafar — del monitoreo al takedown.',
+            VM: 'Impida que terceros usen los signos de su marca sin autorización y diluyan su valor — del monitoreo al takedown.',
+        },
+        insight: {
+            BB: 'En el brand bidding, el anuncio del competidor aparece por encima de su resultado orgánico — usted paga más caro por su propio nombre, o pierde el clic. La actuación de Branddi elimina al anunciante y devuelve el terreno a la marca.',
+        },
 
         clausulas: ['Identificación', 'Objeto de la propuesta', 'Enfoque', 'Inversión',
             'Alcance y niveles de servicio', 'Condiciones comerciales', 'Aceptación e implantación'],
