@@ -392,39 +392,13 @@ function blocoAceite(ctx, vencida) {
       <p class="fine">${esc(t.aceitaNota)}</p></div></div>`;
     }
     if (vencida || ctx.substituida) return '';
+    // Sem formulário de aceite online (Nome/E-mail/Cargo/botão): o fluxo é baixar
+    // o PDF e o aceite acontecer por fora. Fica só a mensagem do que o aceite
+    // significa. O estado "já aceita" (acima) segue valendo caso o aceite seja
+    // registrado por outro caminho.
     return `<section id="aceite">
     <div class="note acao"><span class="note-ic big">✓</span>
-      <div><p class="note-h">${esc(t.aceiteTitulo)}</p><p>${esc(t.aceiteProsa)}</p></div></div>
-    <form id="fAceite" class="aceite-form" autocomplete="on">
-      <label>${esc(t.aceiteNome)}<input name="nome" required autocomplete="name"></label>
-      <label>${esc(t.aceiteEmail)}<input name="email" type="email" required autocomplete="email"></label>
-      <label>${esc(t.aceiteCargo)} <span class="opc">${esc(t.aceiteOpcional)}</span><input name="cargo" autocomplete="organization-title"></label>
-      <button type="submit">${esc(t.aceiteBotao)}</button>
-      <p class="msg" id="aceiteMsg" role="status"></p>
-    </form>
-    <script>
-    (function () {
-      var f = document.getElementById('fAceite');
-      var LABEL = ${JSON.stringify(t.aceiteBotao)}, ENVIANDO = ${JSON.stringify(t.aceiteEnviando)};
-      f.addEventListener('submit', async function (e) {
-        e.preventDefault();
-        var btn = f.querySelector('button'), msg = document.getElementById('aceiteMsg');
-        btn.disabled = true; btn.textContent = ENVIANDO; msg.textContent = '';
-        try {
-          var r = await fetch('/api/proposal/aceite/${esc(ctx.slug)}', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nome: f.nome.value, email: f.email.value, cargo: f.cargo.value }),
-          });
-          var d = await r.json();
-          if (!r.ok) throw new Error(d.error || 'falhou');
-          location.reload();
-        } catch (err) {
-          msg.textContent = ${JSON.stringify(t.aceiteErro('@@'))}.replace('@@', err.message);
-          btn.disabled = false; btn.textContent = LABEL;
-        }
-      });
-    })();
-    <\/script></section>`;
+      <div><p class="note-h">${esc(t.aceiteTitulo)}</p><p>${esc(t.aceiteProsa)}</p></div></div></section>`;
 }
 
 // ─── Documento ──────────────────────────────────────────────────────
@@ -771,20 +745,8 @@ border-radius:var(--radius-pill);padding:.28rem .7rem;margin-top:.15rem}
 .tl-resp{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .tl-prazo{font-family:var(--mono);font-size:.8rem;color:var(--cyan);white-space:nowrap;text-align:right;padding-left:.75rem}
 
-/* Formulário de aceite */
+/* Painel de aceite (só a mensagem — o formulário online foi removido) */
 #aceite{display:flex;flex-direction:column;gap:1rem}
-.aceite-form{display:flex;flex-direction:column;gap:.7rem;max-width:28rem}
-.aceite-form label{display:flex;flex-direction:column;gap:.3rem;font-family:var(--mono);font-size:.6rem;
-letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:700}
-.aceite-form .opc{text-transform:none;letter-spacing:0;font-weight:400}
-.aceite-form input{font:400 .95rem var(--sans);color:var(--text);background:var(--field);
-border:1px solid var(--line);border-radius:var(--radius-sm);padding:.6rem .75rem}
-.aceite-form input:focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
-.aceite-form button{font:700 .95rem var(--sans);background:var(--cyan);color:var(--navy);border:0;
-border-radius:var(--radius-pill);padding:.7rem 1.4rem;cursor:pointer;margin-top:.3rem;align-self:flex-start}
-.aceite-form button:hover{background:var(--turq)}
-.aceite-form button:disabled{opacity:.5;cursor:not-allowed}
-.aceite-form .msg{font-size:.82rem;color:var(--alert);margin:0}
 
 /* Chamada de fechamento */
 .cta{text-align:center;padding:1rem 0 .6rem;display:flex;flex-direction:column;gap:.5rem;align-items:center}
@@ -816,7 +778,7 @@ body{font-size:10.5pt;background-image:radial-gradient(circle at 50% 0%,#004C54 
 *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .doc{max-width:none}
 /* Interface não vai pro papel. */
-.acoes,.aceite-form{display:none}
+.acoes{display:none}
 /* A capa ocupa a folha inteira (full-bleed), com o conteúdo contido pelo padding. */
 .cover{min-height:auto;height:297mm;break-after:page;padding:24mm 21mm}
 .watermark{opacity:.5}
