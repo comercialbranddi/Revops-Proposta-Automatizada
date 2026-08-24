@@ -133,23 +133,41 @@ function valorLinha(valor, p, idioma) {
  * `pacote: 15800` (valor fechado) e `pacotes: [{produtos, extras, preco}]`.
  * Cada opção sai com `soma` — o preço cheio do que contém — pra dar o "de/por".
  */
-function opcoesDePacote(spec, codes) {
+/**
+ * `nomesForaDoDeal`: nomes (minúsculos) dos produtos do catálogo que NÃO estão
+ * nesta proposta. Serve pra tirar do pacote qualquer resquício deles — seja no
+ * array de produtos, seja numa "frente" (extra) de texto livre, seja no rótulo.
+ * É o que evita um "Brand Bidding + golpes" aparecer numa venda que não tem
+ * Golpes: segue o formulário, não inventa.
+ */
+function opcoesDePacote(spec, codes, nomesForaDoDeal = []) {
     const precoDe = (c) => Number(spec.porProduto?.[c]?.preco) || 0;
+    // Um texto cita um produto fora do deal? (ex.: "golpes" ~ "Golpes Digitais")
+    const citaForaDoDeal = (txt) => {
+        const t = String(txt || '').trim().toLowerCase();
+        return !!t && nomesForaDoDeal.some((n) => n && (n.includes(t) || t.includes(n)));
+    };
     const lista = Array.isArray(spec.pacotes) && spec.pacotes.length
         ? spec.pacotes
         : (Number(spec.pacote) > 0 ? [{ produtos: codes, extras: [], preco: Number(spec.pacote) }] : []);
     return lista
-        // Trava anti-stale: pacote que referencia um produto FORA do deal (ex.: um
-        // combo antigo com Golpes numa proposta que agora é BB+BBP) é resquício de
-        // uma versão anterior — some inteiro, em vez de exibir um pacote que não
-        // bate com os produtos vendidos. Segue o formulário, não inventa.
+        // 1) Pacote que referencia um PRODUTO fora do deal é resquício — sai inteiro.
         .filter((o) => (o.produtos || []).every((c) => codes.includes(c)))
         .map((o) => {
             const produtos = (o.produtos || []).filter((c) => codes.includes(c));
-            const extras = (o.extras || []).map((x) => String(x).trim()).filter(Boolean);
-            return { ...o, produtos, extras, soma: produtos.reduce((t, c) => t + precoDe(c), 0) };
+            // 2) Frente (extra) que nomeia um produto fora do deal (ex.: "golpes"
+            //    numa proposta sem Golpes Digitais) é resquício — sai.
+            const extras = (o.extras || []).map((x) => String(x).trim())
+                .filter((x) => x && !citaForaDoDeal(x));
+            // 3) Rótulo livre que cita produto fora do deal não vale — cai pra
+            //    composição real (produtos + frentes).
+            const rotulo = (o.rotulo && !citaForaDoDeal(o.rotulo)) ? o.rotulo : null;
+            return { ...o, produtos, extras, rotulo, soma: produtos.reduce((t, c) => t + precoDe(c), 0) };
         })
-        .filter((o) => Number(o.preco) > 0 && (o.produtos.length + o.extras.length) > 0)
+        // 4) Pacote é combinação: precisa de pelo menos DOIS itens (produto/frente),
+        //    igual à regra do formulário. Um item só (o que sobra quando a frente
+        //    resquício sai) não é pacote — não vira card.
+        .filter((o) => Number(o.preco) > 0 && (o.produtos.length + o.extras.length) >= 2)
         .sort((a, b) => a.preco - b.preco);
 }
 
@@ -431,7 +449,10 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
 
     const validade = new Date(emitidaEm.getTime() + VALIDADE_DIAS * 86400000);
     const soma = codes.reduce((acc, c) => acc + (Number(spec.porProduto[c]?.preco) || 0), 0);
-    const opcoes = opcoesDePacote(spec, codes);
+    // Nomes dos produtos do catálogo que NÃO estão nesta proposta — pra a trava
+    // de pacote tirar qualquer resquício deles (produto, frente ou rótulo).
+    const nomesForaDoDeal = Object.keys(blocos).filter((c) => !codes.includes(c)).map((c) => blocos[c].titulo.toLowerCase());
+    const opcoes = opcoesDePacote(spec, codes, nomesForaDoDeal);
     const total = opcoes.length ? opcoes[0].preco : soma;
     const meta = {
         numero: `${t.numeroPrefixo}-${deal.id}`,
