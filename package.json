@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node scripts/testa-render.js",
+    "test:layout": "node scripts/testa-layout.js",
     "test:e2e": "node scripts/testa-fluxo-completo.js"
   },
   "engines": {

@@ -73,7 +73,11 @@ const brlCurto = (n) => brl(n).replace(/,00$/, '');
  * "/mês" menores, como no modelo. Mono, tabular, cor cyan (via CSS).
  */
 function precoGrande(n, t) {
-    const s = brl(n);
+    // `brlCurto`: sem o ",00" quando o valor é redondo — que é a regra, com o
+    // formulário em passos de 100. Os centavos custavam ~20% da largura do card
+    // e, num card de 3 colunas, era essa largura que forçava o número a encolher
+    // até ficar menor que o nome do produto. Valor quebrado (",50") mantém.
+    const s = brlCurto(n);
     const i = s.lastIndexOf(',');
     const inteiro = i >= 0 ? s.slice(0, i) : s;
     const cent = i >= 0 ? s.slice(i) : '';
@@ -766,8 +770,12 @@ border-bottom:1px solid var(--line-2);align-items:baseline;font-size:.88rem;colo
 .minihead{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);
 font-weight:700;margin:.4rem 0 -.2rem}
 .pacotes{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem}
+/* container-type: o preço grande se dimensiona pela largura DESTE card (cqi),
+   não pela raiz — é o que impede o número de furar a borda quando entram 3 ou
+   4 opções e cada card fica estreito. */
 .pcard{background:var(--card-bg);border:1px solid var(--line);border-radius:var(--radius);padding:1.3rem 1.3rem 1.4rem;
-display:flex;flex-direction:column;gap:.55rem;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+display:flex;flex-direction:column;gap:.55rem;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+container-type:inline-size}
 .pcard.rec{border-color:rgba(10,207,222,.55)}
 .pcard-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
 .ptag{font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
@@ -776,10 +784,16 @@ display:flex;flex-direction:column;gap:.55rem;-webkit-backdrop-filter:blur(20px)
 color:var(--success);border:1px solid rgba(34,197,94,.4);border-radius:var(--radius-pill);padding:.2rem .6rem}
 .pname{font-size:1.15rem;font-weight:700;color:var(--text);letter-spacing:-.01em}
 .pdesc{font-size:.82rem;line-height:1.5;color:var(--muted)}
-.preco{display:block;margin-top:.35rem;font-family:var(--mono);color:var(--cyan);white-space:nowrap}
-.preco .pv{font-size:2.05rem;font-weight:700;letter-spacing:-.02em}
-.preco .pc{font-size:1rem;font-weight:500}
-.preco .pm{font-size:.85rem;color:var(--muted);margin-left:.4rem;font-weight:400}
+/* O tamanho vive AQUI (não no .pv) e as partes seguem em em, pra centavos e
+   "/mês" encolherem junto e a proporção do modelo se manter em qualquer
+   largura. 13.5cqi ≈ o maior corpo em que "R$ 145.900/mês" (o pior caso: seis
+   dígitos) ainda cabe num card de 3 colunas; o clamp segura o teto (2.05rem do
+   modelo) quando há uma ou duas opções. Aferido por scripts/testa-layout.js. */
+.preco{display:block;margin-top:.35rem;font-family:var(--mono);color:var(--cyan);white-space:nowrap;
+font-size:clamp(1.05rem,13.5cqi,2.05rem)}
+.preco .pv{font-size:1em;font-weight:700;letter-spacing:-.02em}
+.preco .pc{font-size:.49em;font-weight:500}
+.preco .pm{font-size:.41em;color:var(--muted);margin-left:.4em;font-weight:400}
 .badge-eco{align-self:flex-start;font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;
 font-weight:700;color:var(--success);border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.08);
 border-radius:var(--radius-pill);padding:.28rem .7rem;margin-top:.15rem}
