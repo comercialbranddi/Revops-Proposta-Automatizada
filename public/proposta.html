@@ -237,10 +237,15 @@ function aplicarSeed() {
     // Proposta gravada antes de 18/08/2026 tem um valor fechado só. Vira uma
     // opção cobrindo tudo, pra reabrir sem perder o preço.
     if (Array.isArray(a.pacotes)) {
-      estado.pacotes = a.pacotes.map((o) => ({
-        produtos: new Set(o.produtos || []), extras: (o.extras || []).slice(),
-        preco: o.preco == null ? '' : o.preco, rotulo: o.rotulo || '',
-      }));
+      const doDeal = new Set(a.produtos || []);
+      estado.pacotes = a.pacotes
+        // Trava anti-stale na reabertura: pacote de uma versão anterior que cita
+        // produto que não está mais no deal (ex.: Golpes) não volta.
+        .filter((o) => (o.produtos || []).every((c) => doDeal.has(c)))
+        .map((o) => ({
+          produtos: new Set(o.produtos || []), extras: (o.extras || []).slice(),
+          preco: o.preco == null ? '' : o.preco, rotulo: o.rotulo || '',
+        }));
     } else if (Number(a.pacote) > 0) {
       estado.pacotes = [{ produtos: new Set(a.produtos || []), extras: [], preco: a.pacote, rotulo: '' }];
     }
@@ -334,7 +339,12 @@ function cardEscopo() {
     const inp = el('input', { type: 'checkbox', checked: estado.produtos.has(p.code) });
     inp.onchange = () => {
       if (inp.checked) { estado.produtos.add(p.code); if (!estado.porProduto[p.code]) estado.porProduto[p.code] = vazio(p.code); }
-      else estado.produtos.delete(p.code);
+      else {
+        estado.produtos.delete(p.code);
+        // Trava anti-stale: tirou o produto do deal -> descarta o pacote que o
+        // continha (um combo antigo não fica pendurado referenciando o que saiu).
+        estado.pacotes = estado.pacotes.filter((o) => !o.produtos.has(p.code));
+      }
       render();
     };
     chips.append(el('label', { className: 'chip' }, inp, p.label));
@@ -685,10 +695,15 @@ $('#salvar').onclick = async () => {
         sobConsulta: !!s.sobConsulta,
       }];
     })),
-    pacotes: estado.pacotes.map((o) => ({
-      produtos: [...o.produtos], extras: o.extras.slice(),
-      preco: Number(o.preco), rotulo: o.rotulo.trim() || null,
-    })),
+    // Trava anti-stale (cinturão e suspensório): não grava pacote que referencie
+    // produto fora dos serviços do deal — evita salvar combo antigo (ex.: Golpes)
+    // que não faz mais parte da proposta.
+    pacotes: estado.pacotes
+      .filter((o) => [...o.produtos].every((c) => estado.produtos.has(c)))
+      .map((o) => ({
+        produtos: [...o.produtos], extras: o.extras.slice(),
+        preco: Number(o.preco), rotulo: o.rotulo.trim() || null,
+      })),
     observacoes: estado.observacoes,
     obsProposta: estado.obsProposta,
     // Só o que foi negociado. Chave ausente = condição padrão da Branddi.

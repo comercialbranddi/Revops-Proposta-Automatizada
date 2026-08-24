@@ -139,6 +139,11 @@ function opcoesDePacote(spec, codes) {
         ? spec.pacotes
         : (Number(spec.pacote) > 0 ? [{ produtos: codes, extras: [], preco: Number(spec.pacote) }] : []);
     return lista
+        // Trava anti-stale: pacote que referencia um produto FORA do deal (ex.: um
+        // combo antigo com Golpes numa proposta que agora é BB+BBP) é resquício de
+        // uma versão anterior — some inteiro, em vez de exibir um pacote que não
+        // bate com os produtos vendidos. Segue o formulário, não inventa.
+        .filter((o) => (o.produtos || []).every((c) => codes.includes(c)))
         .map((o) => {
             const produtos = (o.produtos || []).filter((c) => codes.includes(c));
             const extras = (o.extras || []).map((x) => String(x).trim()).filter(Boolean);
