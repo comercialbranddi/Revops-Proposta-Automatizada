@@ -153,7 +153,10 @@ export const TEXTOS = {
         pagamento: 'Condição de pagamento',
         pagamentoValor: 'Mensal, D+30 da emissão da nota fiscal',
         vigencia: 'Vigência',
-        vigenciaValor: 'Indeterminada, com <strong>renovação automática</strong>',
+        // "Renovação automática" saiu em 24/08/2026: só o modelo de VM trazia a
+        // expressão, e num contrato mensal sem fidelidade ela não acrescenta
+        // nada — só assusta o jurídico do cliente.
+        vigenciaValor: 'Indeterminada',
         rescisao: 'Rescisão',
         rescisaoValor: '<strong>Sem fidelidade.</strong> Aviso prévio de 60 dias, sem multa',
         implantacao: 'Prazo de implantação',
@@ -177,6 +180,10 @@ export const TEXTOS = {
         respAmbas: 'Ambas',
         prazoAte: (d) => `Até ${d}`,
         prazoUteis: 'D+3 úteis',
+        // "D+7" saiu em 24/08/2026: nenhum modelo promete prazo pra primeira
+        // entrega, e prazo em proposta vira cobrança contratual. O que tem
+        // fonte é o início em 3 dias úteis; a entrega vem na sequência.
+        prazoAposInicio: 'Após o início do monitoramento',
         insumoINPI: 'comprovante de registro da marca no INPI',
 
         aceiteTitulo: 'Aceite',
@@ -298,7 +305,7 @@ export const TEXTOS = {
         pagamento: 'Payment terms',
         pagamentoValor: 'Monthly, 30 days from invoice issuance',
         vigencia: 'Term',
-        vigenciaValor: 'Open-ended, with <strong>automatic renewal</strong>',
+        vigenciaValor: 'Open-ended',
         rescisao: 'Termination',
         rescisaoValor: '<strong>No minimum term.</strong> 60 days written notice, no penalty',
         implantacao: 'Onboarding time',
@@ -322,6 +329,7 @@ export const TEXTOS = {
         respAmbas: 'Both',
         prazoAte: (d) => `By ${d}`,
         prazoUteis: 'D+3 business days',
+        prazoAposInicio: 'After monitoring starts',
         insumoINPI: 'proof of trademark registration with the Brazilian INPI',
 
         aceiteTitulo: 'Acceptance',
@@ -444,7 +452,7 @@ export const TEXTOS = {
         pagamento: 'Condición de pago',
         pagamentoValor: 'Mensual, 30 días desde la emisión de la factura',
         vigencia: 'Vigencia',
-        vigenciaValor: 'Indeterminada, con <strong>renovación automática</strong>',
+        vigenciaValor: 'Indeterminada',
         rescisao: 'Rescisión',
         rescisaoValor: '<strong>Sin permanencia.</strong> Aviso previo de 60 días, sin multa',
         implantacao: 'Plazo de implantación',
@@ -468,6 +476,7 @@ export const TEXTOS = {
         respAmbas: 'Ambas',
         prazoAte: (d) => `Hasta ${d}`,
         prazoUteis: 'D+3 hábiles',
+        prazoAposInicio: 'Tras el inicio del monitoreo',
         insumoINPI: 'comprobante de registro de la marca en el INPI brasileño',
 
         aceiteTitulo: 'Aceptación',

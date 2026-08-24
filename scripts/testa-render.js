@@ -86,7 +86,10 @@ const CASOS = [
         checa: [semPlaceholder, semVazamento(['BBP']), contem('Monitoria e inteligência'),  // agora vem como selo ao lado do título
             contem('atuação comercial junto aos canais é conduzida pela Contratante'),
             naoContem('Aprovação'), contem('Até 25 SKUs'),
-            contem('relação de SKUs prioritários')],
+            contem('relação de SKUs prioritários'),
+            // BBP puro disputa Buy Box, não marca: o requisito do INPI e o
+            // comprovante no aceite não saem — o modelo antigo não os pedia.
+            naoContem('INPI')],
     },
     {
         nome: 'GD sozinho — não tem quantidade',
@@ -258,7 +261,7 @@ const CASOS_NOVOS = [
         nome: 'condição em branco não apaga a cláusula',
         args: {},
         spec: spec(['BB'], { condicoes: { rescisao: '   ', vigencia: '' } }),
-        checa: [contem('Sem fidelidade'), contem('renovação automática')],
+        checa: [contem('Sem fidelidade'), contem('Indeterminada')],
     },
     {
         // A Branddi não cobra setup (19/08/2026). Os modelos-base diziam
@@ -283,7 +286,11 @@ const CASOS_NOVOS = [
         checa: [naoContem('Lei 9.279'), naoContem('Fundamentação legal'),
             contem('registro no INPI'),
             // a linha "Suporte" do BBP descrevia o COMO da entrega
-            naoContem('cruzamento com bases'), naoContem('apoio à atuação comercial junto aos canais')],
+            naoContem('cruzamento com bases'), naoContem('apoio à atuação comercial junto aos canais'),
+            // revisão contra os docs (24/08/2026): "D+7" e "renovação automática"
+            // não existem em modelo nenhum — prazo inventado vira cobrança.
+            naoContem('D+7'), naoContem('renovação automática'),
+            contem('Após o início do monitoramento')],
     },
     {
         nome: 'a fonte da proposta é Inter (Branddi Design System)',

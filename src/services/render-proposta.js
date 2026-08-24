@@ -289,8 +289,12 @@ function clausulaEscopo(ctx) {
       ${sla.map((l) => `<div class="sla"><span class="e">${esc(l.entregavel)}</span><span>${esc(l.periodicidade)}</span><span>${esc(l.canal)}</span></div>`).join('')}
     </div>`;
 
-    // Requisito: nota legal (§) — pré-condição contratual.
-    const req = `<div class="note"><span class="note-ic">§</span><p><strong>${esc(t.requisito)}.</strong> ${esc(t.requisitoValor)}</p></div>`;
+    // Requisito: nota legal (§) — pré-condição contratual. Fica de fora em
+    // proposta só de BBP: o requisito é registro de MARCA no INPI, e BBP puro
+    // disputa Buy Box, não marca — o modelo antigo dele não pedia isso.
+    const req = codes.some((c) => c !== 'BBP')
+        ? `<div class="note"><span class="note-ic">§</span><p><strong>${esc(t.requisito)}.</strong> ${esc(t.requisitoValor)}</p></div>`
+        : '';
 
     // Observação do lead — só se o closer escreveu. spec.obsProposta (fala do
     // cliente, texto puro), NÃO spec.observacoes (anotação interna do time).
@@ -403,12 +407,17 @@ function clausulaCondicoes(ctx) {
 
 function clausulaAceite(ctx) {
     const { codes, meta, t, insumos } = ctx;
-    const lista = [...codes.map((c) => insumos[c]).filter(Boolean), t.insumoINPI].join('; ');
+    // O comprovante do INPI só é insumo quando a proposta trata de marca —
+    // BBP puro disputa Buy Box, não marca, e o modelo antigo dele não pedia.
+    const insumoINPI = codes.some((c) => c !== 'BBP') ? [t.insumoINPI] : [];
+    const lista = [...codes.map((c) => insumos[c]).filter(Boolean), ...insumoINPI].join('; ');
     const etapas = [
         [t.etapaAceite, t.respContratante, t.prazoAte(meta.validade)],
         [t.etapaEnvio(lista), t.respContratante, 'D+0'],
         [t.etapaConfig, 'Branddi', t.prazoUteis],
-        [t.etapaPrimeira, 'Branddi', 'D+7'],
+        // Sem "D+7": nenhum modelo promete prazo pra primeira entrega, e prazo
+        // em proposta vira cobrança contratual (revisão de 24/08/2026).
+        [t.etapaPrimeira, 'Branddi', t.prazoAposInicio],
         [t.etapaReuniao, t.respAmbas, 'D+30'],
     ];
     return `<div class="timeline">${etapas.map(([etapa, resp, prazo]) =>
