@@ -839,12 +839,23 @@ body{font-size:10.5pt;background-image:radial-gradient(circle at 50% 0%,#004C54 
 /* Coluna central de ~168mm numa A4 de 210mm => ~21mm de margem de cada lado,
    contido e central como o modelo. O padding vertical dá o respiro de topo/base. */
 .pad{max-width:168mm;margin:0 auto;padding:0;gap:0}
-/* Respiro de topo em CADA página: padding (ao contrário de margin) não é
-   descartado pelo Chrome quando o elemento inicia uma folha, então toda cláusula
-   que abre página ganha esse espaço no topo — e serve de gap entre cláusulas. */
-.clausula{break-inside:avoid;padding:6.5mm 0}
+/* Fragmentação confiável só existe em fluxo de BLOCO: dentro de flex o Chrome
+   corta card no meio da linha mesmo com break-inside:avoid (era o "vazando em
+   cima" — tabela fatiada, resto colado no topo da folha seguinte). No papel,
+   os contêineres viram bloco e o gap vira margem entre irmãos. */
+.pad,.clausula,.bloco,.timeline,#aceite{display:block}
+.clausula>*+*,#aceite>*+*{margin-top:1rem}
+.bloco>*+*{margin-top:.8rem}
+/* Respiro de topo em CADA folha: o padding da cláusula, que o clone repete no
+   começo de cada fragmento (Chromium 130+; aqui roda 149). Sem isso, cláusula
+   maior que a folha continuava a 0mm da borda física. */
+.clausula{break-inside:auto;-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:6.5mm 0}
 .sechead,h2,h3,h4{break-after:avoid}
-.card,.note,.pcard,.tl-item,.loop{break-inside:avoid}
+/* O bloco de produto (título + prosa + tabela) anda inteiro: título numa folha
+   e tabela na outra era o outro sintoma do print de 24/08. */
+/* .grid2 cobre o par setup/impostos, que não tem classe card e estava sendo
+   fatiado por cima do rodapé fixo (print de 24/08). */
+.bloco,.card,.note,.pcard,.pacotes,.grid2,.tl-item,.loop{break-inside:avoid}
 p,li{orphans:3;widows:3}
 /* O fecho (CTA) fica junto do aceite — nunca sozinho numa folha. break-before
    avoid + o aceite pede pra não quebrar depois dele. Compacto pra caber. */
