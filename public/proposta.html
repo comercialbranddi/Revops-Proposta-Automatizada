@@ -554,8 +554,12 @@ function cardPacote() {
       chips.append(el('span', { className: 'chip digitado' }, nome, x));
     });
     datalistFrentes();
+    // `list` é propriedade só-leitura em <input> — Object.assign (dentro do el())
+    // lança "which has only a getter" e MATA o render aqui, sumindo o pacote e
+    // as condições. Vai por setAttribute, que é o jeito certo de ligar a datalist.
     const novo = el('input', { type: 'text', className: 'outro', placeholder: '+ frente (ex.: App Store)',
-      list: 'frentes-sugeridas', autocomplete: 'off' });
+      autocomplete: 'off' });
+    novo.setAttribute('list', 'frentes-sugeridas');
     const guarda = () => {
       const add = novo.value.split(/[,;]/).map((x) => x.trim()).filter(Boolean).filter((x) => !o.extras.includes(x));
       if (!add.length) { novo.value = ''; return; }
