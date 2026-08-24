@@ -297,9 +297,9 @@ function clausulaEscopo(ctx) {
     const obs = String(spec.obsProposta || '').trim()
         ? kvGrid([[t.obsProposta, esc(spec.obsProposta.trim())]])
         : '';
-    const idiomas = kvGrid([[t.idiomaRelatorios, t.idiomaRelatoriosValor]]);
-
-    return slaCard + idiomas + req + obs;
+    // Idioma dos relatórios saiu do documento em 24/08/2026: o idioma escolhido
+    // já é o do documento inteiro — repetir numa linha só somava ruído pro lead.
+    return slaCard + req + obs;
 }
 
 function clausulaInvestimento(ctx) {
@@ -323,29 +323,48 @@ function clausulaInvestimento(ctx) {
     }).join('');
 
     const { opcoes } = ctx;
-    const unica = opcoes.length === 1 && opcoes[0].produtos.length === codes.length && !opcoes[0].extras.length;
+    const precoDe = (c) => Number(spec.porProduto?.[c]?.preco) || 0;
 
-    // Fecho da tabela quando UMA opção cobre tudo (caso comum).
-    const fecho = unica
-        ? (opcoes[0].preco < soma - 0.01
-            ? `<div class="itrow sub"><span class="i-item">${esc(t.subtotal)}</span><span></span><span class="i-val">${brl(soma)}</span></div>
-         <div class="itrow total"><span class="i-item">${esc(t.totalCombinado)}</span><span class="i-esc">${esc(t.descontoDe(brl(soma - opcoes[0].preco)))}</span><span class="i-val">${brl(opcoes[0].preco)}</span></div>`
-            : `<div class="itrow total"><span class="i-item">${esc(t.total)}</span><span></span><span class="i-val">${brl(opcoes[0].preco)}</span></div>`)
-        : (opcoes.length ? '' : `<div class="itrow total"><span class="i-item">${esc(t.total)}</span><span></span><span class="i-val">${brl(soma)}</span></div>`);
+    // Quando mostrar os cards de comparação (cada serviço avulso × o pacote):
+    //   • o closer montou 2+ opções, ou
+    //   • há UMA opção, ela é um pacote (2+ itens) e sai mais barata que a soma.
+    // No 2º caso os avulsos não existem como opção salva — são sintetizados do
+    // preço de cada produto, pra o lead ver "cada um custa tanto, e o pacote
+    // compensa". É o formato lado a lado do modelo antigo (Golpes).
+    const opt = opcoes[0];
+    const pacoteUnicoComDesconto = opcoes.length === 1
+        && (opt.produtos.length + opt.extras.length) > 1
+        && opt.preco < opt.soma - 0.01;
+    const mostrarCards = opcoes.length > 1 || pacoteUnicoComDesconto;
+
+    let cartoes = [];
+    if (opcoes.length > 1) {
+        // A mais barata é a recomendada. Ordem decrescente pra ela ficar à direita.
+        const minP = Math.min(...opcoes.map((o) => o.preco));
+        cartoes = [...opcoes].sort((a, b) => b.preco - a.preco)
+            .map((o) => ({ ...o, recomendado: o.preco === minP }));
+    } else if (pacoteUnicoComDesconto) {
+        // Um card por serviço (avulso, preço próprio) + o pacote à direita, marcado.
+        const avulsos = opt.produtos.map((c) => ({
+            produtos: [c], extras: [], preco: precoDe(c), soma: precoDe(c),
+            rotulo: '', recomendado: false,
+        }));
+        cartoes = [...avulsos, { ...opt, recomendado: true }];
+    }
+
+    // Fecho da tabela: total só quando NÃO há cards — com cards, a comparação já
+    // conta o preço fechado, e repetir na tabela duplica a mensagem.
+    const fecho = mostrarCards ? ''
+        : `<div class="itrow total"><span class="i-item">${esc(t.total)}</span><span></span><span class="i-val">${brl(opcoes.length === 1 ? opt.preco : soma)}</span></div>`;
 
     const tabela = `<div class="card itable">
       <div class="itrow ihead"><span>${esc(t.thItem)}</span><span>${esc(t.thEscopo)}</span><span class="i-val">${esc(t.thMensal)}</span></div>
       ${linhas}${fecho}</div>`;
 
-    // Duas ou mais opções viram cards de escolha. A mais barata é a recomendada
-    // (bundle com desconto). Exibidas em ordem decrescente de preço, pra a
-    // recomendada ficar à direita — como no modelo validado.
-    const minPreco = opcoes[0]?.preco;
-    const ordenadas = [...opcoes].sort((a, b) => b.preco - a.preco);
     let bundleN = 0;
-    const cards = (!unica && opcoes.length) ? `<p class="minihead">${esc(t.opcoesPacote)}</p>
-    <div class="pacotes">${ordenadas.map((o) => {
-        const rec = opcoes.length > 1 && o.preco === minPreco;
+    const cards = mostrarCards ? `<p class="minihead">${esc(t.opcoesPacote)}</p>
+    <div class="pacotes">${cartoes.map((o) => {
+        const rec = !!o.recomendado;
         const bundle = (o.produtos.length + o.extras.length) > 1;
         const partes = [...o.produtos.map((c) => blocos[c].titulo), ...o.extras];
         // Avulso (1 item) leva o rótulo "Avulso"; pacote (bundle) leva "Opção N ·
@@ -737,7 +756,7 @@ border-bottom:1px solid var(--line-2);align-items:baseline;font-size:.88rem;colo
 /* Cards de pacote */
 .minihead{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);
 font-weight:700;margin:.4rem 0 -.2rem}
-.pacotes{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.pacotes{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem}
 .pcard{background:var(--card-bg);border:1px solid var(--line);border-radius:var(--radius);padding:1.3rem 1.3rem 1.4rem;
 display:flex;flex-direction:column;gap:.55rem;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
 .pcard.rec{border-color:rgba(10,207,222,.55)}

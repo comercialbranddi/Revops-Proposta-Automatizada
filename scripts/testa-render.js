@@ -149,10 +149,14 @@ const CASOS = [
         checa: [semPlaceholder, ordemDe('Até 50', 'Até 100')],
     },
     {
-        nome: 'pacote com desconto — De/Por aparece',
+        nome: 'pacote único com desconto — cards avulso × pacote',
         spec: spec(['BB', 'VM'], { pacote: 15000 }),
-        checa: [semPlaceholder, contem('Subtotal'), contem('condição combinada'),
-            contem('R$ 17.800,00'), contem('R$ 15.000,00'), contem('Desconto de R$ 2.800,00')],
+        // Um pacote que cobre tudo e sai mais barato vira comparação lado a lado:
+        // cada serviço avulso (R$ 8.900) e o pacote (R$ 15.000) marcado como
+        // recomendado, com a economia. A tabela não repete o total combinado.
+        checa: [semPlaceholder, contem('Opções de pacote'), contem('Recomendado'),
+            contem('R$ 8.900,00'), contem('R$ 15.000,00'), contem('economia de R$ 2.800,00'),
+            naoContem('Subtotal'), naoContem('condição combinada')],
     },
     {
         nome: 'pacote igual à soma — sem linha de desconto',
