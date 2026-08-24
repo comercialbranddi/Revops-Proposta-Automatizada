@@ -193,7 +193,7 @@ const CASOS_VERSAO = [
         nome: 'versão atual mostra a mensagem de aceite e não avisa nada',
         args: { slug: 'atual1' },
         // Sem formulário de aceite online (removido): sai só a mensagem.
-        checa: [naoContem('foi substituída'), contem('registra o aceite comercial'), naoContem('Aceitar proposta')],
+        checa: [naoContem('foi substituída'), contem('registra o compromisso comercial'), naoContem('Aceitar proposta')],
     },
     {
         nome: 'versão substituída avisa, aponta pra atual e não deixa aceitar',
@@ -335,7 +335,7 @@ const IDIOMAS = [
             contem('Technical &amp; commercial proposal'), contem('Identification'),
             contem('Purpose of the proposal'), contem('Commercial terms'), naoContem('Legal basis'), contem('Requirement'),
             contem('Client'), contem('Deliverable'), contem('Monitoring + Enforcement'),
-            contem('No minimum term'), contem('commercial acceptance'), contem('Download PDF'),
+            contem('No minimum term'), contem('commercial commitment'), contem('Download PDF'),
             contem('Waived'), naoContem('charged once'),
             // A data em inglês sai com o mês escrito: "08/18" e "18/08" são a
             // mesma string com sentidos diferentes.
@@ -352,7 +352,7 @@ const IDIOMAS = [
             contem('Propuesta técnica &amp; comercial'), contem('Identificación'),
             contem('Objeto de la propuesta'), contem('Condiciones comerciales'), naoContem('Fundamento legal'), contem('Requisito'),
             contem('Entregable'), contem('Monitoreo + Actuación'), contem('Sin permanencia'),
-            contem('aceptación comercial'), contem('Descargar en PDF'),
+            contem('compromiso comercial'), contem('Descargar en PDF'),
             contem('Bonificado'), naoContem('cobrada una única vez'),
             // O defeito real do espanhol antigo: "para cancelamento sem multa"
             // embutido no meio da cláusula de contrato.

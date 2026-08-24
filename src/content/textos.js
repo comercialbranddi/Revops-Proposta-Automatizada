@@ -181,7 +181,7 @@ export const TEXTOS = {
 
         aceiteTitulo: 'Aceite',
         aceiteAceitaTitulo: 'Proposta aceita',
-        aceiteProsa: 'Ao confirmar, a Branddi é notificada e inicia a implantação em 3 dias úteis. Isto registra o aceite comercial desta proposta; o contrato é formalizado em seguida.',
+        aceiteProsa: 'O aceite desta proposta registra o compromisso comercial. A Branddi é notificada e inicia a implantação em 3 dias úteis; o contrato é formalizado em seguida.',
         aceiteNome: 'Nome completo',
         aceiteEmail: 'E-mail corporativo',
         aceiteCargo: 'Cargo',
@@ -326,7 +326,7 @@ export const TEXTOS = {
 
         aceiteTitulo: 'Acceptance',
         aceiteAceitaTitulo: 'Proposal accepted',
-        aceiteProsa: 'On confirmation, Branddi is notified and onboarding starts within 3 business days. This records the commercial acceptance of this proposal; the agreement is formalized next.',
+        aceiteProsa: 'Accepting this proposal records the commercial commitment. Branddi is notified and onboarding starts within 3 business days; the agreement is formalized next.',
         aceiteNome: 'Full name',
         aceiteEmail: 'Business e-mail',
         aceiteCargo: 'Role',
@@ -472,7 +472,7 @@ export const TEXTOS = {
 
         aceiteTitulo: 'Aceptación',
         aceiteAceitaTitulo: 'Propuesta aceptada',
-        aceiteProsa: 'Al confirmar, Branddi es notificada e inicia la implantación en 3 días hábiles. Esto registra la aceptación comercial de esta propuesta; el contrato se formaliza a continuación.',
+        aceiteProsa: 'La aceptación de esta propuesta registra el compromiso comercial. Branddi es notificada e inicia la implantación en 3 días hábiles; el contrato se formaliza a continuación.',
         aceiteNome: 'Nombre completo',
         aceiteEmail: 'Correo corporativo',
         aceiteCargo: 'Cargo',
