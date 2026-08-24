@@ -102,7 +102,12 @@ export const TEXTOS = {
         contratante: 'Contratante',
         destinatario: 'Destinatário',
         contratada: 'Contratada',
-        contratadaValor: 'Branddi Tecnologia — São Paulo/SP',
+        // Só "Branddi", como nos modelos do time. "Branddi Tecnologia" era nome
+        // inventado (24/08/2026): o CNPJ registrado é "Branddi Participações
+        // S.A." — mas é holding, e quem fatura pode ser outra entidade. Quando
+        // a Jessica confirmar a razão social que assina, entra aqui (com CNPJ).
+        // "São Paulo/SP" vem do cabeçalho dos modelos ("São Paulo, XX de ...").
+        contratadaValor: 'Branddi — São Paulo/SP',
         marcas: 'Marcas monitoradas',
         servicos: 'Serviços',
         regime: 'Regime',
@@ -258,7 +263,7 @@ export const TEXTOS = {
         contratante: 'Client',
         destinatario: 'Attention',
         contratada: 'Provider',
-        contratadaValor: 'Branddi Tecnologia — São Paulo, Brazil',
+        contratadaValor: 'Branddi — São Paulo, Brazil',
         marcas: 'Brands monitored',
         servicos: 'Services',
         regime: 'Engagement',
@@ -405,7 +410,7 @@ export const TEXTOS = {
         contratante: 'Contratante',
         destinatario: 'Destinatario',
         contratada: 'Contratada',
-        contratadaValor: 'Branddi Tecnologia — São Paulo, Brasil',
+        contratadaValor: 'Branddi — São Paulo, Brasil',
         marcas: 'Marcas monitoreadas',
         servicos: 'Servicios',
         regime: 'Régimen',
