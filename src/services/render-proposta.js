@@ -64,8 +64,8 @@ const brl = (n) => Number(n)
     // de depender de um caractere invisível pra busca, teste ou extração de PDF.
     .replace(/\s/g, ' ');
 
-// Preço sem os centavos quando são zero — pra faixa da capa, onde o número
-// grande respira melhor sem ",00".
+// Preço sem os centavos quando são zero — pros cards de pacote, onde o número
+// grande respira melhor sem ",00" (e onde a largura é escassa).
 const brlCurto = (n) => brl(n).replace(/,00$/, '');
 
 /**
@@ -528,9 +528,13 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
     const chamada = t.chamada?.[codes[0]] || (obj.charAt(0).toUpperCase() + obj.slice(1));
     const titulo = `${codes.map((c) => blocos[c].titulo).join(' · ')} — ${deal.organizacao}`;
 
+    // Sem o valor mensal: saiu da capa em 25/08/2026, a pedido da Jessica. O
+    // preço abrindo o documento, antes de o lead ler o que está sendo entregue,
+    // puxa a conversa pro número. Ele continua na Identificação (cláusula 1) e
+    // na de Investimento, que é onde tem contexto pra sustentá-lo.
     const strip = [
         [t.emissao, meta.emissao], [t.validadeCurta, meta.validade],
-        [t.regime, REGIME_CURTO[idioma] || REGIME_CURTO.pt], [t.valorMensal, brlCurto(total), true],
+        [t.regime, REGIME_CURTO[idioma] || REGIME_CURTO.pt],
     ].map(([l, v, cyan]) => `<div class="scell"><span class="scl">${esc(l)}</span><span class="scv${cyan ? ' cyan' : ''}">${esc(v)}</span></div>`).join('');
 
     const cta = `<section class="cta">
@@ -662,7 +666,7 @@ background:linear-gradient(90deg,#EAFEFF 0%,#0ACFDE 52%,#299FB1 100%);
 .hero .l1{-webkit-text-fill-color:var(--text);color:var(--text)}
 .herosub{margin:1.1rem 0 0;max-width:46ch;font-size:1.05rem;line-height:1.55;color:#CBD5E1;font-weight:300}
 .herosub strong{color:var(--text);font-weight:600}
-.strip{margin-top:2rem;display:grid;grid-template-columns:repeat(4,1fr);gap:0;max-width:40rem;
+.strip{margin-top:2rem;display:grid;grid-template-columns:repeat(3,1fr);gap:0;max-width:32rem;
 background:var(--card-bg);border:1px solid var(--line);border-radius:var(--radius);
 -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);overflow:hidden}
 .scell{padding:.9rem 1rem;border-right:1px solid var(--line)}
