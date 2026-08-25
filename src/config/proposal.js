@@ -713,6 +713,18 @@ export function isProposalAutomationEnabledForDeal(dealId) {
 export const PROPOSAL_FORM_BASE_URL = (process.env.PROPOSAL_FORM_BASE_URL
     || 'https://revops-proposta-automatizada.vercel.app').replace(/\/+$/, '');
 
+// Domínio do Workspace que pode entrar no formulário. Estava só inline na rota
+// /config; virou constante pra a nota do card citar o mesmo valor.
+export const PROPOSAL_FORM_DOMAIN = process.env.PROPOSAL_FORM_DOMAIN || 'branddi.com';
+
+// Nota com o link do formulário na entrada da etapa (Jessica, 25/08/2026).
+// Chave PRÓPRIA, de propósito: a trava de piloto (PROPOSAL_TEST_ONLY) prende a
+// GERAÇÃO ao card de teste, e pendurar a nota nela entregaria o link em um card
+// só — o oposto do pedido. Aqui o risco é outro: a nota é um link, não escreve
+// no card nem cria documento. Vem ligada; PROPOSAL_NOTA_LINK_ENABLED=false
+// desliga sem tocar no resto.
+export const PROPOSAL_NOTA_LINK_ENABLED = process.env.PROPOSAL_NOTA_LINK_ENABLED !== 'false';
+
 /** URL do formulário desse negócio. */
 export function formUrlDoDeal(dealId) {
     return `${PROPOSAL_FORM_BASE_URL}/proposta/${dealId}`;

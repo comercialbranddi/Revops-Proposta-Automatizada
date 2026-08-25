@@ -9,6 +9,8 @@ import {
     PROPOSAL_WEBHOOK_SECRET,
     PROPOSAL_DEAL_FIELDS,
     PROPOSAL_FORM_BASE_URL,
+    PROPOSAL_FORM_DOMAIN,
+    PROPOSAL_NOTA_LINK_ENABLED,
     parseServicoOferecido,
     idiomaDoDeal,
     catalogoDoFormulario,
@@ -20,6 +22,7 @@ import { exigeLogin } from '../lib/auth-google.js';
 import { ultimaSpec, salvarSpec, porSlug, marcarGerada, aberturasDoDeal, registrarAceite, aceiteDe } from '../services/spec-store.js';
 import { renderProposta } from '../services/render-proposta.js';
 import { closeProposalActivity } from '../services/proposal-activity.js';
+import { postarNotaDoFormulario } from '../services/proposal-form-note.js';
 import { getContextLogger } from '../lib/logger.js';
 import { afterResponse } from '../lib/after-response.js';
 
@@ -41,6 +44,11 @@ const router = Router();
 // notifyOnEntry só é true na ENTRADA — evita spam de nota a cada update
 // enquanto o SDR ainda está preenchendo outros campos do card. É ele que
 // libera as notas de "falta campo" e de "proposta já existe".
+//
+// ACRESCENTADO em 25/08/2026: na ENTRADA, o card recebe uma NOTA com o link do
+// formulário — o time vai validar o modelo novo usando de verdade. É só a nota:
+// nenhuma atividade é criada e a geração antiga não muda. Ela roda antes da
+// trava de piloto de propósito (ver proposal-form-note.js).
 //
 // afterResponse é OBRIGATÓRIO aqui: no Vercel a função serverless congela
 // assim que res.json() é chamado — sem isso o trabalho async é interrompido
@@ -67,12 +75,23 @@ router.post('/webhook/deal', (req, res) => {
         if (!dealId || pipelineId !== SALES_PIPELINE_ID) return;
         if (stageId !== ENVIO_PROPOSTA_STAGE_ID) return;
 
+        const isEntry = prevStageId !== ENVIO_PROPOSTA_STAGE_ID;
+
+        // A nota com o link do formulário sai ANTES e POR FORA da trava de
+        // piloto: o time vai validar o modelo novo usando de verdade, e a trava
+        // prende a geração ao card de teste. Só na ENTRADA, e o serviço não
+        // repete se o card já tem o link. Nunca lança — se falhar, a geração
+        // antiga segue igual.
+        if (isEntry && PROPOSAL_NOTA_LINK_ENABLED) {
+            await postarNotaDoFormulario(dealId);
+        }
+
+        // ─── Daqui pra baixo é o fluxo antigo, inalterado ───────────────
         if (!isProposalAutomationEnabledForDeal(dealId)) {
             log.info(`Deal #${dealId} em Envio de proposta — automação desligada/fora do piloto`);
             return;
         }
 
-        const isEntry = prevStageId !== ENVIO_PROPOSTA_STAGE_ID;
         log.info(`Deal #${dealId} em Envio de proposta (${isEntry ? 'entrada' : 'campo atualizado'}) — avaliando geração`);
         await generateProposalForDeal(dealId, { notifyOnEntry: isEntry });
     });
@@ -88,7 +107,7 @@ router.get('/config', (req, res) => {
         // O logo vem daqui pra existir num lugar só: a proposta e o formulário
         // usavam texto imitando a marca, cada um com o seu.
         logo: logo(22),
-        dominio: process.env.PROPOSAL_FORM_DOMAIN || 'branddi.com',
+        dominio: PROPOSAL_FORM_DOMAIN,
         catalogo: catalogoDoFormulario('pt'),
         // As condicoes padrao de cada idioma. O formulario mostra as do idioma
         // escolhido e manda de volta SO o que o closer alterou — assim o que
