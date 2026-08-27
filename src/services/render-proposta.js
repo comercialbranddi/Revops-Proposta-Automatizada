@@ -420,19 +420,27 @@ function clausulaInvestimento(ctx) {
       ${linhas}${fecho}</div>`;
 
     let bundleN = 0;
+    // Quantos combos existem decide se eles precisam de número. Com um só,
+    // "COMBO 1" só acrescenta ruído ao rótulo que a gente quer destacar.
+    const totalBundles = cartoes.filter((o) => (o.produtos.length + o.extras.length) > 1).length;
     const cards = mostrarCards ? `<p class="minihead">${esc(t.opcoesPacote)}</p>
     <div class="pacotes">${cartoes.map((o) => {
         const rec = !!o.recomendado;
         const bundle = (o.produtos.length + o.extras.length) > 1;
         const partes = [...o.produtos.map((c) => blocos[c].titulo), ...o.extras];
-        // Avulso (1 item) leva o rótulo "Avulso"; pacote (bundle) leva "Opção N ·
-        // Pacote", com a composição no título — como no modelo.
-        const tag = bundle ? `${t.pacoteN(++bundleN)} · ${t.pacoteLabel}` : t.avulso;
+        // Avulso leva o rótulo pequeno de sempre. O combo leva a palavra
+        // GRANDE, porque é a opção que a proposta quer que o cliente escolha e
+        // ela estava com o mesmo peso visual do avulso — "OPÇÃO 1 · PACOTE" em
+        // 0.6rem, do lado de quatro cartões idênticos. Número só quando há mais
+        // de um combo pra distinguir.
+        const tag = bundle
+            ? (totalBundles > 1 ? `${t.pacoteLabel} ${++bundleN}` : t.pacoteLabel)
+            : t.avulso;
         const nome = o.rotulo || partes.join(' + ');
         const desc = bundle ? (o.descricao || '') : t.avulsoDesc;
         const eco = o.soma > o.preco + 0.01 ? t.economiaDe(brl(o.soma - o.preco)) : '';
         return `<div class="pcard${rec ? ' rec' : ''}">
-          <div class="pcard-top"><span class="ptag">${esc(tag)}</span>${rec ? `<span class="badge-rec">${esc(t.recomendado)}</span>` : ''}</div>
+          <div class="pcard-top"><span class="ptag${bundle ? ' pcombo' : ''}">${esc(tag)}</span>${rec ? `<span class="badge-rec">${esc(t.recomendado)}</span>` : ''}</div>
           <h4 class="pname">${esc(nome)}</h4>
           ${desc ? `<p class="pdesc">${esc(desc)}</p>` : ''}
           ${precoGrande(o.preco, t)}
@@ -854,9 +862,12 @@ font-weight:700;margin:.4rem 0 -.2rem}
 display:flex;flex-direction:column;gap:.55rem;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
 container-type:inline-size}
 .pcard.rec{border-color:rgba(10,207,222,.55)}
-.pcard-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.pcard-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap}
 .ptag{font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
 .pcard.rec .ptag{color:var(--cyan)}
+/* O rótulo do combo é a única coisa da seção que precisa ser vista de longe:
+   é a opção que a proposta recomenda, no meio de cartões avulsos iguais. */
+.pcombo{font-size:1.4rem;letter-spacing:.16em;line-height:1.1;color:var(--cyan);font-weight:800}
 .badge-rec{font-family:var(--mono);font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
 color:var(--success);border:1px solid rgba(34,197,94,.4);border-radius:var(--radius-pill);padding:.2rem .6rem}
 .pname{font-size:1.15rem;font-weight:700;color:var(--text);letter-spacing:-.01em}

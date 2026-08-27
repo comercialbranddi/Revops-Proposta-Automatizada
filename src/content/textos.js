@@ -79,7 +79,7 @@ export const TEXTOS = {
         // Cards de pacote na cláusula de Investimento.
         avulso: 'Avulso',
         recomendado: 'Recomendado',
-        pacoteLabel: 'Pacote',
+        pacoteLabel: 'Combo',
         avulsoDesc: 'Serviço contratado separadamente, pelo valor individual.',
         // Subtítulo (hero) da capa e nota-insight do Objetivo: SÓ por produto que
         // tem copy aprovada. Sem chave = elemento não aparece, e a capa cai no
@@ -162,7 +162,7 @@ export const TEXTOS = {
             BBP: ['SKU', 'SKUs'],
             VM: ['marketplace simultâneo', 'marketplaces simultâneos'],
         },
-        opcoesPacote: 'Opções de pacote',
+        opcoesPacote: 'Opções de combo',
         thOpcao: 'Pacote',
         thComposicao: 'Composição',
         aPartirDe: (v) => `a partir de ${v}`,
