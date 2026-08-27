@@ -79,7 +79,13 @@ for (const codes of combos) {
     const nome = `${String(n).padStart(2, '0')} AMOSTRA — ${codes.join(' + ')}`;
     // emitidaEm fixo: sem isso, dois runs no mesmo dia geram documentos que
     // divergem só na data e poluem a comparação de quem está revisando.
-    const html = renderProposta({ deal: DEAL, spec: specDe(codes), emitidaEm: new Date(2026, 7, 27) });
+    //
+    // `slug` importa: sem ele o bloco de aceite não é montado, e a amostra sai
+    // sem a mensagem que TODA proposta real tem no fecho. Quem valida estaria
+    // lendo um documento diferente do que o cliente recebe.
+    const html = renderProposta({
+        deal: DEAL, spec: specDe(codes), emitidaEm: new Date(2026, 7, 27), slug: 'amostra',
+    });
     writeFileSync(`${PASTA}/${nome}.html`, html);
     if (!SO_HTML) {
         const pdf = await htmlParaPdf(html);
