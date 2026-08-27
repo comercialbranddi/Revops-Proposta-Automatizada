@@ -867,7 +867,8 @@ container-type:inline-size}
 .pcard.rec .ptag{color:var(--cyan)}
 /* O rótulo do combo é a única coisa da seção que precisa ser vista de longe:
    é a opção que a proposta recomenda, no meio de cartões avulsos iguais. */
-.pcombo{font-size:1.4rem;letter-spacing:.16em;line-height:1.1;color:var(--cyan);font-weight:800}
+.pcombo{font-size:1.95rem;letter-spacing:.1em;line-height:1.05;color:var(--cyan);font-weight:800;
+  display:block;width:100%;margin-bottom:.15rem}
 .badge-rec{font-family:var(--mono);font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
 color:var(--success);border:1px solid rgba(34,197,94,.4);border-radius:var(--radius-pill);padding:.2rem .6rem}
 .pname{font-size:1.15rem;font-weight:700;color:var(--text);letter-spacing:-.01em}
@@ -953,6 +954,11 @@ body{font-size:10.5pt;background-image:radial-gradient(circle at 50% 0%,#004C54 
    maior que a folha continuava a 0mm da borda física. */
 .clausula{break-inside:auto;-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:6.5mm 0}
 .sechead,h2,h3,h4{break-after:avoid}
+/* "Opções de combo" é <p>, não heading — ficava de fora da regra acima e
+   sobrava sozinha no pé da folha, com os cartões na seguinte. Como .pacotes é
+   break-inside:avoid, o grid inteiro pula junto e a legenda ficava apontando
+   pra um vazio. */
+.minihead{break-after:avoid}
 /* O bloco de produto (título + prosa + tabela) anda inteiro: título numa folha
    e tabela na outra era o outro sintoma do print de 24/08. */
 /* .grid2 cobre o par setup/impostos, que não tem classe card e estava sendo

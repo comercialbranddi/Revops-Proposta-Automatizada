@@ -22,6 +22,7 @@ import { logo } from '../content/logo.js';
 import { exigeLogin } from '../lib/auth-google.js';
 import { ultimaSpec, salvarSpec, porSlug, marcarGerada, aberturasDoDeal, registrarAceite, aceiteDe } from '../services/spec-store.js';
 import { renderProposta } from '../services/render-proposta.js';
+import { configurada as sessaoConfigurada } from '../lib/sessao.js';
 import { findOrCreateFolder, uploadParaDrive } from '../services/google-docs-client.js';
 import { closeProposalActivity } from '../services/proposal-activity.js';
 import { postarNotaDoFormulario } from '../services/proposal-form-note.js';
@@ -110,6 +111,11 @@ router.get('/config', (req, res) => {
         // usavam texto imitando a marca, cada um com o seu.
         logo: logo(22),
         dominio: PROPOSAL_FORM_DOMAIN,
+        // Se a sessão de 30 dias está ligada. Booleano, nunca o segredo. Sem
+        // isto não havia como saber POR FORA se o "login uma vez" está de pé:
+        // uma variável de ambiente faltando no deploy é indistinguível de um
+        // bug no cookie, e as duas coisas se corrigem em lugares diferentes.
+        sessao: sessaoConfigurada(),
         catalogo: catalogoDoFormulario('pt'),
         // As condicoes padrao de cada idioma. O formulario mostra as do idioma
         // escolhido e manda de volta SO o que o closer alterou — assim o que

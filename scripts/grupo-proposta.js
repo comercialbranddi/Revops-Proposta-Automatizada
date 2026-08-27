@@ -54,7 +54,9 @@ const api = async (p, o) => {
 //
 // "Link Proposta" entra no grupo porque é o campo que o closer abre pra pegar
 // o documento — deixá-lo no Closer separaria justamente o que ele mais usa.
-// Fica por último: é resultado, não preenchimento.
+// Ele e o "Formulário da proposta" ficam por último, nessa ordem: são os dois
+// LINKS do card, e ficam juntos no pé em vez de espalhados no meio dos campos
+// que se preenche.
 const CHAVES = [
     PALAVRAS_BB_FIELD, P.BB,
     FAIXAS_BB_FIELDS[0].qtd, FAIXAS_BB_FIELDS[0].preco,
@@ -71,7 +73,7 @@ const CHAVES = [
     C.BBP,
     P.GD, C.GD,
     P.VM, PLATAFORMAS_VM_FIELD, C.VM,
-    IDIOMA_FIELD, VALOR_PACOTE_FIELD, F.LINK_PROPOSTA,
+    IDIOMA_FIELD, VALOR_PACOTE_FIELD, F.LINK_PROPOSTA, F.FORM_PROPOSTA,
 ];
 
 const campos = (await api('/dealFields?limit=500')).data;
