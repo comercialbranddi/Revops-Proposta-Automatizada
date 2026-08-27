@@ -43,7 +43,10 @@ const conta = (t, n) => (h) => {
     const c = (h.match(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
     return c === n || `"${t}" apareceu ${c}x, esperava ${n}x`;
 };
-const semPlaceholder = (h) => !/\{\{/.test(h) || 'sobrou placeholder {{...}}';
+// {{...}} é marcador de valor; [[um|muitos]] é marcador de plural. Os dois têm
+// que sumir na geração — um marcador vazando é texto de gente de dentro no
+// documento que vai pro cliente.
+const semPlaceholder = (h) => (!/\{\{/.test(h) && !/\[\[/.test(h)) || 'sobrou marcador ({{...}} ou [[...]])';
 const ordemDe = (...partes) => (h) => {
     let pos = -1;
     for (const p of partes) {
@@ -144,7 +147,52 @@ const CASOS = [
         nome: 'escada de BB — uma linha por faixa, em ordem',
         spec: spec(['BB'], {}, { BB: { quantidade: 10, preco: 24900, faixas: [{ qtd: 30, preco: 42900 }, { qtd: 20, preco: 34900 }] } }),
         checa: [semPlaceholder, ordemDe('Até 10', 'Até 20', 'Até 30'),
-            contem('R$ 24.900,00'), contem('R$ 34.900,00'), contem('R$ 42.900,00')],
+            contem('R$ 24.900,00'), contem('R$ 34.900,00'), contem('R$ 42.900,00'),
+            // Um grupo por produto: é ele que segura as faixas juntas e dá o
+            // respiro antes do próximo produto.
+            conta('<div class="igroup">', 1)],
+    },
+    {
+        // Até 27/08/2026 os canais só saíam nos produtos SEM escada: o escopo
+        // composto era montado e descartado no ramo das faixas. Quem comprava
+        // Brand Bidding com escada não via em que canais era monitorado.
+        nome: 'produto com escada mostra os canais na tabela de valores',
+        spec: spec(['BB'], {}, { BB: { quantidade: 10, preco: 24900, faixas: [{ qtd: 20, preco: 34900 }] } }),
+        checa: [semPlaceholder,
+            (h) => /<span class="i-canais">[^<]*Google Search Ads/.test(h) || 'canais não saíram sob o nome do produto',
+            // Uma vez por produto, não uma por faixa.
+            conta('class="i-canais"', 1)],
+    },
+    {
+        nome: 'cada produto é um grupo na tabela, canais uma vez cada',
+        spec: spec(['BB', 'BBP', 'GD', 'VM']),
+        checa: [semPlaceholder, conta('<div class="igroup">', 4), conta('class="i-canais"', 4)],
+    },
+    {
+        nome: 'produto sem canal não deixa a linha de canais vazia',
+        spec: spec(['BB'], {}, { BB: { canais: [] } }),
+        checa: [semPlaceholder, conta('class="i-canais"', 0)],
+    },
+    {
+        // "Até 1 marketplaces simultâneos" ia no documento do cliente sempre que
+        // a faixa era de um. A unidade acompanha o número de cada faixa.
+        nome: 'faixa de 1 vai no singular, as demais no plural',
+        spec: spec(['VM'], {}, { VM: { quantidade: 1, faixas: [{ qtd: 2, preco: 12900 }] } }),
+        checa: [semPlaceholder, contem('Até 1 marketplace simultâneo'),
+            naoContem('Até 1 marketplaces'), contem('Até 2 marketplaces simultâneos')],
+    },
+    {
+        // A unidade vinha da config, que só existe em português: a proposta em
+        // inglês dizia "Up to 5 palavras" na tabela de valores.
+        nome: 'a unidade da escada sai no idioma do documento',
+        spec: spec(['BB'], { idioma: 'en' }, { BB: { quantidade: 5, faixas: [{ qtd: 10, preco: 16900 }] } }),
+        checa: [semPlaceholder, contem('Up to 5 keywords'), contem('Up to 10 keywords'),
+            naoContem('palavras')],
+    },
+    {
+        nome: 'e em espanhol também',
+        spec: spec(['BBP'], { idioma: 'es' }, { BBP: { quantidade: 1, faixas: [{ qtd: 50, preco: 12900 }] } }),
+        checa: [semPlaceholder, contem('Hasta 1 SKU<'), contem('Hasta 50 SKUs')],
     },
     {
         nome: 'escada de BBP com Sob Consulta marcado',
@@ -262,6 +310,27 @@ const CASOS_NOVOS = [
         args: {},
         spec: spec(['BB'], { condicoes: { rescisao: '   ', vigencia: '' } }),
         checa: [contem('Sem fidelidade'), contem('Indeterminada')],
+    },
+    {
+        // A validade negociada tem que alcançar os DOIS lugares onde o prazo é
+        // escrito — Identificação e Condições —, senão o documento se contradiz
+        // numa cláusula que o cliente lê pra saber até quando pode aceitar.
+        nome: 'validade negociada vale nos dois lugares do documento',
+        args: {},
+        spec: spec(['BB'], { condicoes: { validadeDias: 30 } }),
+        checa: [conta('30 dias corridos', 2), naoContem('15 dias corridos')],
+    },
+    {
+        nome: 'validade absurda cai no padrão de 15 dias',
+        args: {},
+        spec: spec(['BB'], { condicoes: { validadeDias: -3 } }),
+        checa: [conta('15 dias corridos', 2), naoContem('-3')],
+    },
+    {
+        nome: 'validade em texto livre não passa por número',
+        args: {},
+        spec: spec(['BB'], { condicoes: { validadeDias: 'até o fim do mês' } }),
+        checa: [conta('15 dias corridos', 2), naoContem('fim do mês')],
     },
     {
         // A Branddi não cobra setup (19/08/2026). Os modelos-base diziam

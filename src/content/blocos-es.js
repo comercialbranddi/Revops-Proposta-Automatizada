@@ -49,7 +49,7 @@ export const BLOCOS_ES = {
         },
         especificacoes: [
             { rotulo: 'Canales', valor: '{{CANAIS}}' },
-            { rotulo: 'Palabras clave', valor: 'Hasta {{QUANTIDADE}} palabras' },
+            { rotulo: 'Palabras clave', valor: 'Hasta {{QUANTIDADE}} [[palabra|palabras]]' },
             { rotulo: 'Frecuencia', valor: 'Diaria, en horarios diversos' },
             { rotulo: 'Datos capturados', valor: 'De cada anuncio encontrado: palabra monitoreada, fecha, geolocalización, tipo de entorno (escritorio o móvil), posición en pantalla, título, enlace, marca anunciada, dominio exhibido, descripción y captura de pantalla de la evidencia' },
             { rotulo: 'Clasificación', valor: 'Clasificación de las ocurrencias por tipo de violación, realizada por el equipo especializado de Branddi' },
@@ -78,7 +78,7 @@ export const BLOCOS_ES = {
         },
         especificacoes: [
             { rotulo: 'Canales', valor: '{{CANAIS}}' },
-            { rotulo: 'Catálogo monitoreado', valor: 'Hasta {{QUANTIDADE}} SKUs' },
+            { rotulo: 'Catálogo monitoreado', valor: 'Hasta {{QUANTIDADE}} [[SKU|SKUs]]' },
             { rotulo: 'Frecuencia', valor: 'Diaria' },
             { rotulo: 'Datos capturados', valor: 'Sellers que disputan el Buy Box de los productos de la marca; posición de la tienda oficial; reincidencia y patrones de disputa; perfil, historial y relevancia de cada seller' },
             { rotulo: 'Clasificación', valor: 'Clasificación de las ocurrencias por relevancia y comportamiento comercial, realizada por el equipo especializado de Branddi' },
@@ -125,7 +125,7 @@ export const BLOCOS_ES = {
             monitoria: `Identificación del uso indebido de las marcas registradas de la Contratante en las principales plataformas de venta en línea. <strong>Cada ocurrencia se entrega con el expediente completo</strong> — captura de pantalla, fecha, canal, identificación del infractor y clasificación del tipo de violación — <strong>para que la Contratante adopte la medida que considere pertinente</strong>. ${SIN_ACTUACION('los infractores')}`,
         },
         especificacoes: [
-            { rotulo: 'Canales', valor: 'Hasta {{QUANTIDADE}} marketplaces monitoreados simultáneamente' },
+            { rotulo: 'Canales', valor: 'Hasta {{QUANTIDADE}} [[marketplace monitoreado|marketplaces monitoreados]] simultáneamente' },
             { rotulo: 'Frecuencia', valor: 'Diaria' },
             { rotulo: 'Datos capturados', valor: 'Anuncios que utilicen términos de la marca en el título o en el contenido de la oferta; perfiles con la marca en el nombre de usuario o elementos gráficos de la marca en el perfil; anuncios en Meta Ads que utilicen términos de la marca' },
             { rotulo: 'Clasificación', valor: 'Clasificación y categorización por tipo de violación, realizada por el equipo de Brand Strategy, con indicación del tratamiento aplicable' },

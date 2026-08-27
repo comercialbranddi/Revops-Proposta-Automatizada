@@ -67,7 +67,7 @@ export const BLOCOS_PT = {
             //
             // Fica sem valor quando a venda é só de App Store: ali não se
             // contrata por palavra, e valorLinha() faz a linha inteira sumir.
-            { rotulo: 'Palavras-chave', valor: 'Até {{QUANTIDADE}} palavras' },
+            { rotulo: 'Palavras-chave', valor: 'Até {{QUANTIDADE}} [[palavra|palavras]]' },
             { rotulo: 'Frequência', valor: 'Diária, em horários diversos' },
             { rotulo: 'Coleta', valor: 'De cada anúncio encontrado: palavra monitorada, data, geolocalização, tipo de ambiente (desktop ou mobile), posição em tela, título, link, marca anunciada, domínio exibido, descrição e captura de tela da evidência' },
             { rotulo: 'Tratamento', valor: 'Triagem e classificação das ocorrências por tipo de violação, por equipe especializada da Contratada' },
@@ -99,7 +99,7 @@ export const BLOCOS_PT = {
         },
         especificacoes: [
             { rotulo: 'Canais', valor: '{{CANAIS}}' },
-            { rotulo: 'Catálogo monitorado', valor: 'Até {{QUANTIDADE}} SKUs' },
+            { rotulo: 'Catálogo monitorado', valor: 'Até {{QUANTIDADE}} [[SKU|SKUs]]' },
             { rotulo: 'Frequência', valor: 'Diária' },
             { rotulo: 'Coleta', valor: 'Sellers que disputam o Buy Box dos produtos da marca; posição da loja oficial; reincidência e padrões de disputa; perfil, histórico e relevância de cada seller' },
             { rotulo: 'Tratamento', valor: 'Classificação das ocorrências por relevância e comportamento comercial, por equipe especializada da Contratada' },
@@ -146,7 +146,7 @@ export const BLOCOS_PT = {
             monitoria: `Identificação do uso indevido das marcas registradas da Contratante nas principais plataformas de venda online. <strong>Cada ocorrência é entregue com o dossiê completo</strong> — captura de tela, data, canal, identificação do infrator e classificação do tipo de violação — <strong>para que a Contratante conduza a medida que julgar cabível</strong>. ${SEM_ATUACAO('infratores')}`,
         },
         especificacoes: [
-            { rotulo: 'Canais', valor: 'Até {{QUANTIDADE}} marketplaces monitorados simultaneamente' },
+            { rotulo: 'Canais', valor: 'Até {{QUANTIDADE}} [[marketplace monitorado|marketplaces monitorados]] simultaneamente' },
             { rotulo: 'Frequência', valor: 'Diária' },
             { rotulo: 'Coleta', valor: 'Anúncios que utilizem termos da marca no título ou no conteúdo da oferta; perfis com a marca no nome de usuário ou elementos gráficos da marca no perfil; anúncios em Meta Ads que utilizem termos da marca' },
             { rotulo: 'Tratamento', valor: 'Triagem e categorização por tipo de violação, por equipe de Brand Strategy, com indicação da tratativa aplicável' },
