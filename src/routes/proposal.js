@@ -11,6 +11,7 @@ import {
     PROPOSAL_FORM_BASE_URL,
     PROPOSAL_FORM_DOMAIN,
     PROPOSAL_NOTA_LINK_ENABLED,
+    PROPOSAL_OUTPUT_FOLDER_ID,
     parseServicoOferecido,
     idiomaDoDeal,
     catalogoDoFormulario,
@@ -21,6 +22,7 @@ import { logo } from '../content/logo.js';
 import { exigeLogin } from '../lib/auth-google.js';
 import { ultimaSpec, salvarSpec, porSlug, marcarGerada, aberturasDoDeal, registrarAceite, aceiteDe } from '../services/spec-store.js';
 import { renderProposta } from '../services/render-proposta.js';
+import { findOrCreateFolder, uploadParaDrive } from '../services/google-docs-client.js';
 import { closeProposalActivity } from '../services/proposal-activity.js';
 import { postarNotaDoFormulario } from '../services/proposal-form-note.js';
 import { getContextLogger } from '../lib/logger.js';
@@ -192,6 +194,33 @@ router.post('/form/:dealId', exigeLogin, async (req, res) => {
 
         log.info(`deal #${dealId}: proposta revisão ${revisao} em ${url}`);
         res.json({ revisao, url, avisos });
+
+        // Cópia em PDF na pasta do cliente no Drive, ao lado das propostas do
+        // fluxo antigo. A proposta em si é a página viva em /p/<slug> — esta
+        // cópia é ARQUIVO: o registro do que o cliente recebeu naquela revisão,
+        // que a página não guarda porque ela sempre mostra a versão atual.
+        //
+        // Depois do res.json de propósito: o PDF passa por um Chrome e leva
+        // segundos. Fazer antes deixaria o closer olhando o botão girar por um
+        // arquivo que ele não vai abrir agora. Falhar aqui também não pode
+        // custar a proposta — ela já existe e já tem endereço.
+        afterResponse(async () => {
+            if (!PROPOSAL_OUTPUT_FOLDER_ID) return;
+            try {
+                const { htmlParaPdf } = await import('../services/pdf.js');
+                const html = renderProposta({ deal: dados, spec, slug });
+                const pdf = await htmlParaPdf(html);
+                const pasta = await findOrCreateFolder(dados.organizacao, PROPOSAL_OUTPUT_FOLDER_ID)
+                    || PROPOSAL_OUTPUT_FOLDER_ID;
+                // O nome carrega revisão e card: a pasta acumula uma cópia por
+                // revisão, e sem isso duas viram "o mesmo arquivo" pra quem olha.
+                const nome = `Proposta_${dados.organizacao}_rev${revisao}_${new Date().toISOString().slice(0, 10)}_deal${dealId}.pdf`;
+                const { webViewLink } = await uploadParaDrive({ nome, mimeType: 'application/pdf', bytes: pdf, pastaId: pasta });
+                log.info(`deal #${dealId}: cópia rev ${revisao} no Drive — ${webViewLink}`);
+            } catch (e) {
+                log.warn(`deal #${dealId}: não arquivei a cópia no Drive — ${e.message}`);
+            }
+        });
     } catch (err) {
         log.error(`form/${dealId} POST: ${err.message}`);
         res.status(500).json({ error: err.message.startsWith('spec ') || err.message.startsWith('sem ')
