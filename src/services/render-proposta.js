@@ -440,7 +440,7 @@ function clausulaInvestimento(ctx) {
         const desc = bundle ? (o.descricao || '') : t.avulsoDesc;
         const eco = o.soma > o.preco + 0.01 ? t.economiaDe(brl(o.soma - o.preco)) : '';
         return `<div class="pcard${rec ? ' rec' : ''}">
-          <div class="pcard-top"><span class="ptag${bundle ? ' pcombo' : ''}">${esc(tag)}</span>${rec ? `<span class="badge-rec">${esc(t.recomendado)}</span>` : ''}</div>
+          <div class="pcard-top"><span class="ptag">${esc(tag)}</span>${rec ? `<span class="badge-rec">${esc(t.recomendado)}</span>` : ''}</div>
           <h4 class="pname">${esc(nome)}</h4>
           ${desc ? `<p class="pdesc">${esc(desc)}</p>` : ''}
           ${precoGrande(o.preco, t)}
@@ -852,8 +852,8 @@ border-bottom:1px solid var(--line-2);align-items:baseline;font-size:.88rem;colo
 .i-canais{display:block;margin-top:.28rem;font-size:.76rem;line-height:1.45;color:var(--muted);font-weight:400}
 
 /* Cards de pacote */
-.minihead{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);
-font-weight:700;margin:.4rem 0 -.2rem}
+.minihead{font-size:1.4rem;letter-spacing:-.01em;color:var(--cyan);
+font-weight:800;margin:1.1rem 0 .5rem}
 .pacotes{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem}
 /* container-type: o preço grande se dimensiona pela largura DESTE card (cqi),
    não pela raiz — é o que impede o número de furar a borda quando entram 3 ou
@@ -867,8 +867,6 @@ container-type:inline-size}
 .pcard.rec .ptag{color:var(--cyan)}
 /* O rótulo do combo é a única coisa da seção que precisa ser vista de longe:
    é a opção que a proposta recomenda, no meio de cartões avulsos iguais. */
-.pcombo{font-size:1.95rem;letter-spacing:.1em;line-height:1.05;color:var(--cyan);font-weight:800;
-  display:block;width:100%;margin-bottom:.15rem}
 .badge-rec{font-family:var(--mono);font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
 color:var(--success);border:1px solid rgba(34,197,94,.4);border-radius:var(--radius-pill);padding:.2rem .6rem}
 .pname{font-size:1.15rem;font-weight:700;color:var(--text);letter-spacing:-.01em}

@@ -112,24 +112,27 @@ const heroDeCombo = (codes) => (h) => {
 };
 
 /**
- * O cartão do combo é o que salta na seção de preços.
+ * Quem anuncia o combo é o TÍTULO da seção, não o cartão.
  *
- * Ele saía com o mesmo peso dos avulsos — "OPÇÃO 1 · PACOTE" em 0.6rem, do lado
- * de quatro cartões iguais —, sendo a opção que a proposta recomenda. Agora leva
- * a palavra em corpo grande (classe `pcombo`); o avulso segue com o rótulo
- * pequeno, que é o contraste que faz o combo ser visto.
+ * Primeira tentativa foi pôr "COMBO" em corpo grande dentro do cartão. Ficou
+ * ruim e não era o pedido: a palavra competia com o nome dos serviços, que é o
+ * que o cliente precisa ler ali. O que tem que saltar é a legenda que abre a
+ * seção — ela vinha em 0.62rem, mono, do tamanho de rodapé.
  *
- * Confere também que "pacote" não voltou no rótulo: o time chama de combo, e
- * misturar os dois nomes na mesma seção confunde quem lê.
+ * Confere também que "pacote" não voltou: o time chama de combo, e misturar os
+ * dois nomes na mesma seção confunde quem lê.
  */
 const comboEmDestaque = (h) => {
-    const tags = [...h.matchAll(/<span class="ptag([^"]*)">([^<]*)</g)]
-        .map((m) => ({ grande: m[1].includes('pcombo'), txt: m[2] }));
-    const combos = tags.filter((x) => x.grande);
-    if (!combos.length) return 'nenhum cartão de combo em destaque';
-    if (combos.some((x) => !/^Combo/.test(x.txt))) return `rótulo do combo não diz "Combo": ${combos.map((x) => x.txt)}`;
-    if (tags.some((x) => !x.grande && x.grande)) return 'avulso ficou em destaque';
-    if (/PACOTE|Pacote/.test(h.match(/<div class="pacotes">[\s\S]*?<\/div>/)?.[0] || '')) return 'seção de preços ainda diz "pacote"';
+    const titulo = (h.match(/<p class="minihead">([^<]*)<\/p>/) || [])[1] || '';
+    if (!/Op..es de combo/i.test(titulo)) return `título da seção não fala de combo: "${titulo}"`;
+    // O tamanho vive no CSS; o que dá pra afirmar em Node é que ele não é mais
+    // o corpo de rodapé de antes.
+    const regra = (h.match(/\.minihead\{[^}]*\}/) || [''])[0];
+    const tam = Number((regra.match(/font-size:([\d.]+)rem/) || [])[1] || 0);
+    if (!(tam >= 1.2)) return `legenda do combo ainda pequena (font-size ${tam}rem)`;
+    if (/class="ptag pcombo"/.test(h)) return 'cartão voltou a levar a palavra em corpo grande';
+    const secao = (h.match(/<div class="pacotes">[\s\S]*?<\/div>/) || [''])[0];
+    if (/PACOTE|Pacote/.test(secao)) return 'seção de preços ainda diz "pacote"';
     return true;
 };
 
