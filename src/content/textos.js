@@ -511,7 +511,16 @@ export const TEXTOS = {
  * só toca no que foi negociado, e o que não tocar continua sendo a condição
  * padrão da Branddi.
  */
-export const CONDICOES_EDITAVEIS = ['pagamento', 'vigencia', 'rescisao', 'implantacao', 'setup'];
+export const CONDICOES_EDITAVEIS = ['pagamento', 'vigencia', 'rescisao', 'implantacao', 'setup', 'validadeDias'];
+
+/**
+ * A validade padrão, em DIAS. É o único número entre as condições — vive aqui,
+ * junto do texto que o documento escreve com ele, e não duplicado no
+ * renderizador. O closer altera pelo formulário; o documento continua
+ * calculando a data a partir da emissão, então uma proposta regerada dias
+ * depois não nasce vencida.
+ */
+export const VALIDADE_DIAS_PADRAO = 15;
 
 /** Os textos padrão das condições editáveis, num idioma. */
 export function condicoesPadrao(idioma) {
@@ -522,6 +531,9 @@ export function condicoesPadrao(idioma) {
         rescisao: { rotulo: t.rescisao, valor: t.rescisaoValor },
         implantacao: { rotulo: t.implantacao, valor: t.implantacaoValor },
         setup: { rotulo: t.setup, valor: t.setupValor },
+        // `dias` no lugar de `valor` é o que diz ao formulário que este campo é
+        // número, não texto livre: a data e o aviso de vencida dependem dele.
+        validadeDias: { rotulo: t.validadeProposta, dias: VALIDADE_DIAS_PADRAO },
     };
 }
 

@@ -478,6 +478,34 @@ function escada(code, st, qtdCfg) {
  * continua sendo a padrão de verdade, e mudar o padrão depois alcança as
  * propostas novas sem ninguém reeditar nada.
  */
+/**
+ * Validade da proposta, em dias. Segue o desenho das outras condições — já vem
+ * com o padrão da Branddi, marca "● negociado" quando muda, volta ao padrão num
+ * clique —, mas grava NÚMERO: o documento calcula a data limite a partir da
+ * emissão, e é dela que saem o prazo do aceite e o aviso de proposta vencida.
+ * Como texto livre, um "até o fim do mês" derrubaria as três coisas.
+ */
+function campoValidade(chave, def) {
+  const atual = estado.condicoes[chave];
+  const inp = el('input', { type: 'number', min: '1', max: '365', step: '1', value: atual == null ? def.dias : atual });
+  const marca = el('span', { className: 'flag' });
+  // A marca segue o que foi GRAVADO, não o que está digitado: número fora da
+  // faixa não vira override, e dizer "negociado" nele seria mentir pro closer —
+  // o documento sairia com o padrão.
+  const pinta = () => { marca.textContent = estado.condicoes[chave] != null ? '● negociado' : ''; };
+  inp.oninput = () => {
+    const n = Math.trunc(Number(inp.value));
+    if (Number.isFinite(n) && n > 0 && n <= 365 && n !== Number(def.dias)) estado.condicoes[chave] = n;
+    else delete estado.condicoes[chave];
+    pinta();
+  };
+  pinta();
+  const reset = el('button', { className: 'mini', type: 'button', textContent: 'voltar ao padrão' });
+  reset.onclick = () => { inp.value = def.dias; delete estado.condicoes[chave]; pinta(); };
+  return el('label', { className: 'f' },
+    el('span', { className: 'condhead' }, el('span', {}, def.rotulo + ' (dias corridos)'), marca, reset), inp);
+}
+
 function cardCondicoes() {
   const padrao = CFG.condicoes[estado.idioma] || CFG.condicoes.pt;
   const c = el('div', { className: 'card' }, el('h2', {}, 'Condições comerciais'));
@@ -486,6 +514,8 @@ function cardCondicoes() {
     'Já vêm com a condição padrão da Branddi. Altere só o que foi negociado — o que ficar como está sai como padrão.'));
 
   Object.entries(padrao).forEach(([chave, def]) => {
+    // Condição que vem com `dias` no lugar de `valor` é número, não texto.
+    if (def.dias != null) { b.append(campoValidade(chave, def)); return; }
     // O padrão tem <strong> pra dar ênfase no documento. Isso NÃO vai pra tela:
     // ninguém deveria precisar saber HTML pra editar uma condição comercial.
     // Mostra o texto limpo; se o closer não mexer, o override não é enviado e o

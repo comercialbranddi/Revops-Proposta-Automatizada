@@ -29,10 +29,10 @@ import {
     modalidadeNoIdioma, MODALIDADE_AMBOS, MODALIDADE_MONITORIA,
 } from '../content/blocos.js';
 import { logo, marca } from '../content/logo.js';
+import { VALIDADE_DIAS_PADRAO } from '../content/textos.js';
 import { CANAIS_OPTION_TO_LABEL, CANAIS_LABEL_POR_IDIOMA, PRODUCT_CASCADE_ORDER, IDIOMAS_COM_BLOCOS, IDIOMA_LABEL, QUANTIDADE_POR_PRODUTO } from '../config/proposal.js';
 
 const TZ = 'America/Sao_Paulo';
-const VALIDADE_DIAS = 15;
 const CLAUSULA_INVESTIMENTO = 4;
 
 // Regime abreviado pra faixa da capa (o valor completo — "Mensal recorrente,
@@ -195,6 +195,17 @@ function cond(ctx, chave, padrao) {
     return (typeof v === 'string' && v.trim()) ? v.trim() : padrao;
 }
 
+/**
+ * A validade em dias, negociada ou padrão. Fora de `cond` porque é número, não
+ * texto: dela saem a data limite da capa, a linha da cláusula 6, o prazo do
+ * aceite e o aviso de proposta vencida. Lixo (zero, negativo, texto, absurdo)
+ * cai no padrão — melhor a proposta valer 15 dias do que valer -3.
+ */
+function validadeEmDias(spec) {
+    const n = Math.trunc(Number(spec?.condicoes?.validadeDias));
+    return Number.isFinite(n) && n > 0 && n <= 365 ? n : VALIDADE_DIAS_PADRAO;
+}
+
 // ─── Componentes ────────────────────────────────────────────────────
 
 /** Cabeçalho de cláusula: badge numerado + título + subtítulo. */
@@ -223,7 +234,7 @@ function clausulaIdentificacao(ctx) {
         [t.servicos, codes.map((c) => blocos[c].titulo).join(' · ')],
         [t.regime, t.regimeValor],
         [t.valorMensal, `${valor} · ${t.verClausula(CLAUSULA_INVESTIMENTO)}`, true],
-        [t.validade, t.validadeValor(VALIDADE_DIAS, meta.validade)],
+        [t.validade, t.validadeValor(meta.validadeDias, meta.validade)],
     ]);
 }
 
@@ -313,21 +324,35 @@ function clausulaEscopo(ctx) {
 function clausulaInvestimento(ctx) {
     const { codes, spec, soma, t, blocos, idioma } = ctx;
 
-    // Tabela item a item (com escada de faixas quando houver).
+    // Tabela item a item (com escada de faixas quando houver). Cada produto sai
+    // dentro de um .igroup: é o grupo que dá o respiro no fim do produto e anda
+    // inteiro na quebra de página. Sem ele, a última faixa de um produto ficava
+    // à mesma distância do produto seguinte que das próprias faixas dele — e
+    // "Até 200 SKUs" parecia pertencer a Golpes Digitais.
+    const itrow = (item, escopo, preco) => `<div class="itrow"><span class="i-item">${item}</span>
+      <span class="i-esc">${escopo}</span><span class="i-val">${brl(preco)}</span></div>`;
+
     const linhas = codes.map((c) => {
         const p = spec.porProduto[c] || {};
-        const qtdTxt = Number(p.quantidade) > 0
-            ? `${t.ate(p.quantidade)}${unidadeDe(c) ? ' ' + unidadeDe(c) : ''}` : null;
-        const escopo = [canaisTexto(p, idioma), qtdTxt].filter(Boolean).join(' · ') || '—';
-        if (p.faixas?.length) {
-            return [{ qtd: p.quantidade, preco: p.preco }, ...p.faixas]
-                .filter((f) => Number(f.qtd) > 0 && Number(f.preco) > 0)
-                .sort((a, b) => a.qtd - b.qtd)
-                .map((f, i) => `<div class="itrow"><span class="i-item">${i === 0 ? `<strong>${esc(blocos[c].titulo)}</strong>` : ''}</span>
-          <span class="i-esc">${esc(t.ate(f.qtd))}${unidadeDe(c) ? ' ' + esc(unidadeDe(c)) : ''}</span><span class="i-val">${brl(f.preco)}</span></div>`).join('');
-        }
-        return `<div class="itrow"><span class="i-item"><strong>${esc(blocos[c].titulo)}</strong></span>
-      <span class="i-esc">${esc(escopo)}</span><span class="i-val">${brl(p.preco)}</span></div>`;
+        const unidade = unidadeDe(c) ? ' ' + esc(unidadeDe(c)) : '';
+        const qtdTxt = Number(p.quantidade) > 0 ? `${esc(t.ate(p.quantidade))}${unidade}` : '—';
+        // Os canais saem UMA vez, sob o nome do produto — não na coluna de
+        // escopo. Na escada eles se repetiriam a cada faixa; ao lado da
+        // quantidade, viravam "Google, Bing · Até 3 palavras" numa célula só.
+        // Antes de 27/08/2026 sumiam de todo produto com escada: o escopo
+        // composto só era montado no ramo sem faixas.
+        const canais = canaisTexto(p, idioma);
+        const item = `<strong>${esc(blocos[c].titulo)}</strong>${canais ? `<span class="i-canais">${esc(canais)}</span>` : ''}`;
+
+        const faixas = (p.faixas?.length ? [{ qtd: p.quantidade, preco: p.preco }, ...p.faixas] : [])
+            .filter((f) => Number(f.qtd) > 0 && Number(f.preco) > 0)
+            .sort((a, b) => a.qtd - b.qtd);
+        // Escada sem nenhuma faixa válida cai na linha única, com o preço do
+        // produto: pior que a escada faltar é o produto sumir calado da tabela.
+        const linhasDoProduto = faixas.length
+            ? faixas.map((f, i) => itrow(i === 0 ? item : '', `${esc(t.ate(f.qtd))}${unidade}`, f.preco)).join('')
+            : itrow(item, qtdTxt, p.preco);
+        return `<div class="igroup">${linhasDoProduto}</div>`;
     }).join('');
 
     const { opcoes } = ctx;
@@ -405,7 +430,7 @@ function clausulaCondicoes(ctx) {
         [t.vigencia, cond(ctx, 'vigencia', t.vigenciaValor)],
         [t.rescisao, cond(ctx, 'rescisao', t.rescisaoValor)],
         [t.implantacao, cond(ctx, 'implantacao', t.implantacaoValor)],
-        [t.validadeProposta, t.validadeValor(VALIDADE_DIAS, meta.validade), true],
+        [t.validadeProposta, t.validadeValor(meta.validadeDias, meta.validade), true],
     ]);
 }
 
@@ -479,7 +504,8 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
     }
     const { blocos, slaGeral, insumos, textos: t } = catalogoDoIdioma(idioma);
 
-    const validade = new Date(emitidaEm.getTime() + VALIDADE_DIAS * 86400000);
+    const validadeDias = validadeEmDias(spec);
+    const validade = new Date(emitidaEm.getTime() + validadeDias * 86400000);
     const soma = codes.reduce((acc, c) => acc + (Number(spec.porProduto[c]?.preco) || 0), 0);
     // Nomes dos produtos do catálogo que NÃO estão nesta proposta — pra a trava
     // de pacote tirar qualquer resquício deles (produto, frente ou rótulo).
@@ -490,6 +516,7 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
         numero: `${t.numeroPrefixo}-${deal.id}`,
         emissao: dataNoIdioma(emitidaEm, idioma),
         validade: dataNoIdioma(validade, idioma),
+        validadeDias,
     };
     const ctx = { deal, spec, codes, meta, soma, total, opcoes, slug, aceite, substituida, idioma, t, blocos, slaGeral, insumos };
 
@@ -769,6 +796,17 @@ border-bottom:1px solid var(--line-2);align-items:baseline;font-size:.88rem;colo
 .itrow.total .i-item{font-weight:700;color:var(--text)}
 .itrow.total .i-val{color:var(--cyan);font-weight:700;font-size:1rem}
 .i-esc{color:var(--muted)}
+/* Um .igroup por produto. Dentro do grupo NÃO há linha e as faixas andam
+   juntas; a única divisa do corpo da tabela é a de produto, com respiro dos
+   dois lados. Com traço entre as faixas, a divisa de produto tinha o mesmo peso
+   da divisa de faixa e a tabela lia como uma lista chapada de doze preços. O
+   último grupo não leva linha: ou fecha a tabela, ou já vem a do total. */
+.igroup{padding-bottom:.62rem;border-bottom:1px solid var(--line-2)}
+.itable .igroup:last-of-type{border-bottom:0}
+.igroup .itrow{border-bottom:0}
+.igroup .itrow+.itrow{padding-top:.12rem}
+/* Os canais monitorados, sob o nome do produto e uma vez só. */
+.i-canais{display:block;margin-top:.28rem;font-size:.76rem;line-height:1.45;color:var(--muted);font-weight:400}
 
 /* Cards de pacote */
 .minihead{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);
@@ -873,7 +911,7 @@ body{font-size:10.5pt;background-image:radial-gradient(circle at 50% 0%,#004C54 
    e tabela na outra era o outro sintoma do print de 24/08. */
 /* .grid2 cobre o par setup/impostos, que não tem classe card e estava sendo
    fatiado por cima do rodapé fixo (print de 24/08). */
-.bloco,.card,.note,.pcard,.pacotes,.grid2,.tl-item,.loop{break-inside:avoid}
+.bloco,.card,.note,.pcard,.pacotes,.grid2,.tl-item,.loop,.igroup{break-inside:avoid}
 p,li{orphans:3;widows:3}
 /* O fecho (CTA) fica junto do aceite — nunca sozinho numa folha. break-before
    avoid + o aceite pede pra não quebrar depois dele. Compacto pra caber. */
