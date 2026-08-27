@@ -24,8 +24,8 @@
  * posta de novo. Sem janela de tempo — nota repetida com o mesmo link é ruído
  * em qualquer intervalo.
  */
-import { pdGet, pdPost } from './pipedrive.js';
-import { formUrlDoDeal, PROPOSAL_FORM_DOMAIN } from '../config/proposal.js';
+import { pdGet, pdPost, pdPut } from './pipedrive.js';
+import { formUrlDoDeal, PROPOSAL_FORM_DOMAIN, PROPOSAL_DEAL_FIELDS } from '../config/proposal.js';
 import { getContextLogger } from '../lib/logger.js';
 
 const log = getContextLogger('services:proposal-form-note');
@@ -59,6 +59,17 @@ async function jaTemONota(dealId, url) {
  */
 export async function postarNotaDoFormulario(dealId) {
     const url = formUrlDoDeal(dealId);
+
+    // O campo, antes da nota. A nota é conveniência do momento da entrada; o
+    // campo é onde o closer volta a procurar dias depois, ao lado do "Link
+    // Proposta". Escrever é idempotente — o link é derivado do id do card e
+    // nunca muda —, então nem precisa checar se já está lá.
+    try {
+        await pdPut(`/deals/${dealId}`, { [PROPOSAL_DEAL_FIELDS.FORM_PROPOSTA]: url });
+    } catch (err) {
+        log.warn(`deal #${dealId}: não consegui gravar o link do formulário no campo — ${err.message}`);
+    }
+
     try {
         if (await jaTemONota(dealId, url)) {
             log.info(`deal #${dealId}: já tem nota com o link do formulário — nada a fazer`);

@@ -12,6 +12,7 @@
  */
 import { OAuth2Client } from 'google-auth-library';
 import { getContextLogger } from './logger.js';
+import { doPedido as sessaoDoPedido, gravar as gravarSessao } from './sessao.js';
 
 const log = getContextLogger('lib:auth-google');
 
@@ -46,8 +47,20 @@ export async function exigeLogin(req, res, next) {
         log.error('GOOGLE_OAUTH_CLIENT_ID não configurada — formulário bloqueado');
         return res.status(503).json({ error: 'Login não configurado neste ambiente' });
     }
+    // Token do Google primeiro: é ele que RENOVA a sessão. Quem acabou de
+    // entrar sai daqui com o cookie gravado e não vê mais a tela de login
+    // enquanto ele valer.
     const email = await usuarioDaRequisicao(req);
-    if (!email) return res.status(401).json({ error: `Entre com sua conta @${DOMINIO}` });
-    req.usuario = email;
-    next();
+    if (email) {
+        gravarSessao(res, email);
+        req.usuario = email;
+        return next();
+    }
+
+    // Sem token, vale o cookie de uma entrada anterior. É o que faz o login ser
+    // pedido uma vez só, em vez de a cada carga da página.
+    const daSessao = sessaoDoPedido(req);
+    if (daSessao) { req.usuario = daSessao; return next(); }
+
+    return res.status(401).json({ error: `Entre com sua conta @${DOMINIO}` });
 }

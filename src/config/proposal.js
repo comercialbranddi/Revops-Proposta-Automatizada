@@ -230,6 +230,11 @@ export const PROPOSAL_DEAL_FIELDS = {
     SERVICO_OFERECIDO:  'aecc449abaf3039aee8a1c1604fce32ccfc33cc3',
     PRODUTO_PRECO:      '4581d05e90d5af756eb515115ecc9bd1c5caf2a3',
     LINK_PROPOSTA:      '7a8bf5b63b03f730da58a97b1b67c0b5560f9eb4',
+    // O link do formulário. Existia só como nota na timeline, postada na
+    // entrada da etapa — e nota some no meio das outras: quem volta ao card
+    // dias depois rola atrás dela. Como campo, fica ao lado do "Link Proposta".
+    // Criado em 27/08/2026 por scripts/campo-form-link.js.
+    FORM_PROPOSTA:      '02736dc5cf97f2de60267f177957fa00eb013097',
     // VALOR_MENSAL / CARENCIA: ainda não existem no Pipedrive — adicionar
     // as keys aqui quando forem criados.
 };
