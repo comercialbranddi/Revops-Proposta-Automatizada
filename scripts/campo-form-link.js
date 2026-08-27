@@ -19,7 +19,7 @@
  */
 import 'dotenv/config';
 import {
-    SALES_PIPELINE_ID, ENVIO_PROPOSTA_STAGE_ID, PALAVRAS_BB_FIELD,
+    SALES_PIPELINE_ID, ETAPAS_COM_LINK_FORM, PALAVRAS_BB_FIELD,
     formUrlDoDeal, PROPOSAL_DEAL_FIELDS,
 } from '../src/config/proposal.js';
 
@@ -66,13 +66,17 @@ if (!PREENCHER || !campo) process.exit(0);
 
 // Todo card ABERTO na etapa. O link é o mesmo sempre, então reescrever é
 // inofensivo — mas pular quem já tem evita 300 escritas à toa.
+// As duas etapas que entregam o link — quem já está em "Proposta enviada"
+// também precisa dele, e é justamente quem nunca passou pela 257.
 const deals = [];
-for (let start = 0; ; ) {
-    const r = await fetch(`https://api.pipedrive.com/v1/deals?stage_id=${ENVIO_PROPOSTA_STAGE_ID}&status=open&limit=500&start=${start}&api_token=${T}`);
-    const b = await r.json();
-    for (const d of b.data || []) if (d.pipeline_id === SALES_PIPELINE_ID) deals.push(d);
-    if (!b.additional_data?.pagination?.more_items_in_collection) break;
-    start = b.additional_data.pagination.next_start;
+for (const etapa of ETAPAS_COM_LINK_FORM) {
+    for (let start = 0; ; ) {
+        const r = await fetch(`https://api.pipedrive.com/v1/deals?stage_id=${etapa}&status=open&limit=500&start=${start}&api_token=${T}`);
+        const b = await r.json();
+        for (const d of b.data || []) if (d.pipeline_id === SALES_PIPELINE_ID) deals.push(d);
+        if (!b.additional_data?.pagination?.more_items_in_collection) break;
+        start = b.additional_data.pagination.next_start;
+    }
 }
 const faltando = deals.filter((d) => !d[campo.key]);
 console.log(`\n${deals.length} negócio(s) aberto(s) na etapa · ${faltando.length} sem o link`);

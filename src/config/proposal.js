@@ -134,6 +134,17 @@ export const PROPOSAL_WEBHOOK_SECRET = process.env.PROPOSAL_WEBHOOK_SECRET || nu
 export const SALES_PIPELINE_ID = 1;
 export const ENVIO_PROPOSTA_STAGE_ID = 257;
 
+// "Proposta enviada". O card chega aqui vindo de "Envio de proposta", mas
+// também direto de outras etapas — e nesses o closer ficava sem o link do
+// formulário, que só era entregue na 257. Pedido da Jessica em 27/08/2026.
+export const PROPOSTA_ENVIADA_STAGE_ID = 511;
+
+// As etapas em que o link do formulário é entregue (campo + nota). NÃO é a
+// lista que dispara a geração do documento antigo, que segue só na 257: gerar
+// em "Proposta enviada" produziria proposta nova pra um card cuja proposta já
+// foi mandada ao cliente.
+export const ETAPAS_COM_LINK_FORM = [ENVIO_PROPOSTA_STAGE_ID, PROPOSTA_ENVIADA_STAGE_ID];
+
 // ─── Templates (Google Doc ID) por IDIOMA e por chave — chave é o código
 // do produto pra 1 produto ("BB") ou os códigos ordenados unidos por "+"
 // pra uma combinação ("BB+GD"). Modelos de combinação são PRÉ-GERADOS uma
