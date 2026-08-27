@@ -69,7 +69,11 @@ const CASOS = [
             },
         },
         checa: (h) => [
-            h.includes('Limite de denúncias') || 'GD em atuação devia manter o limite de denúncias',
+            // O entregável se chama "Limite de atuações" desde o 49fab2d, que
+            // trocou o vocabulário de "denúncia" pelo que o serviço faz. A
+            // asserção ficou com o nome antigo e a bateria passou a falhar
+            // sempre — bateria vermelha por padrão é bateria que ninguém lê.
+            h.includes('Limite de atuações') || 'GD em atuação devia manter o limite de atuações',
             h.includes('Marca E2E, Segunda Marca') || 'faltou alguma marca',
             h.includes('R$ 35.600,00') || 'total dos quatro errado',
         ],
@@ -139,9 +143,14 @@ async function testaAceite(dados) {
     const { slug } = await salvarSpec(DEAL_ID, 'bateria@branddi.com', spec);
     criados.push(slug);
 
-    // 1. antes de aceitar, a página oferece o aceite
+    // 1. antes de aceitar, a página explica o que o aceite significa.
+    //
+    // Era "oferece o botão Aceitar proposta" até o 89c41f3, que removeu o
+    // formulário online — o aceite passou a acontecer por fora, com o PDF. A
+    // asserção não acompanhou e a bateria ficou falhando por um botão que saiu
+    // de propósito.
     const antes = renderProposta({ deal: dados, spec, slug, aceite: null });
-    if (!antes.includes('Aceitar proposta')) problemas.push('a página não ofereceu o aceite');
+    if (!antes.includes('id="aceite"')) problemas.push('a página não trouxe o bloco de aceite');
 
     // 2. registra
     const r1 = await registrarAceite(slug, DEAL_ID, { nome: 'Cliente Bateria', email: 'cliente@bateria.test', cargo: 'Diretor', valor: 11900 });

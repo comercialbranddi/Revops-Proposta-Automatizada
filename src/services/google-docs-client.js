@@ -346,6 +346,46 @@ export async function replaceParagraphWithLines(docId, prefixo, linhas) {
     return linhas.length;
 }
 
+/**
+ * Sobe um arquivo pro Drive (upload multipart: metadados + bytes numa chamada).
+ *
+ * Existe pro arquivo da proposta em HTML. Ela é página viva em /p/<slug> e o
+ * PDF sai sob demanda — não havia nada no Drive, e as propostas do fluxo antigo
+ * (Google Docs) estão todas lá, uma pasta por cliente. Quem procura "a proposta
+ * da Fitoway" no Drive não deveria precisar saber por qual dos dois fluxos ela
+ * passou.
+ *
+ * Duas coisas que o multipart não perdoa:
+ *  - os delimitadores terminam em CRLF, não em LF. Com LF o Drive não acha as
+ *    partes, ignora o Content-Type de cada uma e recusa o corpo inteiro com
+ *    "Unsupported content with type: application/octet-stream" — foi o erro que
+ *    apareceu na primeira tentativa;
+ *  - uploadType tem que ser `multipart`. Com `media` o Drive aceita os bytes e
+ *    descarta nome e pasta: o arquivo cai na raiz chamado "Untitled".
+ */
+export async function uploadParaDrive({ nome, mimeType, bytes, pastaId }) {
+    const CRLF = '\r\n';
+    const limite = `limite-${Math.random().toString(36).slice(2)}`;
+    const meta = JSON.stringify({ name: nome, ...(pastaId ? { parents: [pastaId] } : {}) });
+    const corpo = Buffer.concat([
+        Buffer.from(
+            `--${limite}${CRLF}Content-Type: application/json; charset=UTF-8${CRLF}${CRLF}`
+            + `${meta}${CRLF}`
+            + `--${limite}${CRLF}Content-Type: ${mimeType}${CRLF}${CRLF}`,
+            'utf-8',
+        ),
+        Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes),
+        Buffer.from(`${CRLF}--${limite}--${CRLF}`, 'utf-8'),
+    ]);
+    const res = await authedFetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,webViewLink',
+        { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${limite}` }, body: corpo },
+    );
+    const body = await res.json();
+    log.info(`📎 "${nome}" no Drive: ${body.id}`);
+    return body;
+}
+
 /** Garante compartilhamento (domínio branddi.com, mesmo nível dos docs manuais). */
 export async function shareWithDomain(fileId, domain = 'branddi.com', role = 'writer') {
     await authedFetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`, {

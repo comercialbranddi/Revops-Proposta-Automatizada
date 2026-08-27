@@ -277,9 +277,13 @@ function render() {
 
   if (SEED.anterior) {
     const box = el('div', { className: 'aviso info' });
-    box.append(el('div', {}, 'Este negócio já teve ' + SEED.anterior.revisao +
-      (SEED.anterior.revisao === 1 ? ' proposta' : ' propostas') +
-      '. Salvar cria a revisão ' + (SEED.anterior.revisao + 1) + ' — a anterior continua guardada.'));
+    // Contagem primeiro, na forma como o time fala do assunto ("3 propostas
+    // geradas") — antes a frase abria com "Este negócio já teve", e o número
+    // que interessa vinha no meio.
+    const n = SEED.anterior.revisao;
+    box.append(el('div', {}, n + (n === 1 ? ' proposta gerada' : ' propostas geradas') +
+      '. Salvar cria a ' + (n + 1) + 'ª — ' +
+      (n === 1 ? 'a anterior continua guardada.' : 'as anteriores continuam guardadas.')));
     // Quantas vezes o cliente abriu. É o que decide se vale ligar ou esperar,
     // e o que o Google Doc nunca disse.
     const ab = SEED.anterior.aberturas;
