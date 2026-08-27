@@ -79,14 +79,31 @@ export const TEXTOS = {
         pacoteLabel: 'Pacote',
         avulsoDesc: 'Serviço contratado separadamente, pelo valor individual.',
         // Subtítulo (hero) da capa e nota-insight do Objetivo: SÓ por produto que
-        // tem copy aprovada. Sem chave = elemento não aparece (nada inventado).
-        // Só Brand Bidding tem texto validado (do modelo); os demais entram quando
-        // a Jessica aprovar a copy de cada um.
+        // tem copy aprovada. Sem chave = elemento não aparece, e a capa cai no
+        // objetivo do produto, que vem do catálogo.
+        //
+        // Esta copy NÃO sai de modelo antigo nenhum — é escrita aqui, e um
+        // comentário anterior dizia que era "do modelo", o que não confere.
+        // Por isso ela não afirma nada sobre o que a Branddi faz: descreve o
+        // problema, e só. Duas coisas foram tiradas em 27/08/2026, na revisão
+        // do closer:
+        //
+        //   • "A atuação da Branddi remove o anunciante e devolve o terreno à
+        //     marca" — a Branddi NÃO remove; ela notifica e denuncia pedindo a
+        //     remoção, que é decisão da plataforma.
+        //   • "do monitoramento ao takedown" — takedown é promessa de atuação,
+        //     e a capa não olha a modalidade: numa venda só de monitoria ela
+        //     contradizia o corpo do próprio documento, que diz que a Branddi
+        //     não notifica nem denuncia.
+        //
+        // "Concorrente" virou "outro anunciante" porque o catálogo é explícito
+        // em "concorrentes OU NÃO" — quem anuncia na marca muitas vezes não é
+        // concorrente.
         chamada: {
-            BB: 'Recupere o tráfego que concorrentes capturam ao comprar o nome da sua marca — do monitoramento ao takedown.',
+            BB: 'Recupere o tráfego que outros anunciantes capturam ao usar o nome da sua marca.',
         },
         insight: {
-            BB: 'No brand bidding, o anúncio do concorrente aparece acima do seu resultado orgânico — você paga mais caro pelo próprio nome, ou perde o clique. A atuação da Branddi remove o anunciante e devolve o terreno à marca.',
+            BB: 'No brand bidding, o anúncio de outro anunciante aparece acima do seu resultado orgânico — você paga mais caro pelo próprio nome, ou perde o clique.',
         },
 
         // "Fundamentação legal" saiu em 18/08/2026, a pedido da Jessica. O
@@ -252,14 +269,15 @@ export const TEXTOS = {
         recomendado: 'Recommended',
         pacoteLabel: 'Bundle',
         avulsoDesc: 'Service contracted separately, at its individual price.',
+        // Só Brand Bidding, como no português. BBP, GD e VM tinham chamada aqui
+        // e NÃO tinham em pt: a copy que esperava aprovação já estava indo pro
+        // cliente, em inglês. As três terminavam em "from monitoring to
+        // takedown" — promessa de atuação numa capa que não olha a modalidade.
         chamada: {
-            BB: 'Win back the traffic competitors capture by bidding on your brand name — from monitoring to takedown.',
-            BBP: 'Reclaim the buy box for your products across marketplaces and stop losing sales to unauthorized sellers.',
-            GD: 'Take down fake sites, domains and profiles impersonating your brand to scam customers — from monitoring to takedown.',
-            VM: 'Stop third parties from using your brand’s marks without authorization and diluting its value — from monitoring to takedown.',
+            BB: 'Win back the traffic other advertisers capture by using your brand name.',
         },
         insight: {
-            BB: 'In brand bidding, the competitor’s ad shows above your organic result — you pay more for your own name, or lose the click. Branddi’s enforcement removes the advertiser and gives the ground back to the brand.',
+            BB: 'In brand bidding, another advertiser’s ad shows above your organic result — you pay more for your own name, or lose the click.',
         },
 
         clausulas: ['Identification', 'Purpose of the proposal', 'Approach', 'Investment',
@@ -406,14 +424,12 @@ export const TEXTOS = {
         recomendado: 'Recomendado',
         pacoteLabel: 'Paquete',
         avulsoDesc: 'Servicio contratado por separado, a su valor individual.',
+        // Só Brand Bidding, como no português — ver a nota no bloco em inglês.
         chamada: {
-            BB: 'Recupere el tráfico que la competencia captura al comprar el nombre de su marca — del monitoreo al takedown.',
-            BBP: 'Recupere la posición de compra de sus productos en los marketplaces y deje de perder ventas ante sellers no autorizados.',
-            GD: 'Elimine sitios, dominios y perfiles falsos que se hacen pasar por su marca para estafar — del monitoreo al takedown.',
-            VM: 'Impida que terceros usen los signos de su marca sin autorización y diluyan su valor — del monitoreo al takedown.',
+            BB: 'Recupere el tráfico que otros anunciantes capturan al usar el nombre de su marca.',
         },
         insight: {
-            BB: 'En el brand bidding, el anuncio del competidor aparece por encima de su resultado orgánico — usted paga más caro por su propio nombre, o pierde el clic. La actuación de Branddi elimina al anunciante y devuelve el terreno a la marca.',
+            BB: 'En el brand bidding, el anuncio de otro anunciante aparece por encima de su resultado orgánico — usted paga más caro por su propio nombre, o pierde el clic.',
         },
 
         clausulas: ['Identificación', 'Objeto de la propuesta', 'Enfoque', 'Inversión',
