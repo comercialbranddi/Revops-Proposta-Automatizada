@@ -111,6 +111,28 @@ const heroDeCombo = (codes) => (h) => {
     return !faltando.length || `linha de serviços sem ${faltando.join(', ')}`;
 };
 
+/**
+ * O cartão do combo é o que salta na seção de preços.
+ *
+ * Ele saía com o mesmo peso dos avulsos — "OPÇÃO 1 · PACOTE" em 0.6rem, do lado
+ * de quatro cartões iguais —, sendo a opção que a proposta recomenda. Agora leva
+ * a palavra em corpo grande (classe `pcombo`); o avulso segue com o rótulo
+ * pequeno, que é o contraste que faz o combo ser visto.
+ *
+ * Confere também que "pacote" não voltou no rótulo: o time chama de combo, e
+ * misturar os dois nomes na mesma seção confunde quem lê.
+ */
+const comboEmDestaque = (h) => {
+    const tags = [...h.matchAll(/<span class="ptag([^"]*)">([^<]*)</g)]
+        .map((m) => ({ grande: m[1].includes('pcombo'), txt: m[2] }));
+    const combos = tags.filter((x) => x.grande);
+    if (!combos.length) return 'nenhum cartão de combo em destaque';
+    if (combos.some((x) => !/^Combo/.test(x.txt))) return `rótulo do combo não diz "Combo": ${combos.map((x) => x.txt)}`;
+    if (tags.some((x) => !x.grande && x.grande)) return 'avulso ficou em destaque';
+    if (/PACOTE|Pacote/.test(h.match(/<div class="pacotes">[\s\S]*?<\/div>/)?.[0] || '')) return 'seção de preços ainda diz "pacote"';
+    return true;
+};
+
 /** Nenhum produto não contratado aparece — o vazamento mais caro possível. */
 const semVazamento = (codes) => (h) => {
     const fora = Object.keys(BLOCOS_PT).filter((c) => !codes.includes(c));
@@ -263,9 +285,10 @@ const CASOS = [
         // Um pacote que cobre tudo e sai mais barato vira comparação lado a lado:
         // cada serviço avulso (R$ 8.900) e o pacote (R$ 15.000) marcado como
         // recomendado, com a economia. A tabela não repete o total combinado.
-        checa: [semPlaceholder, contem('Opções de pacote'), contem('Recomendado'),
+        checa: [semPlaceholder, contem('Opções de combo'), contem('Recomendado'),
             contem('R$ 8.900,00'), contem('R$ 15.000,00'), contem('economia de R$ 2.800,00'),
-            naoContem('Subtotal'), naoContem('condição combinada')],
+            naoContem('Subtotal'), naoContem('condição combinada'),
+            comboEmDestaque],
     },
     {
         nome: 'pacote igual à soma — sem linha de desconto',

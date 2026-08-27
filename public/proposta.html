@@ -205,6 +205,12 @@ async function boot() {
     if (alvo) { alvo.innerHTML = CFG.logo; alvo.classList.add('svg'); }
   }
   if (!CFG.clientId) return falhaGate('GOOGLE_OAUTH_CLIENT_ID não configurada neste ambiente.');
+
+  // Já entrou antes? O servidor manda o cookie de sessão sozinho — se ele valer,
+  // o formulário abre sem passar pelo Google. É isto que faz o login ser pedido
+  // UMA vez, e não a cada carga da página.
+  if (await entrarComSessao()) return;
+
   try { await esperarGoogle(); }
   catch { return falhaGate('Não consegui carregar o login do Google. Recarregue a página; se persistir, pode ser bloqueador de anúncios.'); }
   google.accounts.id.initialize({ client_id: CFG.clientId, callback: onLogin, hd: CFG.dominio, auto_select: true });
@@ -213,11 +219,31 @@ async function boot() {
 
 function falhaGate(msg) { const e = $('#gerro'); e.textContent = msg; e.classList.remove('hidden'); }
 
+/**
+ * Tenta abrir o formulário só com o cookie de sessão, sem token do Google.
+ *
+ * 401 aqui é resposta esperada, não erro: quer dizer "nunca entrou, ou a sessão
+ * venceu" — e aí o fluxo segue pro botão do Google normalmente.
+ */
+async function entrarComSessao() {
+  try {
+    const r = await fetch('/api/proposal/form/' + DEAL_ID);
+    if (!r.ok) return false;
+    abrirFormulario(await r.json());
+    return true;
+  } catch { return false; }
+}
+
 async function onLogin(resp) {
   TOKEN = resp.credential;
   const r = await fetch('/api/proposal/form/' + DEAL_ID, { headers: { Authorization: 'Bearer ' + TOKEN } });
   if (!r.ok) return falhaGate((await r.json().catch(() => ({}))).error || 'Não consegui carregar o negócio.');
-  SEED = await r.json();
+  abrirFormulario(await r.json());
+}
+
+/** Troca a tela de login pelo formulário. Chamada pelos dois caminhos de entrada. */
+function abrirFormulario(seed) {
+  SEED = seed;
   $('#gate').classList.add('hidden');
   $('#app').classList.remove('hidden');
   $('#bar').classList.remove('hidden');
@@ -750,7 +776,9 @@ $('#salvar').onclick = async () => {
   try {
     const r = await fetch('/api/proposal/form/' + DEAL_ID, {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+      // Sem TOKEN a entrada foi por sessão: o cookie vai sozinho, e mandar
+      // "Bearer null" faria o servidor recusar antes de olhar o cookie.
+      headers: { ...(TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {}), 'Content-Type': 'application/json' },
       body: JSON.stringify({ spec }),
     });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || ('HTTP ' + r.status));
