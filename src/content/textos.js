@@ -45,7 +45,6 @@ export const TEXTOS = {
     pt: {
         locale: 'pt-BR',
         kicker: 'Proposta técnica e comercial',
-        numeroPrefixo: 'PC',
         emissao: 'Emissão',
         validadeCurta: 'Validade',
         baixarPdf: 'Baixar em PDF',
@@ -54,12 +53,16 @@ export const TEXTOS = {
         rodapeValida: 'válida até',
 
         // ── Moldura do novo modelo (capa, rodapé de página, seções) ──────
-        docTipo: 'Proposta comercial',
         capaEyebrow: 'Proposta técnica & comercial',
         tagline: 'Blinde a sua marca.',
         site: 'branddi.com',
+        // Título da capa quando há mais de um produto. Somar os nomes dava
+        // "Brand Bidding + Buy Box Protection + Golpes Digitais + Violação de
+        // Propriedade Intelectual para Fitoway" — quatro linhas de hero que
+        // ninguém lê. "Frentes" é a palavra que o time usa pra falar de
+        // produto, e o número mantém a frase honesta: não promete "completa".
+        heroCombo: (n) => `Proteção de marca em ${['', '', 'duas', 'três', 'quatro'][n] || n} frentes`,
         heroConector: 'para',
-        capaPara: 'Para',
         pagina: 'pág.',
         porMesCurto: '/mês',
         // Subtítulo abaixo do título de cada cláusula, na ordem de `clausulas`.
@@ -117,7 +120,6 @@ export const TEXTOS = {
         obsProposta: 'Observações',
 
         contratante: 'Contratante',
-        destinatario: 'Destinatário',
         contratada: 'Contratada',
         // Só "Branddi", como nos modelos do time. "Branddi Tecnologia" era nome
         // inventado (24/08/2026): o CNPJ registrado é "Branddi Participações
@@ -243,7 +245,6 @@ export const TEXTOS = {
     en: {
         locale: 'en-US',
         kicker: 'Technical and commercial proposal',
-        numeroPrefixo: 'PC',
         emissao: 'Issued',
         validadeCurta: 'Valid until',
         baixarPdf: 'Download PDF',
@@ -251,12 +252,11 @@ export const TEXTOS = {
         rodape: 'Fight the misuse of your brand and maximize your results',
         rodapeValida: 'valid until',
 
-        docTipo: 'Commercial proposal',
         capaEyebrow: 'Technical & commercial proposal',
         tagline: 'Shield your brand.',
         site: 'branddi.com',
+        heroCombo: (n) => `Brand protection on ${['', '', 'two', 'three', 'four'][n] || n} fronts`,
         heroConector: 'for',
-        capaPara: 'For',
         pagina: 'p.',
         porMesCurto: '/month',
         clausulasSub: ['Parties and contractual scope', 'The problem this proposal solves',
@@ -288,7 +288,6 @@ export const TEXTOS = {
         obsProposta: 'Notes',
 
         contratante: 'Client',
-        destinatario: 'Attention',
         contratada: 'Provider',
         contratadaValor: 'Branddi — São Paulo, Brazil',
         marcas: 'Brands monitored',
@@ -398,7 +397,6 @@ export const TEXTOS = {
     es: {
         locale: 'es-ES',
         kicker: 'Propuesta técnica y comercial',
-        numeroPrefixo: 'PC',
         emissao: 'Emisión',
         validadeCurta: 'Validez',
         baixarPdf: 'Descargar en PDF',
@@ -406,12 +404,11 @@ export const TEXTOS = {
         rodape: 'Combata el uso indebido de su marca y maximice sus resultados',
         rodapeValida: 'válida hasta',
 
-        docTipo: 'Propuesta comercial',
         capaEyebrow: 'Propuesta técnica & comercial',
         tagline: 'Blinde su marca.',
         site: 'branddi.com',
+        heroCombo: (n) => `Protección de marca en ${['', '', 'dos', 'tres', 'cuatro'][n] || n} frentes`,
         heroConector: 'para',
-        capaPara: 'Para',
         pagina: 'pág.',
         porMesCurto: '/mes',
         clausulasSub: ['Partes y alcance contractual', 'El problema que esta propuesta resuelve',
@@ -440,7 +437,6 @@ export const TEXTOS = {
         obsProposta: 'Observaciones',
 
         contratante: 'Contratante',
-        destinatario: 'Destinatario',
         contratada: 'Contratada',
         contratadaValor: 'Branddi — São Paulo, Brasil',
         marcas: 'Marcas monitoreadas',

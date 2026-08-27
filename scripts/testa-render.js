@@ -12,6 +12,7 @@
 import { renderProposta } from '../src/services/render-proposta.js';
 import { BLOCOS_PT } from '../src/content/blocos-pt.js';
 import { catalogoDoIdioma } from '../src/content/blocos.js';
+import { alturaDeBalanco } from '../src/services/pdf.js';
 
 const CANAIS = { BB: [1592, 1593], BBP: [1598], GD: [1599, 1600, 1601], VM: [1604] };
 const QTD = { BB: 3, BBP: 25, GD: null, VM: 3 };
@@ -75,6 +76,41 @@ const capaSemPromessa = (h) => {
     return !achou || `capa ou nota prometem atuação: "${achou.slice(0, 90)}"`;
 };
 
+/**
+ * A capa não carrega número de proposta nem nome de pessoa.
+ *
+ * Os dois saíram em 27/08/2026: o "PC-<id do card>" é numeração interna que não
+ * diz nada ao cliente e ainda entrega o tamanho da base, e o destinatário
+ * pessoal não cabe num documento entre empresas — quem assina pode não ser quem
+ * recebeu o e-mail. Ambos vinham de dado do card, então voltariam calados na
+ * primeira mexida no cabeçalho.
+ */
+const capaSemIdInterno = (h) => {
+    const achados = [];
+    if (/PC-\d+/.test(h)) achados.push('número de proposta');
+    if (/Destinat|Attention|Destinatario/.test(h)) achados.push('linha de destinatário');
+    if (/Contato Teste/.test(h)) achados.push('nome do contato');
+    return !achados.length || `capa traz ${achados.join(' e ')}`;
+};
+
+/**
+ * Em combo, o hero é frase curta — não a soma dos nomes dos produtos.
+ *
+ * Somar dava "Brand Bidding + Buy Box Protection + Golpes Digitais + Violação
+ * de Propriedade Intelectual para <cliente>": quatro linhas de título que
+ * ninguém lê. Os nomes continuam na capa, na linha de serviços, e na cláusula 1
+ * — o que esta checagem garante é que o hero não volte a ser a lista.
+ */
+const heroDeCombo = (codes) => (h) => {
+    const hero = (h.match(/<span class="l1">([^<]*)<\/span>/) || [])[1] || '';
+    const serv = (h.match(/<p class="heroserv">([^<]*)<\/p>/) || [])[1] || '';
+    if (codes.length === 1) return !serv || 'produto único não devia ter linha de serviços';
+    if (hero.includes('+')) return `hero de combo ainda soma nomes: "${hero}"`;
+    if (!/frentes|fronts/.test(hero)) return `hero de combo sem a frase curta: "${hero}"`;
+    const faltando = codes.filter((c) => !serv.includes(TITULOS[c]));
+    return !faltando.length || `linha de serviços sem ${faltando.join(', ')}`;
+};
+
 /** Nenhum produto não contratado aparece — o vazamento mais caro possível. */
 const semVazamento = (codes) => (h) => {
     const fora = Object.keys(BLOCOS_PT).filter((c) => !codes.includes(c));
@@ -84,12 +120,15 @@ const semVazamento = (codes) => (h) => {
     return true;
 };
 
+const TITULOS = Object.fromEntries(Object.entries(BLOCOS_PT).map(([c, b]) => [c, b.titulo]));
+
 // ─── Casos ──────────────────────────────────────────────────────────
 const CASOS = [
     {
         nome: 'BB sozinho, com atuação',
         spec: spec(['BB']),
         checa: [semPlaceholder, semVazamento(['BB']), contem('Brand Bidding'),
+            capaSemIdInterno, heroDeCombo(['BB']),
             contem('Aprovação'), contem('Limite de atuações'), naoContem('Entrega de evidências'),
             contem('Google Search Ads'), contem('Até 3'),
             contem('lista de palavras-chave a monitorar')],
@@ -184,7 +223,8 @@ const CASOS = [
     {
         nome: 'cada produto é um grupo na tabela, canais uma vez cada',
         spec: spec(['BB', 'BBP', 'GD', 'VM']),
-        checa: [semPlaceholder, conta('<div class="igroup">', 4), conta('class="i-canais"', 4)],
+        checa: [semPlaceholder, conta('<div class="igroup">', 4), conta('class="i-canais"', 4),
+            capaSemIdInterno, heroDeCombo(['BB', 'BBP', 'GD', 'VM'])],
     },
     {
         nome: 'produto sem canal não deixa a linha de canais vazia',
@@ -682,6 +722,30 @@ for (const caso of ERROS) {
         if (caso.esperado.test(e.message)) { ok++; console.log(`✅ ${caso.nome}`); }
         else falhas.push([caso.nome, `recusou com a mensagem errada: ${e.message}`]);
     }
+}
+
+// ─── Balanço da última folha ────────────────────────────────────────
+// A conta que decide quanto empurrar o fecho pra baixo. Vive no pdf.js, mas é
+// função pura — dá pra conferir aqui, sem navegador, e é onde um erro sairia
+// caro: empurrar demais joga o fecho pra uma folha nova.
+const A4 = 1123;              // altura da folha em px, a 96dpi
+const MM = A4 / 297;
+const BALANCO = [
+    ['folha cheia não é empurrada', { folga: 5 * MM, alturaPagina: A4 }, 0],
+    ['folga menor que o mínimo não é empurrada', { folga: 30 * MM, alturaPagina: A4 }, 0],
+    ['folga de 100mm empurra 50mm', { folga: 100 * MM, alturaPagina: A4 }, Math.round(50 * MM)],
+    ['folga de 200mm empurra 100mm', { folga: 200 * MM, alturaPagina: A4 }, Math.round(100 * MM)],
+    // Folha praticamente vazia: metade da folga passaria de 45% da folha, e o
+    // teto segura — senão o fecho ficaria boiando no centro do nada.
+    ['teto de 45% da folha', { folga: 290 * MM, alturaPagina: A4 }, Math.round(A4 * 0.45)],
+    // Defensivos: medida ausente ou absurda não pode virar empurrão.
+    ['folga negativa não empurra', { folga: -50, alturaPagina: A4 }, 0],
+    ['sem altura de página não empurra', { folga: 200 * MM, alturaPagina: 0 }, 0],
+];
+for (const [nome, entrada, esperado] of BALANCO) {
+    const obtido = alturaDeBalanco({ ...entrada, mm: MM });
+    if (obtido === esperado) { ok++; console.log(`✅ balanço: ${nome}`); }
+    else falhas.push([`balanço: ${nome}`, `empurrou ${obtido}px, esperava ${esperado}px`]);
 }
 
 console.log('');
