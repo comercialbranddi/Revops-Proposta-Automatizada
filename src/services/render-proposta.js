@@ -30,7 +30,7 @@ import {
 } from '../content/blocos.js';
 import { logo, marca } from '../content/logo.js';
 import { VALIDADE_DIAS_PADRAO } from '../content/textos.js';
-import { CANAIS_OPTION_TO_LABEL, CANAIS_LABEL_POR_IDIOMA, PRODUCT_CASCADE_ORDER, IDIOMAS_COM_BLOCOS, IDIOMA_LABEL, QUANTIDADE_POR_PRODUTO } from '../config/proposal.js';
+import { CANAIS_OPTION_TO_LABEL, CANAIS_LABEL_POR_IDIOMA, PRODUCT_CASCADE_ORDER, IDIOMAS_COM_BLOCOS, IDIOMA_LABEL } from '../config/proposal.js';
 
 const TZ = 'America/Sao_Paulo';
 const CLAUSULA_INVESTIMENTO = 4;
@@ -129,6 +129,13 @@ function valorLinha(valor, p, idioma) {
         if (!(Number(p.quantidade) > 0)) return null;
         v = v.replace('{{QUANTIDADE}}', String(p.quantidade));
     }
+    // [[singular|plural]], resolvido pela quantidade. O catálogo trazia só o
+    // plural, então uma venda de uma plataforma dizia ao cliente "Até 1
+    // marketplaces monitorados simultaneamente". Marcar o trecho no lugar em
+    // que ele é escrito mantém a frase legível numa linha só, em vez de
+    // duplicar a linha inteira em duas versões nos três idiomas.
+    v = v.replace(/\[\[([^|\]]*)\|([^\]]*)\]\]/g,
+        (_, um, muitos) => (Math.abs(Number(p.quantidade)) === 1 ? um : muitos));
     return v;
 }
 
@@ -175,9 +182,19 @@ function opcoesDePacote(spec, codes, nomesForaDoDeal = []) {
         .sort((a, b) => a.preco - b.preco);
 }
 
-/** A unidade da quantidade do produto, pra escada dizer "até N do quê". */
-function unidadeDe(code) {
-    return QUANTIDADE_POR_PRODUTO[code]?.unidade || null;
+/**
+ * A unidade da quantidade do produto, pra escada dizer "até N do quê" — no
+ * idioma do documento e no número da quantidade.
+ *
+ * Vinha da config, que só tem a versão em português e só no plural: uma
+ * proposta em inglês saía com "Up to 5 palavras", e qualquer faixa de 1 saía
+ * com "Até 1 marketplaces simultâneos". A config segue sendo a fonte do rótulo
+ * do FORMULÁRIO, que é em português; o documento lê o catálogo do idioma.
+ */
+function unidadeDe(code, qtd, t) {
+    const u = t.unidades?.[code];
+    if (!u) return null;
+    return Math.abs(Number(qtd)) === 1 ? u[0] : u[1];
 }
 
 /** A modalidade efetiva de um produto: null quando o produto não tem essa dimensão. */
@@ -334,8 +351,13 @@ function clausulaInvestimento(ctx) {
 
     const linhas = codes.map((c) => {
         const p = spec.porProduto[c] || {};
-        const unidade = unidadeDe(c) ? ' ' + esc(unidadeDe(c)) : '';
-        const qtdTxt = Number(p.quantidade) > 0 ? `${esc(t.ate(p.quantidade))}${unidade}` : '—';
+        // A unidade acompanha o número de CADA faixa: "Até 1 marketplace",
+        // "Até 3 marketplaces".
+        const escopoDe = (q) => {
+            const u = unidadeDe(c, q, t);
+            return `${esc(t.ate(q))}${u ? ' ' + esc(u) : ''}`;
+        };
+        const qtdTxt = Number(p.quantidade) > 0 ? escopoDe(p.quantidade) : '—';
         // Os canais saem UMA vez, sob o nome do produto — não na coluna de
         // escopo. Na escada eles se repetiriam a cada faixa; ao lado da
         // quantidade, viravam "Google, Bing · Até 3 palavras" numa célula só.
@@ -350,7 +372,7 @@ function clausulaInvestimento(ctx) {
         // Escada sem nenhuma faixa válida cai na linha única, com o preço do
         // produto: pior que a escada faltar é o produto sumir calado da tabela.
         const linhasDoProduto = faixas.length
-            ? faixas.map((f, i) => itrow(i === 0 ? item : '', `${esc(t.ate(f.qtd))}${unidade}`, f.preco)).join('')
+            ? faixas.map((f, i) => itrow(i === 0 ? item : '', escopoDe(f.qtd), f.preco)).join('')
             : itrow(item, qtdTxt, p.preco);
         return `<div class="igroup">${linhasDoProduto}</div>`;
     }).join('');

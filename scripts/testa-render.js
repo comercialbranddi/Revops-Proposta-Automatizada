@@ -43,7 +43,10 @@ const conta = (t, n) => (h) => {
     const c = (h.match(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
     return c === n || `"${t}" apareceu ${c}x, esperava ${n}x`;
 };
-const semPlaceholder = (h) => !/\{\{/.test(h) || 'sobrou placeholder {{...}}';
+// {{...}} é marcador de valor; [[um|muitos]] é marcador de plural. Os dois têm
+// que sumir na geração — um marcador vazando é texto de gente de dentro no
+// documento que vai pro cliente.
+const semPlaceholder = (h) => (!/\{\{/.test(h) && !/\[\[/.test(h)) || 'sobrou marcador ({{...}} ou [[...]])';
 const ordemDe = (...partes) => (h) => {
     let pos = -1;
     for (const p of partes) {
@@ -169,6 +172,27 @@ const CASOS = [
         nome: 'produto sem canal não deixa a linha de canais vazia',
         spec: spec(['BB'], {}, { BB: { canais: [] } }),
         checa: [semPlaceholder, conta('class="i-canais"', 0)],
+    },
+    {
+        // "Até 1 marketplaces simultâneos" ia no documento do cliente sempre que
+        // a faixa era de um. A unidade acompanha o número de cada faixa.
+        nome: 'faixa de 1 vai no singular, as demais no plural',
+        spec: spec(['VM'], {}, { VM: { quantidade: 1, faixas: [{ qtd: 2, preco: 12900 }] } }),
+        checa: [semPlaceholder, contem('Até 1 marketplace simultâneo'),
+            naoContem('Até 1 marketplaces'), contem('Até 2 marketplaces simultâneos')],
+    },
+    {
+        // A unidade vinha da config, que só existe em português: a proposta em
+        // inglês dizia "Up to 5 palavras" na tabela de valores.
+        nome: 'a unidade da escada sai no idioma do documento',
+        spec: spec(['BB'], { idioma: 'en' }, { BB: { quantidade: 5, faixas: [{ qtd: 10, preco: 16900 }] } }),
+        checa: [semPlaceholder, contem('Up to 5 keywords'), contem('Up to 10 keywords'),
+            naoContem('palavras')],
+    },
+    {
+        nome: 'e em espanhol também',
+        spec: spec(['BBP'], { idioma: 'es' }, { BBP: { quantidade: 1, faixas: [{ qtd: 50, preco: 12900 }] } }),
+        checa: [semPlaceholder, contem('Hasta 1 SKU<'), contem('Hasta 50 SKUs')],
     },
     {
         nome: 'escada de BBP com Sob Consulta marcado',

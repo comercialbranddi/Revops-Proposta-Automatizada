@@ -42,7 +42,7 @@ export const BLOCOS_EN = {
         },
         especificacoes: [
             { rotulo: 'Channels', valor: '{{CANAIS}}' },
-            { rotulo: 'Keywords', valor: 'Up to {{QUANTIDADE}} keywords' },
+            { rotulo: 'Keywords', valor: 'Up to {{QUANTIDADE}} [[keyword|keywords]]' },
             { rotulo: 'Frequency', valor: 'Daily, at varying times' },
             { rotulo: 'Data captured', valor: 'For every ad found: keyword monitored, date, geolocation, environment (desktop or mobile), on-screen position, headline, link, advertised brand, displayed domain, description and a screenshot of the evidence' },
             { rotulo: 'Screening', valor: 'Screening and classification of occurrences by type of violation, carried out by Branddi’s specialist team' },
@@ -73,7 +73,7 @@ export const BLOCOS_EN = {
         },
         especificacoes: [
             { rotulo: 'Channels', valor: '{{CANAIS}}' },
-            { rotulo: 'Catalogue monitored', valor: 'Up to {{QUANTIDADE}} SKUs' },
+            { rotulo: 'Catalogue monitored', valor: 'Up to {{QUANTIDADE}} [[SKU|SKUs]]' },
             { rotulo: 'Frequency', valor: 'Daily' },
             { rotulo: 'Data captured', valor: 'Sellers competing for the buy box on the brand’s products; the official store’s position; recurrence and competition patterns; profile, history and relevance of each seller' },
             { rotulo: 'Screening', valor: 'Classification of occurrences by relevance and commercial behaviour, carried out by Branddi’s specialist team' },
@@ -120,7 +120,7 @@ export const BLOCOS_EN = {
             monitoria: `Identification of the unauthorized use of the Client’s registered trademarks across the main online sales platforms. <strong>Each occurrence is delivered as a complete evidence file</strong> — screenshot, date, channel, identification of the infringer and classification of the type of violation — <strong>so that the Client may pursue whatever measure it deems appropriate</strong>. ${NO_ENFORCEMENT('infringers')}`,
         },
         especificacoes: [
-            { rotulo: 'Channels', valor: 'Up to {{QUANTIDADE}} marketplaces monitored simultaneously' },
+            { rotulo: 'Channels', valor: 'Up to {{QUANTIDADE}} [[marketplace monitored|marketplaces monitored]] simultaneously' },
             { rotulo: 'Frequency', valor: 'Daily' },
             { rotulo: 'Data captured', valor: 'Product listings using brand terms in the title or in the body of the offer; profiles using the brand in the username or the brand’s graphic elements in the profile; Meta Ads using brand terms' },
             { rotulo: 'Screening', valor: 'Screening and categorization by type of violation, carried out by the Brand Strategy team, with an indication of the applicable course of action' },

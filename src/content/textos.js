@@ -134,6 +134,15 @@ export const TEXTOS = {
         thEscopo: 'Escopo',
         thMensal: 'Mensal',
         ate: (n) => `Até ${n}`,
+        // A unidade da escada, no singular e no plural. Vive aqui, e não na
+        // config, porque é TEXTO do documento: em config só existia a versão
+        // em português, e uma proposta em inglês saía com "Up to 5 palavras".
+        // Golpes Digitais não entra — não tem quantidade contratada.
+        unidades: {
+            BB: ['palavra', 'palavras'],
+            BBP: ['SKU', 'SKUs'],
+            VM: ['marketplace simultâneo', 'marketplaces simultâneos'],
+        },
         opcoesPacote: 'Opções de pacote',
         thOpcao: 'Pacote',
         thComposicao: 'Composição',
@@ -290,6 +299,13 @@ export const TEXTOS = {
         thEscopo: 'Scope',
         thMensal: 'Monthly',
         ate: (n) => `Up to ${n}`,
+        // Vocabulário do catálogo em inglês: "keywords", "SKUs", marketplaces
+        // monitorados simultaneamente.
+        unidades: {
+            BB: ['keyword', 'keywords'],
+            BBP: ['SKU', 'SKUs'],
+            VM: ['simultaneous marketplace', 'simultaneous marketplaces'],
+        },
         opcoesPacote: 'Bundle options',
         thOpcao: 'Bundle',
         thComposicao: 'Composition',
@@ -437,6 +453,13 @@ export const TEXTOS = {
         thEscopo: 'Alcance',
         thMensal: 'Mensual',
         ate: (n) => `Hasta ${n}`,
+        // Vocabulário do catálogo em espanhol: "palabras", "SKUs", marketplaces
+        // monitoreados simultáneamente.
+        unidades: {
+            BB: ['palabra', 'palabras'],
+            BBP: ['SKU', 'SKUs'],
+            VM: ['marketplace simultáneo', 'marketplaces simultáneos'],
+        },
         opcoesPacote: 'Opciones de paquete',
         thOpcao: 'Paquete',
         thComposicao: 'Composición',
