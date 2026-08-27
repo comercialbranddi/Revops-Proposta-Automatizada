@@ -124,12 +124,12 @@ const heroDeCombo = (codes) => (h) => {
  */
 const comboEmDestaque = (h) => {
     const titulo = (h.match(/<p class="minihead">([^<]*)<\/p>/) || [])[1] || '';
-    if (!/Op..es de combo/i.test(titulo)) return `título da seção não fala de combo: "${titulo}"`;
+    if (!/^Combo$/i.test(titulo.trim())) return `título da seção não é a palavra "Combo": "${titulo}"`;
     // O tamanho vive no CSS; o que dá pra afirmar em Node é que ele não é mais
     // o corpo de rodapé de antes.
     const regra = (h.match(/\.minihead\{[^}]*\}/) || [''])[0];
     const tam = Number((regra.match(/font-size:([\d.]+)rem/) || [])[1] || 0);
-    if (!(tam >= 1.2)) return `legenda do combo ainda pequena (font-size ${tam}rem)`;
+    if (!(tam >= 1.5)) return `título do combo ainda pequeno (font-size ${tam}rem)`;
     if (/class="ptag pcombo"/.test(h)) return 'cartão voltou a levar a palavra em corpo grande';
     const secao = (h.match(/<div class="pacotes">[\s\S]*?<\/div>/) || [''])[0];
     if (/PACOTE|Pacote/.test(secao)) return 'seção de preços ainda diz "pacote"';
@@ -288,7 +288,7 @@ const CASOS = [
         // Um pacote que cobre tudo e sai mais barato vira comparação lado a lado:
         // cada serviço avulso (R$ 8.900) e o pacote (R$ 15.000) marcado como
         // recomendado, com a economia. A tabela não repete o total combinado.
-        checa: [semPlaceholder, contem('Opções de combo'), contem('Recomendado'),
+        checa: [semPlaceholder, contem('>Combo<'), contem('Recomendado'),
             contem('R$ 8.900,00'), contem('R$ 15.000,00'), contem('economia de R$ 2.800,00'),
             naoContem('Subtotal'), naoContem('condição combinada'),
             comboEmDestaque],

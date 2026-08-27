@@ -852,8 +852,11 @@ border-bottom:1px solid var(--line-2);align-items:baseline;font-size:.88rem;colo
 .i-canais{display:block;margin-top:.28rem;font-size:.76rem;line-height:1.45;color:var(--muted);font-weight:400}
 
 /* Cards de pacote */
-.minihead{font-size:1.4rem;letter-spacing:-.01em;color:var(--cyan);
-font-weight:800;margin:1.1rem 0 .5rem}
+/* O título da seção é a palavra que anuncia a opção recomendada — vinha em
+   0.62rem, mono, corpo de rodapé. Vai no corpo dos títulos de cláusula, com
+   entrelinha pra respirar do bloco de cima. */
+.minihead{font-size:1.75rem;letter-spacing:.02em;color:var(--cyan);
+font-weight:800;margin:1.4rem 0 .6rem}
 .pacotes{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem}
 /* container-type: o preço grande se dimensiona pela largura DESTE card (cqi),
    não pela raiz — é o que impede o número de furar a borda quando entram 3 ou
