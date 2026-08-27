@@ -12,6 +12,7 @@
 import { renderProposta } from '../src/services/render-proposta.js';
 import { BLOCOS_PT } from '../src/content/blocos-pt.js';
 import { catalogoDoIdioma } from '../src/content/blocos.js';
+import { alturaDeBalanco } from '../src/services/pdf.js';
 
 const CANAIS = { BB: [1592, 1593], BBP: [1598], GD: [1599, 1600, 1601], VM: [1604] };
 const QTD = { BB: 3, BBP: 25, GD: null, VM: 3 };
@@ -57,6 +58,59 @@ const ordemDe = (...partes) => (h) => {
     }
     return true;
 };
+/**
+ * A capa e a nota-insight não podem prometer atuação.
+ *
+ * As duas são copy sem fonte em modelo antigo, e nenhuma das duas olha a
+ * modalidade: numa venda só de monitoria, elas contradiziam o corpo do próprio
+ * documento, que diz que a Branddi não notifica nem denuncia. Confere SÓ esses
+ * dois elementos, e não o documento inteiro — "takedown request" é a tradução
+ * corrente de "denúncia" e aparece de forma legítima no corpo em inglês,
+ * inclusive na frase que diz que a Branddi NÃO faz.
+ */
+const capaSemPromessa = (h) => {
+    const hero = (h.match(/<p class="herosub">([^<]*)<\/p>/) || [])[1] || '';
+    const nota = (h.match(/note-ic">i<\/span><p>([\s\S]*?)<\/p>/) || [])[1] || '';
+    const promessa = /takedown|remo[çc][ãa]o|removal|remoci[óo]n|remove |removes |elimina /i;
+    const achou = [hero, nota].find((t) => promessa.test(t));
+    return !achou || `capa ou nota prometem atuação: "${achou.slice(0, 90)}"`;
+};
+
+/**
+ * A capa não carrega número de proposta nem nome de pessoa.
+ *
+ * Os dois saíram em 27/08/2026: o "PC-<id do card>" é numeração interna que não
+ * diz nada ao cliente e ainda entrega o tamanho da base, e o destinatário
+ * pessoal não cabe num documento entre empresas — quem assina pode não ser quem
+ * recebeu o e-mail. Ambos vinham de dado do card, então voltariam calados na
+ * primeira mexida no cabeçalho.
+ */
+const capaSemIdInterno = (h) => {
+    const achados = [];
+    if (/PC-\d+/.test(h)) achados.push('número de proposta');
+    if (/Destinat|Attention|Destinatario/.test(h)) achados.push('linha de destinatário');
+    if (/Contato Teste/.test(h)) achados.push('nome do contato');
+    return !achados.length || `capa traz ${achados.join(' e ')}`;
+};
+
+/**
+ * Em combo, o hero é frase curta — não a soma dos nomes dos produtos.
+ *
+ * Somar dava "Brand Bidding + Buy Box Protection + Golpes Digitais + Violação
+ * de Propriedade Intelectual para <cliente>": quatro linhas de título que
+ * ninguém lê. Os nomes continuam na capa, na linha de serviços, e na cláusula 1
+ * — o que esta checagem garante é que o hero não volte a ser a lista.
+ */
+const heroDeCombo = (codes) => (h) => {
+    const hero = (h.match(/<span class="l1">([^<]*)<\/span>/) || [])[1] || '';
+    const serv = (h.match(/<p class="heroserv">([^<]*)<\/p>/) || [])[1] || '';
+    if (codes.length === 1) return !serv || 'produto único não devia ter linha de serviços';
+    if (hero.includes('+')) return `hero de combo ainda soma nomes: "${hero}"`;
+    if (!/frentes|fronts/.test(hero)) return `hero de combo sem a frase curta: "${hero}"`;
+    const faltando = codes.filter((c) => !serv.includes(TITULOS[c]));
+    return !faltando.length || `linha de serviços sem ${faltando.join(', ')}`;
+};
+
 /** Nenhum produto não contratado aparece — o vazamento mais caro possível. */
 const semVazamento = (codes) => (h) => {
     const fora = Object.keys(BLOCOS_PT).filter((c) => !codes.includes(c));
@@ -66,13 +120,16 @@ const semVazamento = (codes) => (h) => {
     return true;
 };
 
+const TITULOS = Object.fromEntries(Object.entries(BLOCOS_PT).map(([c, b]) => [c, b.titulo]));
+
 // ─── Casos ──────────────────────────────────────────────────────────
 const CASOS = [
     {
         nome: 'BB sozinho, com atuação',
         spec: spec(['BB']),
         checa: [semPlaceholder, semVazamento(['BB']), contem('Brand Bidding'),
-            contem('Aprovação'), contem('Limite de denúncias'), naoContem('Entrega de evidências'),
+            capaSemIdInterno, heroDeCombo(['BB']),
+            contem('Aprovação'), contem('Limite de atuações'), naoContem('Entrega de evidências'),
             contem('Google Search Ads'), contem('Até 3'),
             contem('lista de palavras-chave a monitorar')],
     },
@@ -80,7 +137,7 @@ const CASOS = [
         nome: 'BB sozinho, só monitoria',
         spec: spec(['BB'], {}, { BB: { modalidade: 'Monitoria' } }),
         checa: [semPlaceholder, contem('Entrega de evidências'),
-            naoContem('Aprovação'), naoContem('Limite de denúncias'),
+            naoContem('Aprovação'), naoContem('Limite de atuações'),
             contem('não notifica anunciantes')],
     },
     {
@@ -115,7 +172,7 @@ const CASOS = [
         // Um produto em atuação basta pra manter a linha geral de limite.
         checa: [semPlaceholder, contem('Brand Bidding'), contem('Buy Box Protection'),
             contem('Golpes Digitais'), contem('Violação de Propriedade Intelectual'),
-            contem('Limite de denúncias'),
+            contem('Limite de atuações'),
             // ordem canônica: BB, BBP, GD, VM
             ordemDe('3.1</span> Brand Bidding', '3.2</span> Buy Box Protection',
                 '3.3</span> Golpes Digitais', '3.4</span> Violação de Propriedade Intelectual')],
@@ -125,12 +182,12 @@ const CASOS = [
         spec: spec(['BB', 'GD', 'VM'], {}, {
             BB: { modalidade: 'Monitoria' }, GD: { modalidade: 'Monitoria' }, VM: { modalidade: 'Monitoria' },
         }),
-        checa: [semPlaceholder, naoContem('Limite de denúncias'), naoContem('Aprovação')],
+        checa: [semPlaceholder, naoContem('Limite de atuações'), naoContem('Aprovação')],
     },
     {
         nome: 'BBP em monitoria não conta como atuação do contrato',
         spec: spec(['BBP', 'VM'], {}, { VM: { modalidade: 'Monitoria' } }),
-        checa: [semPlaceholder, naoContem('Limite de denúncias')],
+        checa: [semPlaceholder, naoContem('Limite de atuações')],
     },
     {
         nome: 'sem canal marcado — a linha some, não sai vazia',
@@ -166,7 +223,8 @@ const CASOS = [
     {
         nome: 'cada produto é um grupo na tabela, canais uma vez cada',
         spec: spec(['BB', 'BBP', 'GD', 'VM']),
-        checa: [semPlaceholder, conta('<div class="igroup">', 4), conta('class="i-canais"', 4)],
+        checa: [semPlaceholder, conta('<div class="igroup">', 4), conta('class="i-canais"', 4),
+            capaSemIdInterno, heroDeCombo(['BB', 'BBP', 'GD', 'VM'])],
     },
     {
         nome: 'produto sem canal não deixa a linha de canais vazia',
@@ -362,6 +420,128 @@ const CASOS_NOVOS = [
             contem('Após o início do monitoramento')],
     },
     {
+        // Revisão do closer, 27/08/2026. Os três vinham do modelo antigo, palavra
+        // por palavra — mas a Branddi não presta assessoria jurídica, as NEs são
+        // administrativas e o objetivo não é litígio. O modelo antigo dizia o que
+        // a Branddi não faz; o documento novo não repete.
+        nome: 'a proposta não promete assessoria jurídica nem litígio',
+        args: {},
+        spec: spec(['BB']),
+        checa: [naoContem('assessoria jurídica'), naoContem('ação judicial'), naoContem('uso ilícito'),
+            contem('notificação extrajudicial'), contem('administrativa')],
+    },
+    {
+        // A ação do Brand Bidding, descrita pela operação em 27/08/2026: "fazer
+        // o trabalho de mediação com esses anunciantes, solicitando que
+        // negativem a palavra-chave da sua marca no Google, em correspondência
+        // ampla e em nível de conta". O documento dizia só "buscando a solução
+        // amigável", que não informa nada — e a condição "Limite de denúncias e
+        // MEDIAÇÕES: sem limite" já estava lá sem que nada dissesse o que uma
+        // mediação é.
+        nome: 'Brand Bidding diz qual é o pedido da mediação',
+        args: {},
+        spec: spec(['BB']),
+        checa: [contem('mediação'), contem('negative a palavra-chave'),
+            contem('correspondência ampla'), contem('nível de conta'),
+            // Ranqueamento por agressividade = os "principais ofensores".
+            contem('principais ofensores'),
+            // A ação do BB é a mediação e mais nada. Denúncia à plataforma e ao
+            // serviço de hospedagem a Branddi faz — mas é Golpes Digitais, e
+            // dentro de uma proposta de BB confunde o cliente sobre o que ele
+            // contratou. Vale também pela negativa: a frase de monitoria não
+            // pode dizer "nem protocola denúncias", que insinuaria que na outra
+            // modalidade protocola.
+            naoContem('denúncia'), naoContem('denúncias'), naoContem('hospedagem')],
+    },
+    {
+        nome: 'Brand Bidding em monitoria nega só o que ele faria',
+        args: {},
+        spec: spec(['BB'], {}, { BB: { modalidade: 'Monitoria' } }),
+        checa: [contem('não notifica anunciantes nesta modalidade'),
+            naoContem('nem protocola denúncias')],
+    },
+    {
+        // Não aparece na descrição do serviço que a operação deu, e ninguém
+        // confirmou que existe. Promessa sem dono não fica em documento
+        // assinado — se existir, volta em uma linha.
+        nome: 'Golpes Digitais não promete disputa de domínio',
+        args: {},
+        spec: spec(['GD']),
+        checa: [naoContem('disputas de domínio'), naoContem('câmaras de arbitragem'),
+            naoContem('intermediação'), contem('acompanhamento até a remoção')],
+    },
+    {
+        // Cadastro nos Brand Protection Programs é entrega de implantação nos
+        // dois produtos de marketplace, e não estava em lugar nenhum.
+        nome: 'marketplace declara o cadastro nos Brand Protection Programs',
+        args: {},
+        spec: spec(['BBP', 'VM']),
+        checa: [conta('Brand Protection Programs', 2),
+            contem('quem está por trás do nome fantasia'),
+            contem('acompanhamento até a remoção')],
+    },
+    {
+        // "compram o nome da marca" afirmava a compra da palavra; o monitoramento
+        // enxerga o anúncio, não o lance. O modelo antigo diz "utilizando".
+        nome: 'o objetivo do Brand Bidding não afirma a compra da palavra',
+        args: {},
+        spec: spec(['BB']),
+        checa: [naoContem('compram o nome da marca'), contem('usam o nome da marca')],
+    },
+    {
+        // No Buy Box o seller que disputa pode ser autorizado — o modelo antigo
+        // monitora "sellers que disputam o Buy Box", sem qualificar.
+        nome: 'o Buy Box não trata todo seller que disputa como não autorizado',
+        args: {},
+        spec: spec(['BBP']),
+        checa: [contem('autorizados ou não'), naoContem('sem que haja qualquer infração')],
+    },
+    {
+        // Anúncios falsos em redes sociais e em resultados patrocinados estão no
+        // modelo antigo e na linha de Coleta; faltavam na frase que vai pra capa.
+        nome: 'o objetivo do Golpes Digitais inclui os anúncios',
+        args: {},
+        spec: spec(['GD']),
+        checa: [contem('perfis e anúncios falsos')],
+    },
+    {
+        // O VM segue a descrição que a operação deu do serviço: marketplace,
+        // anúncio, produto falsificado, uso indevido da marca ou da imagem.
+        // Rede social NÃO entra — nem anúncio (a busca é por palavra-chave e
+        // ali "não conseguimos fazer um bom trabalho"), nem perfil, que é
+        // assunto de outro produto. O perfil fica escopado ao marketplace.
+        nome: 'VM é marketplace: sem Meta Ads e sem rede social',
+        args: {},
+        spec: spec(['VM']),
+        checa: [contem('nos marketplaces'), naoContem('Meta Ads'),
+            naoContem('plataformas de venda online'), naoContem('redes sociais'),
+            contem('no marketplace'), contem('produtos falsificados')],
+    },
+    {
+        // O KB do report-engine é explícito: ~74% dos SKUs usam a mediana como
+        // referência, e nesses o certo é falar em dispersão/suspeita, nunca em
+        // infração. A proposta não pode afirmar o que o dado não sustenta.
+        nome: 'Buy Box fala em preço de referência, não em infração de preço',
+        args: {},
+        spec: spec(['BBP']),
+        checa: [contem('preço de referência'), contem('autorizados ou não'),
+            naoContem('infração de preço'), naoContem('queima'),
+            naoContem('sem que haja qualquer infração'),
+            // A entrega é diagnóstico; quem age junto aos canais é a marca.
+            contem('diagnóstico'), contem('conduzida pela Contratante')],
+    },
+    // A capa e a nota-insight NÃO olham a modalidade. Enquanto for assim, a copy
+    // delas não pode prometer atuação: numa venda só de monitoria o corpo diz
+    // que a Branddi não notifica nem denuncia, e a capa dizia "do monitoramento
+    // ao takedown". Em inglês e espanhol havia chamada nos quatro produtos, sem
+    // equivalente em português — copy esperando aprovação já ia pro cliente.
+    ...[['pt', 'BB'], ['en', 'VM'], ['es', 'GD']].map(([idioma, code]) => ({
+        nome: `venda de monitoria não promete atuação na capa (${idioma})`,
+        args: {},
+        spec: spec([code], { idioma }, { [code]: { modalidade: 'Monitoria' } }),
+        checa: [capaSemPromessa],
+    })),
+    {
         nome: 'a fonte da proposta é Inter (Branddi Design System)',
         args: { slug: 'x' },
         spec: spec(['BB']),
@@ -542,6 +722,30 @@ for (const caso of ERROS) {
         if (caso.esperado.test(e.message)) { ok++; console.log(`✅ ${caso.nome}`); }
         else falhas.push([caso.nome, `recusou com a mensagem errada: ${e.message}`]);
     }
+}
+
+// ─── Balanço da última folha ────────────────────────────────────────
+// A conta que decide quanto empurrar o fecho pra baixo. Vive no pdf.js, mas é
+// função pura — dá pra conferir aqui, sem navegador, e é onde um erro sairia
+// caro: empurrar demais joga o fecho pra uma folha nova.
+const A4 = 1123;              // altura da folha em px, a 96dpi
+const MM = A4 / 297;
+const BALANCO = [
+    ['folha cheia não é empurrada', { folga: 5 * MM, alturaPagina: A4 }, 0],
+    ['folga menor que o mínimo não é empurrada', { folga: 30 * MM, alturaPagina: A4 }, 0],
+    ['folga de 100mm empurra 50mm', { folga: 100 * MM, alturaPagina: A4 }, Math.round(50 * MM)],
+    ['folga de 200mm empurra 100mm', { folga: 200 * MM, alturaPagina: A4 }, Math.round(100 * MM)],
+    // Folha praticamente vazia: metade da folga passaria de 45% da folha, e o
+    // teto segura — senão o fecho ficaria boiando no centro do nada.
+    ['teto de 45% da folha', { folga: 290 * MM, alturaPagina: A4 }, Math.round(A4 * 0.45)],
+    // Defensivos: medida ausente ou absurda não pode virar empurrão.
+    ['folga negativa não empurra', { folga: -50, alturaPagina: A4 }, 0],
+    ['sem altura de página não empurra', { folga: 200 * MM, alturaPagina: 0 }, 0],
+];
+for (const [nome, entrada, esperado] of BALANCO) {
+    const obtido = alturaDeBalanco({ ...entrada, mm: MM });
+    if (obtido === esperado) { ok++; console.log(`✅ balanço: ${nome}`); }
+    else falhas.push([`balanço: ${nome}`, `empurrou ${obtido}px, esperava ${esperado}px`]);
 }
 
 console.log('');

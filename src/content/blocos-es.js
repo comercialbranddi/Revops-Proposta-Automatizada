@@ -33,29 +33,29 @@
  * o único comportamento que não inventa regra.
  */
 
-const SIN_ACTUACION = (quem) =>
-    `Branddi no notifica a ${quem} ni presenta denuncias en esta modalidad.`;
+const SIN_ACTUACION = (quem, denuncia = true) =>
+    `Branddi no notifica a ${quem}${denuncia ? ' ni presenta denuncias' : ''} en esta modalidad.`;
 
 export const BLOCOS_ES = {
 
     // ─────────────────────────────────────────────────────────────────
     BB: {
         titulo: 'Brand Bidding',
-        objetivo: 'competidores y terceros compran el nombre de la marca como palabra clave y capturan tráfico que era de la Contratante, justo cuando el consumidor ya la estaba buscando',
+        objetivo: 'competidores y terceros usan el nombre de la marca como palabra de búsqueda y capturan tráfico que era de la Contratante, justo cuando el consumidor ya la estaba buscando',
         temModalidade: true,
         prosa: {
-            ambos: 'Monitoreo de la marca en los buscadores para localizar qué marcas, entidades o empresas — competidoras o no — utilizan el término de la Contratante como palabra de búsqueda para anunciar sus propios productos y servicios. Al identificar anunciantes en esa práctica, <strong>Branddi ejecuta la asesoría jurídica</strong>: redacción, envío y seguimiento de notificaciones extrajudiciales, con el objetivo de desalentar el uso ilícito de la marca y reunir respaldo para una eventual acción judicial.',
-            monitoria: `Monitoreo de la marca en los buscadores para localizar qué marcas, entidades o empresas — competidoras o no — utilizan el término de la Contratante como palabra de búsqueda para anunciar sus propios productos y servicios. <strong>Cada ocurrencia se entrega con el expediente completo</strong> — palabra monitoreada, fecha, geolocalización, posición en pantalla, título, dominio exhibido, enlace del anuncio y captura de pantalla de la evidencia — <strong>para que la Contratante adopte la medida que considere pertinente</strong>. ${SIN_ACTUACION('anunciantes')}`,
+            ambos: 'Monitoreo de la marca en los buscadores para localizar qué marcas, entidades o empresas — competidoras o no — utilizan el término de la Contratante como palabra de búsqueda para anunciar sus propios productos y servicios. Al identificar anunciantes en esa práctica, <strong>Branddi conduce la mediación con el anunciante</strong> — notificación extrajudicial, por vía administrativa, solicitando que agregue la palabra clave de la marca como negativa en Google, en concordancia amplia y a nivel de cuenta.',
+            monitoria: `Monitoreo de la marca en los buscadores para localizar qué marcas, entidades o empresas — competidoras o no — utilizan el término de la Contratante como palabra de búsqueda para anunciar sus propios productos y servicios. <strong>Cada ocurrencia se entrega con el expediente completo</strong> — palabra monitoreada, fecha, geolocalización, posición en pantalla, título, dominio exhibido, enlace del anuncio y captura de pantalla de la evidencia — <strong>para que la Contratante adopte la medida que considere pertinente</strong>. ${SIN_ACTUACION('anunciantes', false)}`,
         },
         especificacoes: [
             { rotulo: 'Canales', valor: '{{CANAIS}}' },
             { rotulo: 'Palabras clave', valor: 'Hasta {{QUANTIDADE}} [[palabra|palabras]]' },
             { rotulo: 'Frecuencia', valor: 'Diaria, en horarios diversos' },
             { rotulo: 'Datos capturados', valor: 'De cada anuncio encontrado: palabra monitoreada, fecha, geolocalización, tipo de entorno (escritorio o móvil), posición en pantalla, título, enlace, marca anunciada, dominio exhibido, descripción y captura de pantalla de la evidencia' },
-            { rotulo: 'Clasificación', valor: 'Clasificación de las ocurrencias por tipo de violación, realizada por el equipo especializado de Branddi' },
-            { rotulo: 'Actuación', so: 'ambos', valor: 'Notificación extrajudicial al anunciante, buscando una solución amistosa; denuncia a la plataforma solicitando la remoción del contenido, en los casos clasificados como sospecha de fraude o violación de marca; denuncia al proveedor de alojamiento cuando exista un sitio fraudulento' },
+            { rotulo: 'Clasificación', valor: 'Clasificación de las ocurrencias por tipo de violación y ranqueo de los anunciantes por agresividad, que identifica a los principales ofensores de la marca, realizada por el equipo especializado de Branddi' },
+            { rotulo: 'Actuación', so: 'ambos', valor: 'Mediación con el anunciante: notificación extrajudicial administrativa solicitando que la palabra clave de la marca se agregue como negativa en Google, en concordancia amplia y a nivel de cuenta' },
             { rotulo: 'Entrega de evidencias', so: 'monitoria', valor: 'Expediente por ocurrencia, en formato apto para instruir una notificación extrajudicial o denuncia conducida por la Contratante o su despacho' },
-            { rotulo: 'Aprobación', so: 'ambos', valor: 'Ninguna notificación o denuncia se inicia sin la aprobación expresa de la Contratante, enlace por enlace' },
+            { rotulo: 'Aprobación', so: 'ambos', valor: 'Ninguna mediación se inicia sin la aprobación expresa de la Contratante, enlace por enlace' },
         ],
         sla: [
             { entregavel: 'Informe de monitoreo', periodicidade: 'Diaria', canal: 'Correo, en PDF' },
@@ -67,22 +67,22 @@ export const BLOCOS_ES = {
     // ─────────────────────────────────────────────────────────────────
     BBP: {
         titulo: 'Buy Box Protection',
-        objetivo: 'la tienda oficial pierde la posición de compra en los marketplaces frente a sellers no autorizados, lo que desvía ingresos sin que exista ninguna infracción de marca',
+        objetivo: 'la tienda oficial pierde el Buy Box de sus propios productos frente a otros sellers, autorizados o no, y la marca no ve quién disputa, en qué SKUs ni a qué precio',
         temModalidade: false,
         // A linha "Suporte"/"Support"/"Apoyo" saiu em 18/08/2026: descrevia o
         // COMO da entrega, que é assunto do relatório mensal, não da proposta.
         // O que a proposta precisa dizer sobre isso já está na prosa — a
         // atuação comercial é conduzida pela Contratante.
         prosa: {
-            unica: 'Gobernanza de la conversión de los productos de la marca en los marketplaces, actuando sobre la dinámica del Buy Box para reducir el desvío de ventas hacia sellers no autorizados. A diferencia de los enfoques centrados en el precio, el servicio ofrece visibilidad, control e inteligencia sobre quién disputa la posición de compra. <strong>La actuación comercial ante los canales es conducida por la Contratante</strong>, con el apoyo de Branddi.',
+            unica: 'Monitoreo del catálogo de la marca en los marketplaces: en cada anuncio, quién gana el Buy Box, a qué precio y qué sellers disputan la posición. La entrega es el diagnóstico — quién disputa, en qué SKUs, a qué distancia del precio de referencia y cuánto Buy Box pierde la tienda oficial —, con los sellers ranqueados por relevancia y agresividad. <strong>La actuación comercial ante los canales es conducida por la Contratante</strong>, con el apoyo de Branddi.',
         },
         especificacoes: [
             { rotulo: 'Canales', valor: '{{CANAIS}}' },
             { rotulo: 'Catálogo monitoreado', valor: 'Hasta {{QUANTIDADE}} [[SKU|SKUs]]' },
             { rotulo: 'Frecuencia', valor: 'Diaria' },
-            { rotulo: 'Datos capturados', valor: 'Sellers que disputan el Buy Box de los productos de la marca; posición de la tienda oficial; reincidencia y patrones de disputa; perfil, historial y relevancia de cada seller' },
-            { rotulo: 'Clasificación', valor: 'Clasificación de las ocurrencias por relevancia y comportamiento comercial, realizada por el equipo especializado de Branddi' },
-            { rotulo: 'Implantación', valor: 'Definición del portafolio de SKUs monitoreados; configuración de los robots de monitoreo; alineación de criterios de análisis y priorización; integración con las políticas comerciales de la marca' },
+            { rotulo: 'Datos capturados', valor: 'Sellers que disputan el Buy Box de los productos de la marca; posición de la tienda oficial; precio del Buy Box y precio de cada seller frente al precio de referencia del SKU; reincidencia y patrones de disputa; perfil, historial y relevancia de cada seller, con identificación de quién está detrás del nombre de fantasía' },
+            { rotulo: 'Clasificación', valor: 'Ranqueo de los sellers por relevancia y agresividad, realizado por el equipo especializado de Branddi' },
+            { rotulo: 'Implantación', valor: 'Registro de la marca en los Brand Protection Programs de los marketplaces monitoreados; definición del portafolio de SKUs monitoreados; configuración de los robots de monitoreo; alineación de criterios de análisis y priorización; integración con las políticas comerciales de la marca' },
         ],
         sla: [
             { entregavel: 'Informe de situación de las ocurrencias', periodicidade: 'Semanal', canal: 'Correo, personalizable' },
@@ -92,7 +92,7 @@ export const BLOCOS_ES = {
     // ─────────────────────────────────────────────────────────────────
     GD: {
         titulo: 'Protección Fraude',
-        objetivo: 'sitios, dominios y perfiles falsos se hacen pasar por la marca para aplicar estafas, lo que perjudica al consumidor y transfiere el daño reputacional a la Contratante',
+        objetivo: 'sitios, dominios, perfiles y anuncios falsos se hacen pasar por la marca para aplicar estafas, lo que perjudica al consumidor y transfiere el daño reputacional a la Contratante',
         temModalidade: true,
         prosa: {
             ambos: 'Detección y neutralización de amenazas digitales que simulan o clonan la identidad de la marca para perjudicar a la Contratante y a sus consumidores — sitios falsos, dominios similares, perfiles y anuncios fraudulentos. Con base en las ocurrencias encontradas, <strong>Branddi presenta denuncias</strong> ante las plataformas, registradores y proveedores de alojamiento involucrados, solicitando la remoción del contenido infractor o el bloqueo del dominio.',
@@ -104,7 +104,7 @@ export const BLOCOS_ES = {
             { rotulo: 'Frecuencia', valor: 'Monitoreo continuo' },
             { rotulo: 'Datos capturados', valor: 'Cuentas falsas en redes sociales; sitios que imitan el sitio oficial; dominios registrados con similitud a la marca; anuncios engañosos en redes sociales y en resultados patrocinados' },
             { rotulo: 'Clasificación', valor: 'Filtrado de falsos positivos y categorización de las ocurrencias, realizada por el equipo de Brand Strategy' },
-            { rotulo: 'Actuación', so: 'ambos', valor: 'Denuncia ante las entidades y plataformas involucradas solicitando la remoción del contenido o el bloqueo del dominio; asesoría en disputas de dominio, desde cámaras de arbitraje hasta acciones judiciales, con despachos socios o designados por la Contratante' },
+            { rotulo: 'Actuación', so: 'ambos', valor: 'Denuncia ante las entidades y plataformas involucradas solicitando la remoción del contenido o el bloqueo del dominio, con seguimiento hasta la remoción' },
             { rotulo: 'Entrega de evidencias', so: 'monitoria', valor: 'Expediente por ocurrencia, con registrador, alojamiento y canal de denuncia identificados, en formato apto para instruir la medida conducida por la Contratante o su despacho' },
             { rotulo: 'Safelist', valor: 'La Contratante puede proporcionar una lista de URLs, dominios y perfiles oficiales, que pasan a ser desconsiderados por el monitoreo' },
             { rotulo: 'Aprobación', so: 'ambos', valor: 'Ninguna denuncia se inicia sin la aprobación expresa de la Contratante. Takedown automatizado disponible mediante autorización y safelist' },
@@ -118,18 +118,19 @@ export const BLOCOS_ES = {
     // ─────────────────────────────────────────────────────────────────
     VM: {
         titulo: 'Violación de Propiedad Intelectual',
-        objetivo: 'terceros usan los signos distintivos de la marca sin autorización para vender productos y servicios, lo que diluye la marca y confunde al consumidor',
+        objetivo: 'terceros usan los signos distintivos de la marca sin autorización para vender productos y servicios en los marketplaces, lo que diluye la marca y confunde al consumidor',
         temModalidade: true,
         prosa: {
-            ambos: 'Identificación del uso indebido de las marcas registradas de la Contratante en las principales plataformas de venta en línea. Con base en las ocurrencias encontradas, <strong>Branddi comunica las violaciones a las plataformas</strong>, buscando la remoción de las publicaciones infractoras o la corrección de los anuncios.',
-            monitoria: `Identificación del uso indebido de las marcas registradas de la Contratante en las principales plataformas de venta en línea. <strong>Cada ocurrencia se entrega con el expediente completo</strong> — captura de pantalla, fecha, canal, identificación del infractor y clasificación del tipo de violación — <strong>para que la Contratante adopte la medida que considere pertinente</strong>. ${SIN_ACTUACION('los infractores')}`,
+            ambos: 'Identificación del uso indebido de las marcas registradas de la Contratante en los principales marketplaces. Con base en las ocurrencias encontradas, <strong>Branddi comunica las violaciones a las plataformas</strong>, buscando la remoción de las publicaciones infractoras o la corrección de los anuncios.',
+            monitoria: `Identificación del uso indebido de las marcas registradas de la Contratante en los principales marketplaces. <strong>Cada ocurrencia se entrega con el expediente completo</strong> — captura de pantalla, fecha, canal, identificación del infractor y clasificación del tipo de violación — <strong>para que la Contratante adopte la medida que considere pertinente</strong>. ${SIN_ACTUACION('los infractores')}`,
         },
         especificacoes: [
             { rotulo: 'Canales', valor: 'Hasta {{QUANTIDADE}} [[marketplace monitoreado|marketplaces monitoreados]] simultáneamente' },
             { rotulo: 'Frecuencia', valor: 'Diaria' },
-            { rotulo: 'Datos capturados', valor: 'Anuncios que utilicen términos de la marca en el título o en el contenido de la oferta; perfiles con la marca en el nombre de usuario o elementos gráficos de la marca en el perfil; anuncios en Meta Ads que utilicen términos de la marca' },
+            { rotulo: 'Datos capturados', valor: 'Anuncios que utilicen términos de la marca en el título o en el contenido de la oferta, relacionados con productos falsificados o con uso indebido de la marca o de la imagen; perfiles que usen la marca en el nombre de usuario o elementos gráficos de la marca en el marketplace' },
             { rotulo: 'Clasificación', valor: 'Clasificación y categorización por tipo de violación, realizada por el equipo de Brand Strategy, con indicación del tratamiento aplicable' },
-            { rotulo: 'Actuación', so: 'ambos', valor: 'Aviso de violación al infractor, incluso por el chat de la plataforma cuando el canal esté disponible; denuncia formal en los casos de falsificación, uso ilegal de la marca o fracaso de la vía amistosa' },
+            { rotulo: 'Implantación', valor: 'Registro de la marca en los Brand Protection Programs de los marketplaces monitoreados; definición de las reglas de clasificación junto con la Contratante' },
+            { rotulo: 'Actuación', so: 'ambos', valor: 'Aviso de violación al infractor, incluso por el chat de la plataforma cuando el canal esté disponible; denuncia formal en los casos de falsificación, uso indebido de la marca o de la imagen, o fracaso de la vía amistosa, con seguimiento hasta la remoción del anuncio' },
             { rotulo: 'Entrega de evidencias', so: 'monitoria', valor: 'Expediente por ocurrencia, en formato apto para instruir una notificación extrajudicial o denuncia conducida por la Contratante o su despacho' },
             { rotulo: 'Aprobación', so: 'ambos', valor: 'Ningún aviso o denuncia se inicia sin la aprobación expresa de la Contratante, enlace por enlace' },
         ],
@@ -144,7 +145,7 @@ export const BLOCOS_ES = {
 export const SLA_GERAL_ES = [
     { entregavel: 'Inicio del monitoreo tras la aceptación', periodicidade: '3 días hábiles', canal: '—' },
     { entregavel: 'Reunión de seguimiento', periodicidade: 'Mensual', canal: 'Remota' },
-    { entregavel: 'Límite de denuncias y mediaciones', so: 'ambos', periodicidade: 'Sin límite', canal: '—' },
+    { entregavel: 'Límite de actuaciones', so: 'ambos', periodicidade: 'Sin límite', canal: '—' },
 ];
 
 export const INSUMOS_ES = {

@@ -449,7 +449,7 @@ export const CANAIS_OPTION_TO_LABEL = {
     1599: 'Google', 1600: 'Meta (Facebook e Instagram)', 1601: "TLD's (Domínios)",
     1602: 'Marketplaces',
     1604: 'Marketplaces monitorados simultaneamente', 1605: 'Google Shopping',
-    1606: 'Amazon', 1607: 'Mercado Livre',
+    1606: 'Amazon', 1607: 'Mercado Livre', 1644: 'Shopee',
 };
 
 // Loja de aplicativos é o único canal que muda o FORMATO da proposta, e não só
@@ -756,7 +756,7 @@ export const CANAIS_POR_PRODUTO = {
     // marketplace. A opção segue existindo no campo do Pipedrive, então card
     // antigo pode ter o id gravado — some da tela e do documento, sem quebrar.
     GD:  [1599, 1600, 1601],
-    VM:  [1604, 1605, 1606, 1607],
+    VM:  [1604, 1605, 1606, 1607, 1644],
 };
 
 // Duas modalidades, não três, e só em três dos quatro produtos — decidido em

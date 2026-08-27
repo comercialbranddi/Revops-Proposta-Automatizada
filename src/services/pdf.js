@@ -63,6 +63,153 @@ async function abrirNavegador() {
 }
 
 /**
+ * Quantas páginas tem um PDF, lendo o próprio arquivo.
+ *
+ * Serve de trava pro balanço da última folha: se empurrar o fecho criar uma
+ * página a mais, a gente desiste e devolve o PDF original. `/Type /Page` sem o
+ * "s" é a entrada de página; `/Type /Pages` é o nó da árvore e não conta.
+ * Devolve 0 quando não reconhece o formato — e aí o balanço nem é tentado.
+ */
+function contarPaginas(pdf) {
+    return (pdf.toString('latin1').match(/\/Type\s*\/Page(?!s)/g) || []).length;
+}
+
+/**
+ * Quanto empurrar o fecho pra baixo, em px, a partir da folga da última folha.
+ *
+ * Metade da folga É a centralização: sobra o mesmo acima e abaixo. O mínimo
+ * existe pra não mexer por 2cm — aí o documento já está cheio e empurrar só
+ * abriria um buraco no meio. O teto impede que um fecho minúsculo numa folha
+ * quase vazia vire uma frase perdida no centro do nada.
+ *
+ * Exportada porque é a única parte disto que dá pra testar sem navegador.
+ */
+export function alturaDeBalanco({ folga, alturaPagina, mm = 96 / 25.4, minimoMm = 35 }) {
+    if (!(folga > 0) || !(alturaPagina > 0)) return 0;
+    if (folga <= minimoMm * mm) return 0;
+    return Math.round(Math.min(folga / 2, alturaPagina * 0.45));
+}
+
+/**
+ * Quanto sobra na última folha, medido no navegador em mídia de impressão.
+ *
+ * Por que simular em vez de perguntar: o Chrome não expõe onde caiu cada quebra
+ * de página, e descobrir por tentativa custa um `page.pdf()` por palpite —
+ * quatro segundos cada, com o closer esperando o download.
+ *
+ * A simulação percorre as UNIDADES do corpo na ordem e vai enchendo folha por
+ * folha. Unidade é o que a paginação não parte: cada filho de cláusula (que são
+ * `break-inside: avoid` no CSS de impressão), com o cabeçalho de seção colado
+ * no bloco seguinte, porque `break-after: avoid` não deixa o título ficar
+ * órfão no pé da folha.
+ *
+ * `MARGEM_MM` é a diferença que a simulação não modela: o padding da cláusula,
+ * que o `box-decoration-break: clone` repete no topo de cada fragmento, e o
+ * rodapé fixo, que não ocupa espaço no fluxo mas cobre o pé da folha. Aferida
+ * contra a paginação real em 27/08/2026 — a simulação errava de 13 a 20mm PRA
+ * MAIS nos três documentos medidos. Descontar deixa a estimativa conservadora,
+ * que é o lado certo de errar: no máximo centraliza menos do que podia.
+ */
+async function medirUltimaFolha(page) {
+    return page.evaluate((MARGEM_MM) => {
+        // A altura da folha sai de uma régua de 297mm renderizada de verdade, e
+        // não de uma constante: se o @page mudar, a régua muda junto.
+        const regua = document.createElement('div');
+        regua.style.cssText = 'position:absolute;top:0;left:0;width:1mm;height:297mm;visibility:hidden';
+        document.body.append(regua);
+        const alturaPagina = regua.offsetHeight;
+        regua.remove();
+        const mm = alturaPagina / 297;
+
+        const pad = document.querySelector('.pad');
+        const cta = document.querySelector('.cta');
+        if (!pad || !cta) return null;
+
+        // O fecho é a chamada final mais o que estiver colado nela: o aviso de
+        // aceite quando a proposta tem link, o carimbo de "já aceita" quando foi
+        // aceita, e nada quando é uma amostra sem link. Marcado aqui pra que o
+        // espaçador entre exatamente antes do que foi medido.
+        const antes = cta.previousElementSibling;
+        const colado = antes && (antes.id === 'aceite' || antes.classList.contains('aceito'));
+        (colado ? antes : cta).dataset.fecho = '';
+
+        const unidades = [];
+        for (const secao of pad.children) {
+            const filhos = [...secao.children];
+            if (!filhos.length) { unidades.push([secao]); continue; }
+            let colados = [];
+            for (const filho of filhos) {
+                colados.push(filho);
+                if (!filho.classList.contains('sechead')) { unidades.push(colados); colados = []; }
+            }
+            if (colados.length) unidades.push(colados);
+        }
+
+        let folhaCheia = 0;
+        let baseAnterior = null;
+        for (const unidade of unidades) {
+            const topo = unidade[0].getBoundingClientRect().top;
+            const base = unidade[unidade.length - 1].getBoundingClientRect().bottom;
+            const altura = base - topo;
+            // O vão entre unidades vem do fluxo real, então margem e gap do CSS
+            // entram na conta sem precisar lê-los um a um.
+            const vao = baseAnterior === null ? 0 : Math.max(0, topo - baseAnterior);
+            if (folhaCheia + vao + altura > alturaPagina) folhaCheia = altura;
+            else folhaCheia += vao + altura;
+            baseAnterior = base;
+        }
+
+        return { alturaPagina, mm, folga: alturaPagina - folhaCheia - MARGEM_MM * mm };
+    }, 20);
+}
+
+/**
+ * Centraliza o fecho na última folha, quando sobra espaço. Devolve o PDF
+ * balanceado, ou o original se não deu.
+ *
+ * Segunda passada de propósito: o navegador já está aberto e o documento já
+ * está montado, então um `page.pdf()` a mais custa cerca de um segundo — e só
+ * acontece quando há sobra pra valer.
+ *
+ * A trava é a contagem de páginas. Se o empurrão criar folha nova (porque o
+ * fecho não começava no topo, ou porque o Chrome paginou diferente do que a
+ * conta supôs), o PDF original volta. Nunca piora, no máximo não melhora.
+ */
+async function balancearUltimaPagina(page, pdfOriginal, opcoes) {
+    const paginas = contarPaginas(pdfOriginal);
+    if (!paginas) return pdfOriginal;   // formato não reconhecido: não arrisca
+
+    let medida;
+    try {
+        await page.emulateMediaType('print');   // medir no que vai pro papel
+        medida = await medirUltimaFolha(page);
+    } catch { return pdfOriginal; }
+    if (!medida) return pdfOriginal;
+
+    const empurrao = alturaDeBalanco(medida);
+    if (empurrao <= 0) return pdfOriginal;
+
+    // Espaçador em bloco, e não margem: margem no começo de uma folha é
+    // descartada pelo Chrome, e o empurrão simplesmente não aconteceria.
+    await page.evaluate((px) => {
+        const fecho = document.querySelector('[data-fecho]');
+        if (!fecho) return;
+        const espaco = document.createElement('div');
+        espaco.dataset.balanco = '';
+        espaco.style.cssText = `height:${px}px;flex:none`;
+        fecho.parentNode.insertBefore(espaco, fecho);
+    }, empurrao);
+
+    const tentativa = Buffer.from(await page.pdf(opcoes));
+    if (contarPaginas(tentativa) === paginas) {
+        log.info(`última folha balanceada: fecho empurrado ${Math.round(empurrao / medida.mm)}mm`);
+        return tentativa;
+    }
+    log.info('balanço da última folha desfeito — o empurrão criaria uma página');
+    return pdfOriginal;
+}
+
+/**
  * Converte o HTML da proposta em PDF.
  *
  * @param {string} html documento completo, autocontido
@@ -83,7 +230,7 @@ export async function htmlParaPdf(html) {
         // esperaria por ela mesmo assim.
         await page.evaluate(() => document.fonts.ready);
 
-        const pdf = await page.pdf({
+        const opcoes = {
             // `preferCSSPageSize` faz valer o @page do documento (A4 e as margens)
             // em vez de um tamanho decidido aqui — a paginação do PDF é a MESMA
             // que o closer vê na pré-visualização.
@@ -94,9 +241,12 @@ export async function htmlParaPdf(html) {
             // position:fixed que o Chrome repete no pé de cada folha impressa, e
             // que a capa (fundo opaco + z-index) cobre na primeira.
             displayHeaderFooter: false,
-        });
-        log.info(`PDF gerado em ${Date.now() - t0}ms, ${Math.round(pdf.length / 1024)}KB`);
-        return Buffer.from(pdf);
+        };
+
+        const pdf = Buffer.from(await page.pdf(opcoes));
+        const balanceado = await balancearUltimaPagina(page, pdf, opcoes);
+        log.info(`PDF gerado em ${Date.now() - t0}ms, ${Math.round(balanceado.length / 1024)}KB`);
+        return balanceado;
     } finally {
         // Função serverless que não fecha o navegador vaza processo e estoura
         // a memória na segunda chamada.

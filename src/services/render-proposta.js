@@ -244,8 +244,11 @@ function clausulaIdentificacao(ctx) {
     const { deal, spec, meta, codes, t, blocos } = ctx;
     const valor = ctx.opcoes.length > 1 ? t.aPartirDe(brl(ctx.total)) : brl(ctx.total);
     return kvGrid([
+        // Sem "Destinatário": o nome da pessoa saiu em 27/08/2026. A proposta é
+        // um documento entre EMPRESAS — quem assina pode não ser quem recebeu o
+        // e-mail —, e repetir a organização numa segunda linha só duplicaria a
+        // Contratante logo acima.
         [t.contratante, `<strong>${esc(deal.organizacao)}</strong>`],
-        ...(deal.contato ? [[t.destinatario, deal.contato]] : []),
         [t.contratada, t.contratadaValor],
         [t.marcas, (spec.marcas || []).join(', ')],
         [t.servicos, codes.map((c) => blocos[c].titulo).join(' · ')],
@@ -534,8 +537,10 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
     const nomesForaDoDeal = Object.keys(blocos).filter((c) => !codes.includes(c)).map((c) => blocos[c].titulo.toLowerCase());
     const opcoes = opcoesDePacote(spec, codes, nomesForaDoDeal);
     const total = opcoes.length ? opcoes[0].preco : soma;
+    // Sem número de proposta: saiu em 27/08/2026, a pedido da Jessica. Era o id
+    // do card do Pipedrive com um prefixo — número interno nosso, que não diz
+    // nada pro cliente e ainda expõe quantos negócios a base tem.
     const meta = {
-        numero: `${t.numeroPrefixo}-${deal.id}`,
         emissao: dataNoIdioma(emitidaEm, idioma),
         validade: dataNoIdioma(validade, idioma),
         validadeDias,
@@ -567,7 +572,16 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
 
     // Capa: título hero em duas linhas — serviços + conector, e a marca do
     // cliente em destaque (gradiente) na segunda.
-    const heroL1 = `${codes.map((c) => blocos[c].titulo).join(' + ')} ${t.heroConector}`;
+    // Com um produto, o nome dele É o título. Com mais de um, somar os nomes
+    // produzia quatro linhas de hero ("Brand Bidding + Buy Box Protection +
+    // Golpes Digitais + Violação de Propriedade Intelectual para Fitoway") —
+    // longo demais pra capa e sem nenhuma força. Os nomes não somem: descem
+    // pra linha de serviços, logo abaixo, e seguem na cláusula 1.
+    const combo = codes.length > 1;
+    const heroL1 = combo
+        ? `${t.heroCombo(codes.length)} ${t.heroConector}`
+        : `${blocos[codes[0]].titulo} ${t.heroConector}`;
+    const heroServicos = combo ? codes.map((c) => blocos[c].titulo).join(' · ') : '';
     // Subtítulo (hero): a chamada aprovada do produto principal quando existe (só
     // Brand Bidding hoje) ou, senão, o OBJETIVO já definido do produto — que é o
     // problema que ele resolve. Conteúdo definido do catálogo, não inventado, e
@@ -618,17 +632,17 @@ ${acoes}
 <section class="cover">
   <div class="cover-top">
     <div class="cover-logo">${logo(30)}</div>
-    <div class="cover-ref"><div class="pcnum">${esc(meta.numero)}</div><div class="pctipo">${esc(t.docTipo)}</div></div>
   </div>
   <div class="watermark">${marca(560)}</div>
   <div class="cover-mid">
     <span class="eyebrow">${esc(t.capaEyebrow || t.kicker)}</span>
     <h1 class="hero"><span class="l1">${esc(heroL1)}</span><br><span class="grad">${esc(deal.organizacao)}</span></h1>
     ${chamada ? `<p class="herosub">${esc(chamada)}</p>` : ''}
+    ${heroServicos ? `<p class="heroserv">${esc(heroServicos)}</p>` : ''}
     <div class="strip">${strip}</div>
   </div>
   <div class="cover-foot">
-    <div>${esc(t.contratadaValor)}<br><span class="cf-dim">${deal.contato ? `${esc(t.capaPara)} ${esc(deal.contato)} — ` : ''}${esc(deal.organizacao)}</span></div>
+    <div>${esc(t.contratadaValor)}<br><span class="cf-dim">${esc(deal.organizacao)}</span></div>
     <div class="cf-right"><b>${esc(t.tagline)}</b><br><span class="cf-dim">${esc(t.rodapeValida)} ${esc(meta.validade)}</span></div>
   </div>
 </section>
@@ -641,7 +655,7 @@ ${cta}
 </main>
 <footer class="pagefoot" aria-hidden="true">
   <span class="pf-logo">${logo(16)}</span>
-  <span class="pf-ref">${esc(meta.numero)} · ${esc(t.rodapeValida)} ${esc(meta.validade)}</span>
+  <span class="pf-ref">${esc(t.rodapeValida)} ${esc(meta.validade)}</span>
 </footer>
 </body></html>`;
 }
@@ -697,9 +711,6 @@ padding:clamp(1.6rem,5vw,3rem);background:radial-gradient(circle at 50% 0%,#004C
 opacity:.5;filter:blur(.3px);pointer-events:none;
 --logo-fill:#0A3A47;--logo-accent:#0C4657;--logo-counter:#002B36}
 .cover-top{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
-.cover-ref{text-align:right;font-family:var(--mono)}
-.pcnum{font-size:1.15rem;font-weight:700;letter-spacing:.06em;color:var(--text)}
-.pctipo{font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);margin-top:.2rem}
 .cover-mid{margin-top:auto;padding-top:3rem}
 .eyebrow{display:inline-block;font-family:var(--mono);font-size:.66rem;font-weight:600;letter-spacing:.14em;
 text-transform:uppercase;color:var(--cyan);border:1px solid rgba(10,207,222,.35);
@@ -715,6 +726,8 @@ background:linear-gradient(90deg,#EAFEFF 0%,#0ACFDE 52%,#299FB1 100%);
 .hero .l1{-webkit-text-fill-color:var(--text);color:var(--text)}
 .herosub{margin:1.1rem 0 0;max-width:46ch;font-size:1.05rem;line-height:1.55;color:#CBD5E1;font-weight:300}
 .herosub strong{color:var(--text);font-weight:600}
+.heroserv{margin:.85rem 0 0;font-family:var(--mono);font-size:.68rem;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--cyan);opacity:.85;max-width:34rem;line-height:1.7}
 .strip{margin-top:2rem;display:grid;grid-template-columns:repeat(3,1fr);gap:0;max-width:32rem;
 background:var(--card-bg);border:1px solid var(--line);border-radius:var(--radius);
 -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);overflow:hidden}
