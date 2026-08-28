@@ -3,7 +3,7 @@ import { generateProposalForDeal } from '../services/proposal-generator.js';
 import { pdGet, pdPut, pdPost } from '../services/pipedrive.js';
 import {
     SALES_PIPELINE_ID,
-    ENVIO_PROPOSTA_STAGE_ID,
+    PROPOSTA_ENVIADA_STAGE_ID,
     ETAPAS_COM_LINK_FORM,
     isProposalAutomationEnabledForDeal,
     PROPOSAL_ADMIN_TOKEN,
@@ -93,11 +93,12 @@ router.post('/webhook/deal', (req, res) => {
             await postarNotaDoFormulario(dealId);
         }
 
-        // ─── Daqui pra baixo é o fluxo antigo, só na etapa de sempre ────
-        // Gerar em "Proposta enviada" criaria proposta nova pra um card cuja
-        // proposta já foi ao cliente — e ainda sobrescreveria o "Link
-        // Proposta" que ele está usando.
-        if (stageId !== ENVIO_PROPOSTA_STAGE_ID) return;
+        // ─── Daqui pra baixo é a geração do documento ───────────────────
+        // Desde 28/08/2026 a etapa é "Proposta enviada" (511): a antiga 257 foi
+        // excluída na reforma do funil. Rodar em card que JÁ tem proposta é
+        // seguro — generateProposalForDeal() sai fora quando o "Link Proposta"
+        // está preenchido, posta nota e não sobrescreve.
+        if (stageId !== PROPOSTA_ENVIADA_STAGE_ID) return;
 
         if (!isProposalAutomationEnabledForDeal(dealId)) {
             log.info(`Deal #${dealId} em Envio de proposta — automação desligada/fora do piloto`);

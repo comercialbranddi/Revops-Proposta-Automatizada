@@ -55,7 +55,11 @@ const CANAL = {
 
 const T = process.env.PIPEDRIVE_API_TOKEN;
 const ID = Number(process.env.PROPOSAL_TEST_DEAL_ID);
-const PARADA = 13, FASE = 257;
+// FASE: etapa que dispara a geração. Era 257 ("Envio de proposta"), excluída na
+// reforma do funil em 28/08/2026 — hoje é 511 ("Proposta enviada"). Cópia
+// independente de propósito: o teste não importa a config pra não passar por
+// causa de um valor errado que ele mesmo leria de lá.
+const PARADA = 13, FASE = 511;
 // Faz as vezes da proposta que o closer montou à mão e colou no campo. Tem cara
 // de link de documento de propósito: o que a automação olha é se o campo está
 // preenchido com algo que NÃO é a sentinela da trava.

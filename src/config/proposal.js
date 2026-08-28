@@ -137,18 +137,26 @@ export const PROPOSAL_WEBHOOK_SECRET = process.env.PROPOSAL_WEBHOOK_SECRET || nu
 
 // ─── Pipeline "5. Vendas" ───────────────────────────────────────────
 export const SALES_PIPELINE_ID = 1;
-export const ENVIO_PROPOSTA_STAGE_ID = 257;
 
-// "Proposta enviada". O card chega aqui vindo de "Envio de proposta", mas
-// também direto de outras etapas — e nesses o closer ficava sem o link do
-// formulário, que só era entregue na 257. Pedido da Jessica em 27/08/2026.
+// "Proposta enviada" — é AQUI que a proposta é pedida e gerada.
+//
+// Era a 257 ("Envio de proposta"). Na reforma do funil por temperatura
+// (28/08/2026) a 257 foi EXCLUÍDA, e com ela o gatilho: `stageId !== 257` nunca
+// mais era verdade, então a geração automática parou em silêncio — sem erro,
+// sem log, só nunca acontecendo. O funil novo não tem etapa separada de "vou
+// mandar": o closer move pra "Proposta enviada" e é lá que ele quer a proposta.
+// Decisão da Jessica em 28/08/2026.
 export const PROPOSTA_ENVIADA_STAGE_ID = 511;
 
-// As etapas em que o link do formulário é entregue (campo + nota). NÃO é a
-// lista que dispara a geração do documento antigo, que segue só na 257: gerar
-// em "Proposta enviada" produziria proposta nova pra um card cuja proposta já
-// foi mandada ao cliente.
-export const ETAPAS_COM_LINK_FORM = [ENVIO_PROPOSTA_STAGE_ID, PROPOSTA_ENVIADA_STAGE_ID];
+// Nome antigo, mantido porque é o que o resto do repo importa (rotas, scripts
+// de raio-x e de cards parados). Aponta pra mesma etapa — não existe mais
+// distinção entre "envio" e "enviada".
+export const ENVIO_PROPOSTA_STAGE_ID = PROPOSTA_ENVIADA_STAGE_ID;
+
+// As etapas em que o link do formulário é entregue (campo + nota). Hoje é uma
+// só; a lista fica porque a entrega do link e o disparo da geração podem voltar
+// a divergir se o funil ganhar de novo uma etapa de preparação.
+export const ETAPAS_COM_LINK_FORM = [PROPOSTA_ENVIADA_STAGE_ID];
 
 // ─── Templates (Google Doc ID) por IDIOMA e por chave — chave é o código
 // do produto pra 1 produto ("BB") ou os códigos ordenados unidos por "+"
