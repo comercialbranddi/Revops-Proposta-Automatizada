@@ -531,12 +531,32 @@ const CASOS_NOVOS = [
         checa: [contem('autorizados ou não'), naoContem('sem que haja qualquer infração')],
     },
     {
-        // Anúncios falsos em redes sociais e em resultados patrocinados estão no
+        // Anúncios em redes sociais e em resultados patrocinados estão no
         // modelo antigo e na linha de Coleta; faltavam na frase que vai pra capa.
         nome: 'o objetivo do Golpes Digitais inclui os anúncios',
         args: {},
         spec: spec(['GD']),
-        checa: [contem('perfis e anúncios falsos')],
+        checa: [contem('perfis e anúncios suspeitos')],
+    },
+    {
+        // "Falso"/"fraudulento" no objetivo afirma algo que ainda não foi
+        // triado — a Branddi detecta um PADRÃO, não confirma fraude antes de
+        // classificar a ocorrência. Pedido do comercial em 27/08/2026, revendo
+        // o documento de Golpes Digitais: "suspeito" é o que se sabe no
+        // momento em que o cliente lê a proposta.
+        nome: 'GD não chama de "falso" o que ainda não foi triado',
+        args: {},
+        spec: spec(['GD']),
+        checa: [naoContem('anúncios falsos'), contem('resultados patrocinados no Google')],
+    },
+    {
+        // O diferencial da solução é reportar NO DIA em que encontra, não num
+        // resumo semanal — "Relatório de status... Semanal" subestimava o
+        // serviço real (comercial, 27/08/2026).
+        nome: 'GD reporta a ocorrência no dia em que identifica, não semanalmente',
+        args: {},
+        spec: spec(['GD']),
+        checa: [contem('No mesmo dia da identificação'), naoContem('Relatório de status das ameaças')],
     },
     {
         // O VM segue a descrição que a operação deu do serviço: marketplace,

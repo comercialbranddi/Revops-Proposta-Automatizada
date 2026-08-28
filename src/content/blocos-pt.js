@@ -131,7 +131,7 @@ export const BLOCOS_PT = {
     // ─────────────────────────────────────────────────────────────────
     GD: {
         titulo: 'Golpes Digitais',
-        objetivo: 'sites, domínios, perfis e anúncios falsos se passam pela marca para aplicar golpes, o que lesa o consumidor e transfere o dano reputacional para a Contratante',
+        objetivo: 'sites, domínios, perfis e anúncios suspeitos se passam pela marca para aplicar golpes, o que lesa o consumidor e transfere o dano reputacional para a Contratante',
         temModalidade: true,
         prosa: {
             ambos: 'Detecção e neutralização de ameaças digitais que simulam ou clonam a identidade da marca para lesar a Contratante e seus consumidores — sites falsos, domínios semelhantes, perfis e anúncios fraudulentos. Com base nas ocorrências encontradas, <strong>a Branddi protocola denúncias</strong> junto às plataformas, registradores e provedores de hospedagem envolvidos, solicitando a remoção do conteúdo infrator ou o bloqueio do domínio.',
@@ -141,7 +141,7 @@ export const BLOCOS_PT = {
             { rotulo: 'Canais', valor: '{{CANAIS}}' },
             { rotulo: 'Cobertura', valor: 'Mais de 2.800 registradores de domínio, 746 TLDs e 1.510 ccTLDs; cerca de 250.000 novos domínios analisados por dia; plataformas de e-commerce, de checkout e gateways de pagamento; provedores de hospedagem; bibliotecas de anúncios e resultados patrocinados' },
             { rotulo: 'Frequência', valor: 'Monitoramento contínuo' },
-            { rotulo: 'Coleta', valor: 'Contas falsas em redes sociais; websites que imitam o site oficial; domínios registrados com semelhança à marca; anúncios enganosos em redes sociais e em resultados patrocinados' },
+            { rotulo: 'Coleta', valor: 'Contas falsas em redes sociais; websites que imitam o site oficial; domínios registrados com semelhança à marca; anúncios enganosos em redes sociais e em resultados patrocinados no Google' },
             { rotulo: 'Tratamento', valor: 'Filtragem de falsos positivos e categorização das ocorrências, por equipe de Brand Strategy' },
             { rotulo: 'Atuação', so: 'ambos', valor: 'Denúncia às entidades e plataformas envolvidas pedindo a remoção do conteúdo ou o bloqueio do domínio, com acompanhamento até a remoção' },
             { rotulo: 'Entrega de evidências', so: 'monitoria', valor: 'Dossiê por ocorrência, com registrador, hospedagem e canal de denúncia identificados, em formato apto a instruir a medida conduzida pela Contratante ou por seu escritório' },
@@ -150,7 +150,12 @@ export const BLOCOS_PT = {
         ],
         sla: [
             { entregavel: 'Triagem de ameaças identificadas', periodicidade: 'Diária', canal: 'E-mail' },
-            { entregavel: 'Relatório de status das ameaças', periodicidade: 'Semanal', canal: 'E-mail, customizável' },
+            // Diferencial da solução: o cliente recebe o relatório NO DIA em que
+            // a ameaça é encontrada, não num resumo semanal (comercial,
+            // 27/08/2026). "Relatório de status" com cadência semanal
+            // subestimava o serviço — parecia um digest periódico, quando na
+            // prática é notificação por ocorrência.
+            { entregavel: 'Relatório da ocorrência identificada', periodicidade: 'No mesmo dia da identificação', canal: 'E-mail' },
         ],
     },
 

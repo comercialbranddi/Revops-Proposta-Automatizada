@@ -92,7 +92,7 @@ export const BLOCOS_ES = {
     // ─────────────────────────────────────────────────────────────────
     GD: {
         titulo: 'Protección Fraude',
-        objetivo: 'sitios, dominios, perfiles y anuncios falsos se hacen pasar por la marca para aplicar estafas, lo que perjudica al consumidor y transfiere el daño reputacional a la Contratante',
+        objetivo: 'sitios, dominios, perfiles y anuncios sospechosos se hacen pasar por la marca para aplicar estafas, lo que perjudica al consumidor y transfiere el daño reputacional a la Contratante',
         temModalidade: true,
         prosa: {
             ambos: 'Detección y neutralización de amenazas digitales que simulan o clonan la identidad de la marca para perjudicar a la Contratante y a sus consumidores — sitios falsos, dominios similares, perfiles y anuncios fraudulentos. Con base en las ocurrencias encontradas, <strong>Branddi presenta denuncias</strong> ante las plataformas, registradores y proveedores de alojamiento involucrados, solicitando la remoción del contenido infractor o el bloqueo del dominio.',
@@ -102,7 +102,7 @@ export const BLOCOS_ES = {
             { rotulo: 'Canales', valor: '{{CANAIS}}' },
             { rotulo: 'Cobertura', valor: 'Más de 2.800 registradores de dominio, 746 TLDs y 1.510 ccTLDs; cerca de 250.000 dominios nuevos analizados por día; plataformas de comercio electrónico, de checkout y pasarelas de pago; proveedores de alojamiento; bibliotecas de anuncios y resultados patrocinados' },
             { rotulo: 'Frecuencia', valor: 'Monitoreo continuo' },
-            { rotulo: 'Datos capturados', valor: 'Cuentas falsas en redes sociales; sitios que imitan el sitio oficial; dominios registrados con similitud a la marca; anuncios engañosos en redes sociales y en resultados patrocinados' },
+            { rotulo: 'Datos capturados', valor: 'Cuentas falsas en redes sociales; sitios que imitan el sitio oficial; dominios registrados con similitud a la marca; anuncios engañosos en redes sociales y en resultados patrocinados de Google' },
             { rotulo: 'Clasificación', valor: 'Filtrado de falsos positivos y categorización de las ocurrencias, realizada por el equipo de Brand Strategy' },
             { rotulo: 'Actuación', so: 'ambos', valor: 'Denuncia ante las entidades y plataformas involucradas solicitando la remoción del contenido o el bloqueo del dominio, con seguimiento hasta la remoción' },
             { rotulo: 'Entrega de evidencias', so: 'monitoria', valor: 'Expediente por ocurrencia, con registrador, alojamiento y canal de denuncia identificados, en formato apto para instruir la medida conducida por la Contratante o su despacho' },
@@ -111,7 +111,7 @@ export const BLOCOS_ES = {
         ],
         sla: [
             { entregavel: 'Clasificación de amenazas identificadas', periodicidade: 'Diaria', canal: 'Correo' },
-            { entregavel: 'Informe de estado de las amenazas', periodicidade: 'Semanal', canal: 'Correo, personalizable' },
+            { entregavel: 'Informe de la ocurrencia identificada', periodicidade: 'El mismo día de la identificación', canal: 'Correo' },
         ],
     },
 
