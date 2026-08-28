@@ -620,25 +620,16 @@ const CASOS_NOVOS = [
         ],
     },
     {
-        nome: 'comparação: dois cards, e o Recomendado é o Monitoria + Atuação',
+        nome: 'comparação: dois cards, nenhum recomendado',
         args: {},
         spec: spec(['BB'], {}, { BB: { modalidade: MODALIDADE_COMPARAR, preco: 8900, precoMonitoria: 6400 } }),
+        // Decidido em 28/08/2026, vendo o documento pronto: escolher a
+        // modalidade é do cliente. A regra genérica desta parte marca o mais
+        // barato como recomendado — aqui ela não pode valer, nem invertida.
         checa: [
-            conta('<div class="pcard"', 1),
-            conta('<div class="pcard rec"', 1),
-            conta('<span class="badge-rec"', 1),
-            // O selo mora no card da direita, o completo. Se ele migrar pro mais
-            // barato — que é o que a regra genérica de pacote faria —, a proposta
-            // passa a recomendar a oferta menor sem ninguém ter decidido isso.
-            (h) => {
-                const i = h.indexOf('<div class="pcard rec"');
-                if (i < 0) return 'nenhum card marcado como recomendado';
-                // O primeiro nome depois da abertura do card é o nome DELE.
-                const n = h.indexOf('<h4 class="pname">', i);
-                const nome = h.slice(n + 18, h.indexOf('</h4>', n));
-                return nome === 'Monitoria + Atuação'
-                    || `o selo Recomendado está no card "${nome}"`;
-            },
+            conta('<div class="pcard"', 2),
+            conta('<div class="pcard rec"', 0),
+            conta('<span class="badge-rec"', 0),
         ],
     },
     {
@@ -769,6 +760,28 @@ const CASOS_NOVOS = [
             contem('R$ 6.400'), contem('R$ 3.900'),
             contem('a partir de R$ 10.300'),
         ],
+    },
+    // ── Grade rótulo/valor ──────────────────────────────────────────
+    {
+        nome: 'grade: linha ímpar sozinha ocupa as duas colunas',
+        args: {},
+        spec: spec(['BB'], {}, {}),
+        // Identificação (7 linhas) e Condições (5) são ímpares: sem a marca, a
+        // última fica numa metade e a grade desenha uma célula vazia do lado.
+        // O cheque é da REGRA, não do número — quem mudar as linhas de lugar
+        // não precisa vir aqui corrigir contagem.
+        checa: [(h) => {
+            const grades = h.split('<div class="card grid2">').slice(1);
+            if (grades.length < 2) return `achei ${grades.length} grade(s), esperava ao menos 2`;
+            for (const g of grades) {
+                const corpo = g.slice(0, g.indexOf('</div></div>'));
+                const celulas = corpo.split('<div class="kv').length - 1;
+                const larga = corpo.includes('<div class="kv larga"');
+                if (celulas % 2 === 1 && !larga) return `grade de ${celulas} linhas deixa meia grade vazia`;
+                if (celulas % 2 === 0 && larga) return `grade de ${celulas} linhas não precisa de linha larga`;
+            }
+            return true;
+        }],
     },
 ];
 

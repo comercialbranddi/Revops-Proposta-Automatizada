@@ -11,7 +11,8 @@
  *
  *   1. nenhum elemento ultrapassa a caixa de conteúdo do pai (o estouro);
  *   2. nenhum contêiner tem conteúdo inline maior que a própria caixa —
- *      segundo sinal, pega o caso em que o pai é bloco e só o texto vaza.
+ *      segundo sinal, pega o caso em que o pai é bloco e só o texto vaza;
+ *   3. o pé de cada folha reserva pelo menos a altura do rodapé fixo.
  *
  * Os cenários são os que APERTAM o layout: 3 e 4 opções de pacote (cards
  * estreitos), valores de 6 dígitos, e a comparação avulso × pacote, que gera um
@@ -141,6 +142,55 @@ for (const caso of CASOS) {
     } else {
         console.log(`✅ ${caso.nome}`);
     }
+}
+
+/**
+ * O rodapé é `position:fixed`: o Chrome o repete no pé de toda folha, mas ele
+ * não ocupa espaço no fluxo. Quem segura o conteúdo longe dele é o padding de
+ * baixo do `.pad`, que o `box-decoration-break:clone` repete a cada folha.
+ *
+ * Este cheque existe porque os dois números moram longe um do outro no CSS:
+ * crescer o logo ou o corpo do rodapé não dá erro nenhum, só bota o rodapé por
+ * cima do texto na impressão. Foi o print de 28/08 — dois itens da linha do
+ * tempo saindo por trás do logo, com 14,2mm de rodapé contra 6,5mm de reserva.
+ *
+ * Não afere a folha impressa (o Chrome não conta onde caiu cada quebra); afere
+ * a invariante que a garante.
+ */
+async function medirReservaDoRodape() {
+    const html = renderProposta({
+        deal: { id: 60956, organizacao: 'Marca Teste', contato: 'Fulano de Tal' },
+        spec: base({}), emitidaEm: new Date(2026, 7, 24),
+    });
+    const page = await browser.newPage();
+    await page.emulateMediaType('print');
+    await page.setViewport({ width: 794, height: 1123 });
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.evaluate(() => document.fonts.ready);
+    const m = await page.evaluate(() => {
+        // A régua vem do @page renderido de verdade, e não de uma constante.
+        const regua = document.createElement('div');
+        regua.style.cssText = 'position:absolute;top:0;left:0;width:1mm;height:297mm;visibility:hidden';
+        document.body.append(regua);
+        const mm = regua.offsetHeight / 297;
+        regua.remove();
+        const rodape = document.querySelector('.pagefoot').getBoundingClientRect().height;
+        const reserva = parseFloat(getComputedStyle(document.querySelector('.pad')).paddingBottom);
+        return { rodape: rodape / mm, reserva: reserva / mm };
+    });
+    await page.close();
+    return m;
+}
+
+const r = await medirReservaDoRodape();
+const emMm = (v) => `${v.toFixed(1)}mm`;
+if (r.reserva < r.rodape) {
+    falharam++;
+    console.log(`❌ reserva do rodapé: ${emMm(r.reserva)} pra um rodapé de ${emMm(r.rodape)}`);
+    console.log('      o conteúdo vai correr por baixo do rodapé no pé de cada folha');
+    console.log('      ajuste --reserva-rodape no CSS de impressão (render-proposta.js)');
+} else {
+    console.log(`✅ reserva do rodapé: ${emMm(r.reserva)} pra um rodapé de ${emMm(r.rodape)}`);
 }
 
 await browser.close();
