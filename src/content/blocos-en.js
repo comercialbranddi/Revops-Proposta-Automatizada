@@ -87,7 +87,7 @@ export const BLOCOS_EN = {
     // ─────────────────────────────────────────────────────────────────
     GD: {
         titulo: 'Digital Fraud Protection',
-        objetivo: 'fake sites, look-alike domains, impostor profiles and fraudulent ads pose as the brand to run scams, harming the consumer and transferring the reputational damage to the Client',
+        objetivo: 'suspicious sites, look-alike domains, impostor profiles and suspicious ads pose as the brand to run scams, harming the consumer and transferring the reputational damage to the Client',
         temModalidade: true,
         prosa: {
             ambos: 'Detection and neutralization of digital threats that simulate or clone the brand’s identity in order to harm the Client and its consumers — fake sites, look-alike domains, impostor profiles and fraudulent ads. Based on the occurrences found, <strong>Branddi files takedown requests</strong> with the platforms, registrars and hosting providers involved, seeking removal of the infringing content or blocking of the domain.',
@@ -97,7 +97,7 @@ export const BLOCOS_EN = {
             { rotulo: 'Channels', valor: '{{CANAIS}}' },
             { rotulo: 'Coverage', valor: 'Over 2,800 domain registrars, 746 TLDs and 1,510 ccTLDs; around 250,000 newly created domains analysed per day; e-commerce, checkout and payment gateway platforms; hosting providers; ad libraries and sponsored search results' },
             { rotulo: 'Frequency', valor: 'Continuous monitoring' },
-            { rotulo: 'Data captured', valor: 'Fake social media accounts; websites imitating the official site; domains registered with similarity to the brand; misleading ads on social media and in sponsored search results' },
+            { rotulo: 'Data captured', valor: 'Fake social media accounts; websites imitating the official site; domains registered with similarity to the brand; misleading ads on social media and in Google sponsored search results' },
             { rotulo: 'Screening', valor: 'Filtering of false positives and categorization of occurrences, carried out by the Brand Strategy team' },
             { rotulo: 'Enforcement', so: 'ambos', valor: 'Takedown requests to the entities and platforms involved, asking for removal of the content or blocking of the domain, followed up until removal' },
             { rotulo: 'Evidence delivery', so: 'monitoria', valor: 'An evidence file per occurrence, with registrar, hosting provider and reporting channel identified, in a format suitable to support the measure pursued by the Client or its counsel' },
@@ -106,7 +106,7 @@ export const BLOCOS_EN = {
         ],
         sla: [
             { entregavel: 'Screening of identified threats', periodicidade: 'Daily', canal: 'E-mail' },
-            { entregavel: 'Threat status report', periodicidade: 'Weekly', canal: 'E-mail, customizable' },
+            { entregavel: 'Report of the identified occurrence', periodicidade: 'Same day it is identified', canal: 'E-mail' },
         ],
     },
 
