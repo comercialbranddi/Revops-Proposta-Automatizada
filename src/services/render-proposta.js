@@ -238,6 +238,12 @@ function kvGrid(pares) {
     return `<div class="card grid2">${cells}</div>`;
 }
 
+// Produtos que dependem de marca registrada no INPI. Brand Bidding NÃO entra:
+// a atuação se apoia em concorrência desleal e uso indevido de marca, que não
+// exigem registro — e há clientes de BB sem ele. Buy Box Protection também
+// não: disputa Buy Box, não marca.
+const EXIGE_INPI = ['GD', 'VM'];
+
 // ─── Cláusulas ──────────────────────────────────────────────────────
 
 function clausulaIdentificacao(ctx) {
@@ -324,10 +330,17 @@ function clausulaEscopo(ctx) {
       ${sla.map((l) => `<div class="sla"><span class="e">${esc(l.entregavel)}</span><span>${esc(l.periodicidade)}</span><span>${esc(l.canal)}</span></div>`).join('')}
     </div>`;
 
-    // Requisito: nota legal (§) — pré-condição contratual. Fica de fora em
-    // proposta só de BBP: o requisito é registro de MARCA no INPI, e BBP puro
-    // disputa Buy Box, não marca — o modelo antigo dele não pedia isso.
-    const req = codes.some((c) => c !== 'BBP')
+    // Requisito: nota legal (§) — pré-condição contratual.
+    //
+    // A regra era "todo produto MENOS BBP", e isso pegava o Brand Bidding
+    // junto. Errado: registro no INPI NÃO é obrigatório pra BB — a Branddi tem
+    // clientes de BB sem marca registrada (comercial, 27/08/2026). Exigir na
+    // proposta criava uma pré-condição contratual que a operação não pratica.
+    //
+    // Agora a lista é POSITIVA: só quem realmente depende de marca registrada.
+    // Dizer "quem não é BBP" escondia a regra atrás de uma negação, e foi por
+    // isso que o BB entrou sem ninguém notar.
+    const req = codes.some((c) => EXIGE_INPI.includes(c))
         ? `<div class="note"><span class="note-ic">§</span><p><strong>${esc(t.requisito)}.</strong> ${esc(t.requisitoValor)}</p></div>`
         : '';
 
@@ -469,9 +482,10 @@ function clausulaCondicoes(ctx) {
 
 function clausulaAceite(ctx) {
     const { codes, meta, t, insumos } = ctx;
-    // O comprovante do INPI só é insumo quando a proposta trata de marca —
-    // BBP puro disputa Buy Box, não marca, e o modelo antigo dele não pedia.
-    const insumoINPI = codes.some((c) => c !== 'BBP') ? [t.insumoINPI] : [];
+    // Mesma lista do requisito: pedir o comprovante de um registro que a
+    // proposta não exige seria travar o aceite por um documento que o cliente
+    // pode não ter.
+    const insumoINPI = codes.some((c) => EXIGE_INPI.includes(c)) ? [t.insumoINPI] : [];
     const lista = [...codes.map((c) => insumos[c]).filter(Boolean), ...insumoINPI].join('; ');
     const etapas = [
         [t.etapaAceite, t.respContratante, t.prazoAte(meta.validade)],

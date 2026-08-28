@@ -288,7 +288,11 @@ const CASOS = [
         // Um pacote que cobre tudo e sai mais barato vira comparação lado a lado:
         // cada serviço avulso (R$ 8.900) e o pacote (R$ 15.000) marcado como
         // recomendado, com a economia. A tabela não repete o total combinado.
+        // BB+VM: o VM depende de marca registrada, então o requisito VOLTA. É o
+        // outro lado da regra — sem este caso, apagar o requisito por engano
+        // passaria despercebido.
         checa: [semPlaceholder, contem('>Combo<'), contem('Recomendado'),
+            contem('registro no INPI'),
             contem('R$ 8.900,00'), contem('R$ 15.000,00'), contem('economia de R$ 2.800,00'),
             naoContem('Subtotal'), naoContem('condição combinada'),
             comboEmDestaque],
@@ -435,9 +439,13 @@ const CASOS_NOVOS = [
         nome: 'o que saiu do modelo não volta',
         args: {},
         spec: spec(['BBP', 'BB']),
-        // cláusula legal removida a pedido; requisito do INPI ficou, virou escopo
+        // cláusula legal removida a pedido; o requisito do INPI ficou, virou escopo
         checa: [naoContem('Lei 9.279'), naoContem('Fundamentação legal'),
-            contem('registro no INPI'),
+            // BB e BBP NÃO exigem registro no INPI. A regra era "todo produto
+            // menos BBP" e pegava o Brand Bidding junto — a Branddi tem
+            // clientes de BB sem marca registrada, e a proposta criava uma
+            // pré-condição que a operação não pratica (comercial, 27/08/2026).
+            naoContem('registro no INPI'), naoContem('comprovante de registro da marca'),
             // a linha "Suporte" do BBP descrevia o COMO da entrega
             naoContem('cruzamento com bases'), naoContem('apoio à atuação comercial junto aos canais'),
             // revisão contra os docs (24/08/2026): "D+7" e "renovação automática"
