@@ -6,10 +6,15 @@
  * catálogo, plataformas, faixas e valor de pacote seguem no card só porque o
  * gerador de Google Docs os lê — e ninguém mais preenche isso à mão.
  *
- * FICA DE FORA "Idioma da proposta": além do fluxo antigo, ele é lido pela rota
- * do formulário pra pré-selecionar o idioma na tela. Escondê-lo faria toda
- * proposta abrir em português, e o closer teria que trocar na mão sempre que
- * fosse outro idioma.
+ * "Idioma da proposta" entrou junto em 27/08/2026, por decisão da Jessica. Ele
+ * era a exceção: a rota do formulário o lê pra pré-selecionar o idioma. Só que
+ * o formulário TEM o seu próprio seletor de idioma, então o campo no card só
+ * adiantava um clique — e um clique não paga um campo a mais na tela de quem
+ * não usa mais o fluxo antigo.
+ *
+ * Esconder não fecha a porta: o Pipedrive esconde da TELA, não da API. Os
+ * cards que já têm idioma gravado continuam abrindo o formulário nele; os
+ * novos abrem em português e o closer escolhe no próprio formulário.
  *
  * ESCONDER NÃO APAGA. O valor continua gravado e volta a aparecer com
  * --mostrar. O mecanismo é o mesmo que deixou quatro campos invisíveis por
@@ -24,7 +29,7 @@ import 'dotenv/config';
 import {
     PRODUCT_PRICE_FIELDS as P, CANAIS_FIELDS as C, CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD,
     PLATAFORMAS_VM_FIELD, VALOR_PACOTE_FIELD, FAIXAS_BB_FIELDS, FAIXAS_BBP_FIELDS,
-    SOB_CONSULTA_BBP_FIELD,
+    SOB_CONSULTA_BBP_FIELD, IDIOMA_FIELD,
 } from '../src/config/proposal.js';
 
 const APPLY = process.argv.includes('--apply');
@@ -41,6 +46,7 @@ const api = async (p, o) => {
 const CHAVES = [
     ...Object.values(P), ...Object.values(C),
     CATALOGO_BBP_FIELD, PALAVRAS_BB_FIELD, PLATAFORMAS_VM_FIELD, VALOR_PACOTE_FIELD,
+    IDIOMA_FIELD,
     ...FAIXAS_BB_FIELDS.flatMap((f) => [f.qtd, f.preco]),
     ...(FAIXAS_BBP_FIELDS || []).flatMap((f) => [f.qtd, f.preco]),
     SOB_CONSULTA_BBP_FIELD,
