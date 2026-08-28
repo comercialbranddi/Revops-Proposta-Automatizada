@@ -260,18 +260,23 @@ router.post('/aceite/:slug', async (req, res) => {
         if (!reg) return res.status(404).json({ error: 'proposta não encontrada' });
 
         const spec = reg.spec || {};
-        // Proposta que oferece as duas modalidades tem DOIS valores, e o aceite
-        // não pergunta qual. Registrar a soma de `preco` (Monitoria + Atuação)
-        // poria no card um número maior do que o cliente pode ter aceitado; o
-        // piso é o que a própria proposta exibe ("a partir de"), então é ele que
-        // vai — e o aviso no card diz que a modalidade ainda precisa ser
-        // confirmada com o cliente.
-        const duasModalidades = spec.compararModalidades === true;
+        // Serviço oferecido nas duas modalidades tem DOIS valores, e o aceite
+        // não pergunta qual. Registrar `preco` (Monitoria + Atuação) poria no
+        // card um número maior do que o cliente pode ter aceitado; o piso é o
+        // que a própria proposta exibe ("a partir de"), então é ele que vai — e
+        // o aviso no card diz que a modalidade ainda precisa ser confirmada.
+        //
+        // A marca é o próprio `precoMonitoria`: ele só é gravado no serviço que
+        // está em comparação. Assim esta rota não precisa saber o catálogo de
+        // modalidades nem repetir a regra de quem compara. (`compararModalidades`
+        // é a chave de contrato da primeira versão, lida só por compatibilidade.)
+        const temSegundoPreco = (p) => p?.precoMonitoria != null && p.precoMonitoria !== '';
         const precoDe = (c) => {
             const p = spec.porProduto?.[c] || {};
-            const m = duasModalidades ? p.precoMonitoria : null;
-            return (m == null || m === '') ? (Number(p.preco) || 0) : (Number(m) || 0);
+            return temSegundoPreco(p) ? (Number(p.precoMonitoria) || 0) : (Number(p.preco) || 0);
         };
+        const duasModalidades = spec.compararModalidades === true
+            || (spec.produtos || []).some((c) => temSegundoPreco(spec.porProduto?.[c]));
         const soma = (spec.produtos || []).reduce((t, c) => t + precoDe(c), 0);
         const valor = Number(spec.pacote) > 0 ? Number(spec.pacote) : soma;
 
@@ -291,7 +296,7 @@ router.post('/aceite/:slug', async (req, res) => {
                     `<p><b>${nome}</b>${cargo ? ` — ${cargo}` : ''}<br>${email}</p>`,
                     `<p>Valor aceito: <b>${reais}/mês</b><br>Em: ${quando}</p>`,
                     duasModalidades
-                        ? '<p><b>⚠ Confirme a modalidade.</b> A proposta trazia Monitoria e Monitoria + Atuação lado a lado. O valor acima é o da Monitoria — se o cliente escolheu com atuação, corrija o valor do negócio.</p>'
+                        ? '<p><b>⚠ Confirme a modalidade.</b> A proposta trazia Monitoria e Monitoria + Atuação lado a lado. O valor acima soma o serviço comparado na Monitoria — se o cliente escolheu com atuação, corrija o valor do negócio.</p>'
                         : '',
                     `<p><a href="${url}">${url}</a></p>`,
                     '<p><i>Aceite comercial declarado na página da proposta. Não é assinatura eletrônica certificada.</i></p>',

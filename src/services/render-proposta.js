@@ -26,7 +26,7 @@
  */
 import {
     catalogoDoIdioma, linhasDaModalidade, linhasComparadas, prosaDoBloco, contratoTemAtuacao,
-    modalidadeNoIdioma, MODALIDADE_AMBOS, MODALIDADE_MONITORIA,
+    modalidadeNoIdioma, MODALIDADE_AMBOS, MODALIDADE_MONITORIA, MODALIDADE_COMPARAR,
 } from '../content/blocos.js';
 import { logo, marca } from '../content/logo.js';
 import { VALIDADE_DIAS_PADRAO } from '../content/textos.js';
@@ -197,22 +197,43 @@ function unidadeDe(code, qtd, t) {
     return Math.abs(Number(qtd)) === 1 ? u[0] : u[1];
 }
 
-/** A modalidade efetiva de um produto: null quando o produto não tem essa dimensão. */
+/**
+ * A modalidade efetiva de um produto: null quando o produto não tem essa
+ * dimensão. A marca de comparação nunca vaza daqui — quem compara pede as
+ * duas explicitamente, e o resto do documento nunca deve ver "As duas" no
+ * lugar de uma modalidade de verdade.
+ */
 function modalidadeDo(blocos, code, p) {
-    return blocos[code].temModalidade ? (p?.modalidade || MODALIDADE_AMBOS) : null;
+    if (!blocos[code].temModalidade) return null;
+    const m = p?.modalidade;
+    return (!m || m === MODALIDADE_COMPARAR) ? MODALIDADE_AMBOS : m;
 }
 
 /**
- * A proposta apresenta as DUAS modalidades lado a lado, para o cliente
- * escolher? (28/08/2026.)
+ * ESTE serviço vai na proposta nas duas modalidades, com preço em cada uma,
+ * para o cliente escolher? (28/08/2026.)
  *
- * A flag é do CONTRATO, não do produto. Comparar produto a produto daria 2^n
- * versões do mesmo documento, e não é o que a venda quer: o cliente escolhe
- * entre duas versões do contrato inteiro — uma com atuação da Branddi, outra
- * só com monitoria — cada uma com seu preço.
+ * A decisão é do SERVIÇO, e não do contrato como na primeira versão. A venda
+ * é mista de verdade: dá pra querer Brand Bidding nas duas frentes, pra o
+ * cliente comparar, e Vitrine Marketplace só em monitoria. Uma chave do
+ * contrato inteiro forçava o serviço fixo a aparecer com duas colunas e uma
+ * escolha que ele não oferece.
+ *
+ * Isso NÃO cria 2^n documentos: o cliente continua escolhendo entre duas
+ * versões do contrato — em cada uma, o serviço fixo entra pelo mesmo preço,
+ * e só os comparados mudam de valor.
  */
-function comparandoModalidades(spec) {
-    return spec?.compararModalidades === true;
+function comparaProduto(spec, blocos, code) {
+    if (!blocos[code]?.temModalidade) return false;
+    // Compatibilidade: a primeira versão gravava a decisão no contrato, valendo
+    // pra todo produto com modalidade. Spec assim continua saindo como saía.
+    if (spec?.compararModalidades === true) return true;
+    return spec?.porProduto?.[code]?.modalidade === MODALIDADE_COMPARAR;
+}
+
+/** Algum serviço do contrato está sendo comparado? Decide o que é do documento. */
+function comparandoModalidades(spec, blocos, codes) {
+    return (codes || []).some((c) => comparaProduto(spec, blocos, c));
 }
 
 /** As duas modalidades na ordem do documento: a mais completa por último. */
@@ -238,9 +259,19 @@ function precoNaModalidade(item, modalidade) {
     return (m == null || m === '') ? base : (Number(m) || 0);
 }
 
-/** O total do contrato numa modalidade. */
-function totalNaModalidade(spec, codes, modalidade) {
-    return codes.reduce((acc, c) => acc + precoNaModalidade(spec?.porProduto?.[c], modalidade), 0);
+/**
+ * O total do contrato numa modalidade: o que o cliente paga se escolher essa.
+ *
+ * Serviço fora da comparação entra pelo próprio preço nas duas pontas — foi
+ * vendido fixo, e a escolha do cliente não muda o valor dele.
+ */
+function totalNaModalidade(spec, blocos, codes, modalidade) {
+    return codes.reduce((acc, c) => {
+        const p = spec?.porProduto?.[c];
+        return acc + (comparaProduto(spec, blocos, c)
+            ? precoNaModalidade(p, modalidade)
+            : (Number(p?.preco) || 0));
+    }, 0);
 }
 
 /**
@@ -291,7 +322,7 @@ function clausulaIdentificacao(ctx) {
     const { deal, spec, meta, codes, t, blocos } = ctx;
     // Comparando as modalidades o valor também é um piso: o quadro traz o
     // total da Monitoria, e a Monitoria + Atuação custa mais.
-    const faixaDePreco = ctx.opcoes.length > 1 || comparandoModalidades(spec);
+    const faixaDePreco = ctx.opcoes.length > 1 || comparandoModalidades(spec, blocos, codes);
     const valor = faixaDePreco ? t.aPartirDe(brl(ctx.total)) : brl(ctx.total);
     return kvGrid([
         // Sem "Destinatário": o nome da pessoa saiu em 27/08/2026. A proposta é
@@ -330,15 +361,15 @@ function clausulaAbordagem(ctx) {
     // Um produto: o título/modalidade já estão no subtítulo da seção (3.1 — …),
     // então o bloco não repete o h3. Vários: cada produto ganha seu 3.x.
     const solo = codes.length === 1;
-    const comparando = comparandoModalidades(spec);
     const blocosHtml = codes.map((code, i) => {
         const b = blocos[code];
         const p = spec.porProduto[code] || {};
         const mod = modalidadeDo(blocos, code, p);
-        // Produto sem modalidade (BBP) não entra na comparação: não há o que
-        // comparar, e rotulá-lo "Monitoria ou Monitoria + Atuação" prometeria
-        // uma escolha que o documento não oferece ali.
-        const compara = comparando && b.temModalidade;
+        // Serviço a serviço: o que foi vendido fixo sai com a sua modalidade e
+        // uma prosa só; o que foi posto em comparação sai com as duas. Rotular
+        // um serviço fixo de "Monitoria ou Monitoria + Atuação" prometeria uma
+        // escolha que o documento não oferece ali.
+        const compara = comparaProduto(spec, blocos, code);
         const modLabel = compara
             ? t.modalidadeOu(modalidadeNoIdioma(MODALIDADE_MONITORIA, idioma), modalidadeNoIdioma(MODALIDADE_AMBOS, idioma))
             : (mod ? modalidadeNoIdioma(mod, idioma) : t.semModalidade);
@@ -371,7 +402,7 @@ function clausulaAbordagem(ctx) {
     // Branddi não notifica nem remove, e não há loop aprovado pra essa
     // modalidade, então a faixa não sai (não inventar processo). Comparando, a
     // atuação está em oferta numa das opções, então o loop entra.
-    const ribbon = (comparando || contratoTemAtuacao(spec.porProduto))
+    const ribbon = (comparandoModalidades(spec, blocos, codes) || contratoTemAtuacao(spec.porProduto))
         ? `<div class="loop">${t.loop.map((s) => `<span class="loop-step">${esc(s)}</span>`).join('')}</div>`
         : '';
     return blocosHtml + ribbon;
@@ -384,20 +415,23 @@ function clausulaAbordagem(ctx) {
  */
 function clausulaEscopo(ctx) {
     const { codes, spec, t, blocos, slaGeral, idioma } = ctx;
-    const comparando = comparandoModalidades(spec);
+    const comparando = comparandoModalidades(spec, blocos, codes);
     const modoContrato = contratoTemAtuacao(spec.porProduto) ? MODALIDADE_AMBOS : MODALIDADE_MONITORIA;
     const vistos = new Set();
-    // Comparando, o SLA sai na união das duas modalidades com selo no que é
-    // exclusivo — mesma regra da tabela de especificações. Filtrar por uma
-    // modalidade aqui esconderia do cliente o que ele ganha ao escolher a
-    // outra, que é justamente a decisão que a proposta está pedindo.
-    const sla = (comparando
-        ? [...codes.flatMap((c) => linhasComparadas(blocos[c].sla)), ...linhasComparadas(slaGeral)]
-        : [
-            ...codes.flatMap((c) => linhasDaModalidade(blocos[c].sla, modalidadeDo(blocos, c, spec.porProduto[c]))),
-            ...linhasDaModalidade(slaGeral, modoContrato),
-        ]
-    ).filter((l) => (vistos.has(l.entregavel) ? false : vistos.add(l.entregavel)));
+    // O SLA de um serviço comparado sai na união das duas modalidades, com selo
+    // no que é exclusivo de uma; o de um serviço fixo sai só na modalidade dele.
+    // Filtrar tudo por uma modalidade esconderia do cliente o que ele ganha ao
+    // escolher a outra, que é a decisão que a proposta está pedindo — e não
+    // filtrar nada prometeria, num serviço fixo, entrega que ele não tem.
+    //
+    // O SLA geral é do contrato: basta um serviço em comparação pra a atuação
+    // estar em oferta, e aí ele também sai na união.
+    const sla = [
+        ...codes.flatMap((c) => (comparaProduto(spec, blocos, c)
+            ? linhasComparadas(blocos[c].sla)
+            : linhasDaModalidade(blocos[c].sla, modalidadeDo(blocos, c, spec.porProduto[c])))),
+        ...(comparando ? linhasComparadas(slaGeral) : linhasDaModalidade(slaGeral, modoContrato)),
+    ].filter((l) => (vistos.has(l.entregavel) ? false : vistos.add(l.entregavel)));
 
     const slaCard = `<div class="card slatable">
       <div class="sla sla-head"><span>${esc(t.thEntregavel)}</span><span>${esc(t.thPeriodicidade)}</span><span>${esc(t.thCanal)}</span></div>
@@ -433,7 +467,7 @@ function clausulaEscopo(ctx) {
 
 function clausulaInvestimento(ctx) {
     const { codes, spec, soma, t, blocos, idioma } = ctx;
-    const comparando = comparandoModalidades(spec);
+    const comparando = comparandoModalidades(spec, blocos, codes);
 
     // Tabela item a item (com escada de faixas quando houver). Cada produto sai
     // dentro de um .igroup: é o grupo que dá o respiro no fim do produto e anda
@@ -463,21 +497,27 @@ function clausulaInvestimento(ctx) {
         // Antes de 27/08/2026 sumiam de todo produto com escada: o escopo
         // composto só era montado no ramo sem faixas.
         const canais = canaisTexto(p, idioma);
-        // Produto sem modalidade dentro de uma comparação repete o valor nas
-        // duas colunas. A nota diz por quê — duas colunas com o mesmo número e
-        // sem explicação parecem erro de digitação.
-        const mesmoNasDuas = comparando && !blocos[c].temModalidade
-            ? `<span class="i-canais">${esc(t.mesmoValorNasDuas)}</span>` : '';
-        const item = `<strong>${esc(blocos[c].titulo)}</strong>${canais ? `<span class="i-canais">${esc(canais)}</span>` : ''}${mesmoNasDuas}`;
+        // Serviço que NÃO está em comparação repete o valor nas duas colunas —
+        // ele entra pelo mesmo preço qualquer que seja a escolha do cliente —, e
+        // diz por quê: sem modalidade (BBP, onde quem atua é o cliente) ou fixo
+        // numa delas. Duas colunas com o mesmo número e sem explicação parecem
+        // erro de digitação, e é o serviço fixo que a comparação mais arrisca
+        // deturpar: ele apareceria oferecendo uma escolha que não existe ali.
+        const nota = !comparando || comparaProduto(spec, blocos, c) ? ''
+            : (blocos[c].temModalidade
+                ? t.soEm(modalidadeNoIdioma(modalidadeDo(blocos, c, p), idioma))
+                : t.mesmoValorNasDuas);
+        const item = `<strong>${esc(blocos[c].titulo)}</strong>${canais ? `<span class="i-canais">${esc(canais)}</span>` : ''}${nota ? `<span class="i-canais">${esc(nota)}</span>` : ''}`;
 
         // Cada faixa carrega os dois preços: a escada existe nas duas
         // modalidades, com valores próprios.
         const faixas = (p.faixas?.length ? [{ qtd: p.quantidade, preco: p.preco, precoMonitoria: p.precoMonitoria }, ...p.faixas] : [])
             .filter((f) => Number(f.qtd) > 0 && Number(f.preco) > 0)
             .sort((a, b) => a.qtd - b.qtd);
-        const valores = (linha) => comparando
-            ? MODALIDADES_COMPARADAS.map((m) => precoNaModalidade(linha, m))
-            : [Number(linha?.preco) || 0];
+        const cmp = comparaProduto(spec, blocos, c);
+        const valores = (linha) => !comparando
+            ? [Number(linha?.preco) || 0]
+            : MODALIDADES_COMPARADAS.map((m) => (cmp ? precoNaModalidade(linha, m) : (Number(linha?.preco) || 0)));
         // Escada sem nenhuma faixa válida cai na linha única, com o preço do
         // produto: pior que a escada faltar é o produto sumir calado da tabela.
         const linhasDoProduto = faixas.length
@@ -511,8 +551,13 @@ function clausulaInvestimento(ctx) {
         //
         // O recomendado é Monitoria + Atuação, e não o mais barato como no
         // resto desta função: aqui a opção completa é a que a proposta vende.
+        //
+        // Os cards são do CONTRATO mesmo quando só um serviço está em
+        // comparação: é o total que o cliente paga em cada escolha, com os
+        // serviços fixos somados igual dos dois lados. Um card por serviço
+        // comparado obrigaria a somar de cabeça.
         cartoes = MODALIDADES_COMPARADAS.map((m) => {
-            const preco = totalNaModalidade(spec, codes, m);
+            const preco = totalNaModalidade(spec, blocos, codes, m);
             return {
                 produtos: codes, extras: [], preco, soma: preco,
                 tag: t.opcoesModalidade, desc: '',
@@ -673,9 +718,9 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
     // Com a comparação ligada, a soma e o total são os da Monitoria — a
     // modalidade mais barata. Tudo que exibe UM número (identificação, aceite)
     // passa a mostrar o piso, e não o teto: quem lê decide qual quer.
-    const comparaModalidades = comparandoModalidades(spec);
+    const comparaModalidades = comparandoModalidades(spec, blocos, codes);
     const soma = comparaModalidades
-        ? totalNaModalidade(spec, codes, MODALIDADE_MONITORIA)
+        ? totalNaModalidade(spec, blocos, codes, MODALIDADE_MONITORIA)
         : codes.reduce((acc, c) => acc + (Number(spec.porProduto[c]?.preco) || 0), 0);
     // Nomes dos produtos do catálogo que NÃO estão nesta proposta — pra a trava
     // de pacote tirar qualquer resquício deles (produto, frente ou rótulo).
@@ -708,7 +753,7 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
         if (i === 2 && codes.length === 1) {
             const c = codes[0];
             const mod = modalidadeDo(blocos, c, spec.porProduto[c]);
-            const rot = comparaModalidades && blocos[c].temModalidade
+            const rot = comparaProduto(spec, blocos, c)
                 ? t.modalidadeOu(modalidadeNoIdioma(MODALIDADE_MONITORIA, idioma), modalidadeNoIdioma(MODALIDADE_AMBOS, idioma))
                 : (mod ? modalidadeNoIdioma(mod, idioma) : t.semModalidade);
             return `3.1 — ${blocos[c].titulo} · ${rot}`;

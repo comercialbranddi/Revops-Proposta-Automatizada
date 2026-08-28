@@ -161,39 +161,64 @@ A escolha foi entre dois desenhos:
   documento com Monitoria e Monitoria + Atuação, cada uma com o seu preço, e
   escolhe.
 
-Como fica no documento, com a comparação ligada:
+**A escolha é de cada serviço, não do contrato** (2ª volta, 28/08/2026). A
+primeira versão ligava a comparação no contrato inteiro: ou todo serviço com
+modalidade ia nas duas, ou nenhum. A venda real é mista — um serviço entra nas
+duas frentes pra o cliente comparar e os outros vão fixos, no que já foi
+combinado. Amarrar tudo junto obrigava a inventar um segundo preço pra serviço
+que não estava em disputa.
+
+No formulário isso não virou um segundo controle. A modalidade do serviço passou
+a ter três respostas no mesmo grupo de opções: `Monitoria + Atuação`,
+`Monitoria` e `As duas — o cliente escolhe`. Um controle só, e um serviço não
+consegue estar fixo e comparando ao mesmo tempo. `As duas` NÃO é uma terceira
+modalidade: é a marca, gravada no lugar da modalidade, de que este serviço vai
+na proposta nos dois lados. Ela nunca chega ao texto — quem compara imprime as
+duas modalidades de verdade.
+
+**Não são 2ⁿ documentos.** O cliente continua escolhendo entre DUAS versões do
+contrato inteiro. Serviço fixo entra com o mesmo valor nos dois lados; só o
+serviço marcado muda de número entre as colunas.
+
+Como fica no documento, com pelo menos um serviço marcado:
 
 - A tabela de investimento ganha uma quarta coluna:
-  `Item · Escopo · Monitoria · Monitoria + Atuação`. A escada de faixas tem um
-  preço por degrau em cada modalidade — uma escada só, dois valores por linha.
-- Produto sem modalidade (BBP) repete o valor nas duas colunas, com a nota
-  "mesmo valor nas duas". Duas colunas com o mesmo número e sem explicação
-  parecem erro de digitação.
+  `Item · Escopo · Monitoria · Monitoria + Atuação`. A escada de faixas do
+  serviço marcado tem um preço por degrau em cada modalidade — uma escada só,
+  dois valores por linha.
+- Serviço fixo repete o valor nas duas colunas, com a nota "só em <modalidade>";
+  serviço sem modalidade (BBP) repete com "mesmo valor nas duas". Duas colunas
+  com o mesmo número e sem explicação parecem erro de digitação.
 - Dois cards no lugar dos cards de pacote. **O "Recomendado" é o Monitoria +
   Atuação**, e não o mais barato como na regra genérica de pacote: aqui a
   oferta completa é a que a proposta vende.
-- A cláusula de abordagem imprime as DUAS prosas, cada uma com o rótulo da
-  modalidade; o quadro de especificações e o SLA viram a união das duas listas,
-  com um selo nas linhas que só existem numa delas.
+- A cláusula de abordagem imprime as duas prosas SÓ do serviço marcado, cada
+  uma com o rótulo da modalidade; o quadro de especificações e o SLA dele viram
+  a união das duas listas, com um selo nas linhas que só existem numa delas.
+  Serviço fixo continua com uma prosa e uma lista.
 - Todo lugar que mostra UM número (identificação, aceite) passa a mostrar o
-  piso, com "a partir de": o total da Monitoria.
+  piso, com "a partir de": o total com o serviço marcado na Monitoria.
 
 **Pacote e comparação não convivem.** Combo e modalidade são duas comparações
-concorrentes no mesmo documento — quatro cards, duas decisões de uma vez. Com a
-comparação ligada, o cartão de opções de pacote sai do formulário e o spec não
-grava pacote.
+concorrentes no mesmo documento — quatro cards, duas decisões de uma vez. Com
+algum serviço marcado, o cartão de opções de pacote sai do formulário e o spec
+não grava pacote.
 
 **Compatibilidade.** `preco` continua significando Monitoria + Atuação, sempre.
-A Monitoria pura mora em `precoMonitoria`, gravado só quando a comparação está
-ligada. A planilha de specs é append-only (§8): mudar o sentido de `preco` faria
-toda revisão antiga sair com outro preço. Há teste travando isso — spec sem a
-chave `compararModalidades` renderiza exatamente como antes.
+A Monitoria pura mora em `precoMonitoria`, gravado só no serviço marcado. A
+planilha de specs é append-only (§8): mudar o sentido de `preco` faria toda
+revisão antiga sair com outro preço. Há teste travando isso — spec sem serviço
+marcado renderiza exatamente como antes, mesmo que tenha `precoMonitoria`
+sobrando. A chave de contrato da 1ª versão (`compararModalidades`) continua
+sendo lida e ainda compara tudo; o formulário não a grava mais e, ao reabrir uma
+proposta que a tenha, ela é traduzida pra marca em cada serviço com modalidade.
 
 **Aceite.** O aceite não pergunta a modalidade. Com as duas na proposta, o valor
 registrado no card é o piso (Monitoria) e a nota avisa em negrito que a
 modalidade precisa ser confirmada. Registrar a soma de `preco` poria no negócio
-um número maior do que o cliente pode ter aceitado.
-
+um número maior do que o cliente pode ter aceitado. A rota reconhece a
+comparação pela presença de `precoMonitoria` em algum serviço — não precisa
+saber quais serviços têm modalidade.
 ---
 
 ## 6. Fora de escopo desta parte

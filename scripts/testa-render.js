@@ -11,7 +11,7 @@
  */
 import { renderProposta } from '../src/services/render-proposta.js';
 import { BLOCOS_PT } from '../src/content/blocos-pt.js';
-import { catalogoDoIdioma } from '../src/content/blocos.js';
+import { catalogoDoIdioma, MODALIDADE_COMPARAR } from '../src/content/blocos.js';
 import { alturaDeBalanco } from '../src/services/pdf.js';
 
 const CANAIS = { BB: [1592, 1593], BBP: [1598], GD: [1599, 1600, 1601], VM: [1604] };
@@ -610,7 +610,7 @@ const CASOS_NOVOS = [
     {
         nome: 'comparação: a tabela traz as duas colunas, com os dois preços',
         args: {},
-        spec: spec(['BB'], { compararModalidades: true }, { BB: { preco: 8900, precoMonitoria: 6400 } }),
+        spec: spec(['BB'], {}, { BB: { modalidade: MODALIDADE_COMPARAR, preco: 8900, precoMonitoria: 6400 } }),
         checa: [
             contem('itable cmp'),
             contem('R$ 8.900'), contem('R$ 6.400'),
@@ -622,7 +622,7 @@ const CASOS_NOVOS = [
     {
         nome: 'comparação: dois cards, e o Recomendado é o Monitoria + Atuação',
         args: {},
-        spec: spec(['BB'], { compararModalidades: true }, { BB: { preco: 8900, precoMonitoria: 6400 } }),
+        spec: spec(['BB'], {}, { BB: { modalidade: MODALIDADE_COMPARAR, preco: 8900, precoMonitoria: 6400 } }),
         checa: [
             conta('<div class="pcard"', 1),
             conta('<div class="pcard rec"', 1),
@@ -644,13 +644,13 @@ const CASOS_NOVOS = [
     {
         nome: 'comparação: o valor da identificação é o piso, não o teto',
         args: {},
-        spec: spec(['BB'], { compararModalidades: true }, { BB: { preco: 8900, precoMonitoria: 6400 } }),
+        spec: spec(['BB'], {}, { BB: { modalidade: MODALIDADE_COMPARAR, preco: 8900, precoMonitoria: 6400 } }),
         checa: [contem('a partir de R$ 6.400')],
     },
     {
         nome: 'comparação: a abordagem sai nas duas modalidades',
         args: {},
-        spec: spec(['BB'], { compararModalidades: true }, { BB: { preco: 8900, precoMonitoria: 6400 } }),
+        spec: spec(['BB'], {}, { BB: { modalidade: MODALIDADE_COMPARAR, preco: 8900, precoMonitoria: 6400 } }),
         checa: [
             conta('<span class="prosa-mod">', 2),
             // O subtítulo da cláusula 3 deixa de cravar uma modalidade.
@@ -658,16 +658,78 @@ const CASOS_NOVOS = [
         ],
     },
     {
-        nome: 'comparação: produto sem modalidade repete o valor e explica',
+        nome: 'comparação: serviço sem modalidade repete o valor e explica',
         args: {},
-        spec: spec(['BBP'], { compararModalidades: true }, { BBP: { preco: 4500, precoMonitoria: null } }),
-        checa: [conta('R$ 4.500', 5), contem('mesmo valor nas duas')],
+        spec: spec(['BB', 'BBP'], {}, {
+            BB: { modalidade: MODALIDADE_COMPARAR, preco: 8900, precoMonitoria: 6400 },
+            BBP: { preco: 4500 },
+        }),
+        // O BBP entra pelo mesmo valor nos dois lados — quem atua ali é o
+        // cliente. Duas colunas com o mesmo número precisam dizer por quê.
+        checa: [contem('mesmo valor nas duas'), contem('R$ 4.500')],
+    },
+    // ── A escolha é do SERVIÇO (28/08/2026, 2ª volta) ───────────────
+    // A venda é mista: um serviço nas duas frentes pra o cliente comparar,
+    // outro fixo. O que dá errado calado aqui é o serviço fixo aparecer
+    // oferecendo uma escolha que ele não tem.
+    {
+        nome: 'misto: só o serviço marcado tem dois preços; o fixo repete o dele',
+        args: {},
+        spec: spec(['BB', 'VM'], {}, {
+            BB: { modalidade: MODALIDADE_COMPARAR, preco: 8900, precoMonitoria: 6400 },
+            VM: { modalidade: 'Monitoria', preco: 5200, precoMonitoria: 3900 },
+        }),
+        checa: [
+            contem('itable cmp'),
+            contem('R$ 8.900'), contem('R$ 6.400'),
+            // O serviço fixo entra pelo preço dele nas duas colunas. O
+            // `precoMonitoria` que sobrou no spec não pode virar preço: o
+            // formulário não o grava mais fora da comparação, e o documento
+            // não pode passar a cobrar outro valor se ele reaparecer.
+            naoContem('R$ 3.900'),
+            // Totais: 6.400 + 5.200 e 8.900 + 5.200.
+            contem('R$ 11.600'), contem('R$ 14.100'),
+            contem('a partir de R$ 11.600'),
+        ],
+    },
+    {
+        nome: 'misto: o serviço fixo diz em qual modalidade ele vai',
+        args: {},
+        spec: spec(['BB', 'VM'], {}, {
+            BB: { modalidade: MODALIDADE_COMPARAR, preco: 8900, precoMonitoria: 6400 },
+            VM: { modalidade: 'Monitoria', preco: 5200 },
+        }),
+        checa: [
+            contem('só em Monitoria'),
+            // Uma prosa só no serviço fixo, duas no comparado.
+            conta('<span class="prosa-mod">', 2),
+            // E o cabeçalho do 3.x do serviço fixo crava a modalidade dele.
+            contem('<span class="mode">Monitoria</span>'),
+        ],
+    },
+    {
+        nome: 'misto: serviço fixo em atuação não promete escolha',
+        args: {},
+        spec: spec(['BB', 'VM'], {}, {
+            BB: { modalidade: MODALIDADE_COMPARAR, preco: 8900, precoMonitoria: 6400 },
+            VM: { modalidade: 'Monitoria + Atuação', preco: 5200 },
+        }),
+        checa: [contem('só em Monitoria + Atuação'), conta('<span class="prosa-mod">', 2)],
+    },
+    {
+        nome: 'sem serviço marcado, não há comparação nenhuma',
+        args: {},
+        spec: spec(['BB', 'VM'], {}, {
+            BB: { modalidade: 'Monitoria', preco: 8900 },
+            VM: { modalidade: 'Monitoria + Atuação', preco: 5200 },
+        }),
+        checa: [naoContem('itable cmp'), naoContem('<span class="prosa-mod">'), naoContem('a partir de')],
     },
     {
         nome: 'comparação: faixa da escada tem preço por modalidade',
         args: {},
-        spec: spec(['BB'], { compararModalidades: true }, { BB: {
-            preco: 8900, precoMonitoria: 6400,
+        spec: spec(['BB'], {}, { BB: {
+            modalidade: MODALIDADE_COMPARAR, preco: 8900, precoMonitoria: 6400,
             faixas: [{ qtd: 10, preco: 14900, precoMonitoria: 9900 }],
         } }),
         checa: [contem('R$ 14.900'), contem('R$ 9.900'), contem('R$ 6.400')],
@@ -687,10 +749,26 @@ const CASOS_NOVOS = [
         ],
     },
     {
-        nome: 'precoMonitoria gravado mas comparação desligada é ignorado',
+        nome: 'precoMonitoria gravado sem o serviço marcado é ignorado',
         args: {},
         spec: spec(['BB'], {}, { BB: { preco: 8900, precoMonitoria: 6400 } }),
         checa: [contem('R$ 8.900'), naoContem('R$ 6.400')],
+    },
+    // A primeira versão gravava a comparação no CONTRATO, valendo pra todo
+    // serviço com modalidade. Spec assim está congelado na planilha e continua
+    // saindo como saía.
+    {
+        nome: 'compat: a chave de contrato da 1ª versão ainda compara tudo',
+        args: {},
+        spec: spec(['BB', 'VM'], { compararModalidades: true }, {
+            BB: { preco: 8900, precoMonitoria: 6400 },
+            VM: { preco: 5200, precoMonitoria: 3900 },
+        }),
+        checa: [
+            contem('itable cmp'), conta('<span class="prosa-mod">', 4),
+            contem('R$ 6.400'), contem('R$ 3.900'),
+            contem('a partir de R$ 10.300'),
+        ],
     },
 ];
 

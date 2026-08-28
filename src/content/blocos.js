@@ -19,6 +19,18 @@ export { modalidadeNoIdioma };
 // Sempre em português, em qualquer idioma de documento.
 export const MODALIDADE_AMBOS = 'Monitoria + Atuação';
 export const MODALIDADE_MONITORIA = 'Monitoria';
+/**
+ * Não é uma terceira modalidade — é a marca, gravada no lugar da modalidade
+ * do produto, de que ESTE serviço vai na proposta nas duas, com preço em cada
+ * uma, pra o cliente escolher. Fica em `modalidade` porque é onde o closer
+ * decide (um controle só, três opções) e porque assim o produto não pode
+ * estar comparando e fixado ao mesmo tempo.
+ *
+ * Nunca chega ao texto do documento: quem compara imprime as duas modalidades
+ * de verdade, e `modalidadeDo` traduz a marca de volta antes de qualquer
+ * escolha de prosa ou de linha.
+ */
+export const MODALIDADE_COMPARAR = 'As duas';
 
 const CATALOGOS = {
     pt: { blocos: BLOCOS_PT, slaGeral: SLA_GERAL, insumos: INSUMOS_PT },
