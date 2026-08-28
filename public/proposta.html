@@ -84,7 +84,6 @@
   button.mini:disabled{opacity:.4;cursor:not-allowed}
 
   .aviso.info{border-left-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
-  .aberturas{margin-top:.35rem;font-family:var(--mono);font-size:.72rem;color:var(--text)}
   .aviso{border-left:3px solid var(--alert);background:color-mix(in srgb,var(--alert) 8%,transparent);
     padding:.6rem .8rem;font-size:.85rem;border-radius:0 3px 3px 0}
 
@@ -142,6 +141,10 @@ function datalistFrentes() {
   return dl;
 }
 let CFG = null, SEED = null, TOKEN = null;
+// Onde pôr o cursor depois do próximo render(). Acrescentar ou remover faixa
+// reconstrói o formulário inteiro, e sem isto o foco volta pro começo da página
+// — o closer digita a quantidade e tem que ir no mouse buscar o campo seguinte.
+let FOCO = null;
 
 const $ = (s, r = document) => r.querySelector(s);
 const el = (t, a = {}, ...kids) => {
@@ -310,16 +313,10 @@ function render() {
     box.append(el('div', {}, n + (n === 1 ? ' proposta gerada' : ' propostas geradas') +
       '. Salvar cria a ' + (n + 1) + 'ª — ' +
       (n === 1 ? 'a anterior continua guardada.' : 'as anteriores continuam guardadas.')));
-    // Quantas vezes o cliente abriu. É o que decide se vale ligar ou esperar,
-    // e o que o Google Doc nunca disse.
-    const ab = SEED.anterior.aberturas;
-    if (ab && ab.total > 0) {
-      const quando = new Date(ab.ultima).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-      box.append(el('div', { className: 'aberturas' },
-        '👁 O cliente abriu a proposta ' + ab.total + (ab.total === 1 ? ' vez' : ' vezes') + '. Última: ' + quando + '.'));
-    } else if (SEED.anterior.doc_url) {
-      box.append(el('div', { className: 'aberturas' }, '👁 Ainda sem registro de abertura pelo cliente.'));
-    }
+    // A contagem de aberturas do cliente saiu daqui em 27/08/2026, a pedido da
+    // Jessica. O registro continua sendo feito e vive na planilha — o que saiu
+    // é a exibição no formulário, que é tela de PREENCHER: quem está montando a
+    // proposta não decide nada com esse número naquele momento.
     app.append(box);
   }
 
@@ -476,12 +473,20 @@ function escada(code, st, qtdCfg) {
 
   const add = el('button', { className: 'mini', type: 'button', textContent: '+ faixa' });
   add.disabled = st.faixas.length >= max;
-  add.onclick = () => { st.faixas.push({ qtd: '', preco: '' }); render(); };
+  add.onclick = () => {
+    st.faixas.push({ qtd: '', preco: '' });
+    FOCO = { code, i: st.faixas.length - 1 };
+    render();
+  };
   box.append(el('div', { className: 'faixahead' }, el('span', {}, 'Escada de preço (opcional)'), add));
 
   if (!st.faixas.length) box.append(el('div', { className: 'hint' },
     'Sem faixa, sai preço único. Com faixas, o documento lista uma linha por quantidade — "até N ' + (qtdCfg ? qtdCfg.unidade : '') + ': R$ X".'));
 
+  // As linhas ficam guardadas pra ligar o Enter DEPOIS de todas existirem: do
+  // preço de uma faixa o cursor vai pra quantidade da seguinte, que ainda não
+  // foi criada quando esta linha é montada.
+  const linhas = [];
   st.faixas.forEach((f, i) => {
     const q = el('input', { type: 'number', min: '1', value: f.qtd, placeholder: 'quantidade' });
     const pv = el('input', { type: 'number', min: '0', step: '100', value: f.preco, placeholder: 'preço' });
@@ -490,6 +495,26 @@ function escada(code, st, qtdCfg) {
     const rm = el('button', { className: 'mini', type: 'button', textContent: '×', title: 'remover faixa' });
     rm.onclick = () => { st.faixas.splice(i, 1); render(); };
     box.append(el('div', { className: 'faixa' }, el('span', { className: 'n' }, (i + 2) + 'ª'), q, pv, rm));
+    linhas.push({ q, pv });
+    // Volta do render() que acabou de criar esta faixa.
+    if (FOCO && FOCO.code === code && FOCO.i === i) { FOCO = null; setTimeout(() => q.focus(), 0); }
+  });
+
+  // Enter encadeia: quantidade → preço → quantidade da faixa seguinte. No preço
+  // da ÚLTIMA, cria a próxima faixa e já põe o cursor nela. É a parte do
+  // formulário onde mais se digita, e era a que mais exigia mouse.
+  const noEnter = (input, acao) => {
+    input.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); acao(); } };
+  };
+  linhas.forEach(({ q, pv }, i) => {
+    noEnter(q, () => pv.focus());
+    noEnter(pv, () => {
+      if (linhas[i + 1]) return linhas[i + 1].q.focus();
+      if (st.faixas.length >= max) return pv.blur();
+      st.faixas.push({ qtd: '', preco: '' });
+      FOCO = { code, i: st.faixas.length - 1 };
+      render();
+    });
   });
 
   if (code === 'BBP' && st.faixas.length) {

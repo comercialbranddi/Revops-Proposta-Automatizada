@@ -122,19 +122,59 @@ if (!SEM_ESCOPO) {
 if (!APPLY) { console.log(`\n[simulação] criaria/usaria o grupo "${GRUPO}", moveria ${alvos.length} campo(s)${SEM_ESCOPO ? '' : ' e restringiria ao funil de Vendas'} — rode com --apply`); process.exit(0); }
 
 const grupos = (await api('/fieldGroups/deal')).data || [];
-let grupo = grupos.find((g) => g.name === GRUPO);
-if (!grupo) {
+// ONDE os campos já estão manda mais que o NOME do grupo.
+//
+// Procurar por nome parecia inofensivo até alguém reorganizar o Pipedrive: em
+// 27/08/2026 os grupos foram todos renomeados — "Closer" virou "Operação:
+// donos e contatos", e o nosso "Proposta" virou "Proposta e precificação".
+// Este script não achou "Proposta", CRIOU um grupo novo e levou 26 campos pra
+// ele, no fim do card. Nada se perdeu, mas o closer abriu o card e os campos
+// tinham sumido do lugar de sempre.
+//
+// Agora o grupo é decidido por voto: se a maioria dos campos já mora num
+// grupo, é nele que os outros entram — com o nome que os humanos tiverem
+// dado. Criar só acontece quando NENHUM está agrupado, que é a primeira vez.
+const votos = {};
+for (const c of alvos) if (c.group_id) votos[c.group_id] = (votos[c.group_id] || 0) + 1;
+const maioria = Object.entries(votos).sort((a, b) => b[1] - a[1])[0];
+
+let grupo = maioria ? grupos.find((g) => g.id === Number(maioria[0])) : null;
+if (grupo) {
+    console.log(`
+📁 usando "${grupo.name}" (id ${grupo.id}) — onde ${maioria[1]} dos ${alvos.length} campos já estão`);
+} else if ((grupo = grupos.find((g) => g.name === GRUPO))) {
+    console.log(`
+📁 grupo "${GRUPO}" já existe — id ${grupo.id}`);
+} else {
     // Corpo em ARRAY — objeto solto devolve 400 "body must be array".
     grupo = (await api('/fieldGroups/deal', { method: 'POST', body: JSON.stringify([{ name: GRUPO }]) })).data[0];
-    console.log(`\n📁 grupo "${GRUPO}" criado — id ${grupo.id}`);
-} else {
-    console.log(`\n📁 grupo "${GRUPO}" já existe — id ${grupo.id}`);
+    console.log(`
+📁 grupo "${GRUPO}" criado — id ${grupo.id}`);
+}
+
+// Campo que JÁ está num grupo fica onde está.
+//
+// Este script foi escrito pra uma organização inicial e passou a ser rodado de
+// novo a cada campo novo — arrastando junto tudo que alguém já tinha
+// posicionado à mão. Em 27/08/2026 foi exatamente isso: os dois links tinham
+// sido postos em "Proposta e precificação" a pedido da Jessica, e a rodada
+// seguinte os levaria de volta.
+//
+// Por padrão, então, só campo SEM grupo é colocado. --reagrupar traz de volta o
+// comportamento antigo, pra quando a intenção for mesmo reorganizar tudo.
+const REAGRUPAR = process.argv.includes('--reagrupar');
+const forasteiros = alvos.filter((c) => c.group_id && c.group_id !== grupo.id);
+if (forasteiros.length && !REAGRUPAR) {
+    console.log(`
+${forasteiros.length} campo(s) em outro grupo — deixo onde estão (use --reagrupar pra trazer):`);
+    for (const c of forasteiros) console.log(`   ${c.name.padEnd(36)} ${grupos.find((g) => g.id === c.group_id)?.name || c.group_id}`);
 }
 
 let movidos = 0, escopados = 0;
 for (const c of alvos) {
     const patch = {};
-    if (c.group_id !== grupo.id) patch.group_id = grupo.id;
+    const podeMover = REAGRUPAR || !c.group_id;
+    if (c.group_id !== grupo.id && podeMover) patch.group_id = grupo.id;
     if (!SEM_ESCOPO && !naoRestringir.has(c.name) && c.show_in_pipelines?.show_in_all !== false) {
         patch.show_in_pipelines = { show_in_all: false, pipeline_ids: [SALES_PIPELINE_ID] };
     }
@@ -157,13 +197,16 @@ const ordemAtual = async () => (await api('/dealFields?limit=500')).data
     .sort((a, b) => Number(a.order_nr) - Number(b.order_nr))
     .map((c) => c.key);
 
-const desejada = alvos.map((c) => c.key);
+// Só reordena o que está no grupo alvo — puxar de fora pra ordenar seria mover
+// campo que alguém posicionou, pela porta dos fundos.
+const noGrupo = new Set((await api('/dealFields?limit=500')).data.filter((c) => c.group_id === grupo.id).map((c) => c.key));
+const desejada = alvos.map((c) => c.key).filter((k) => noGrupo.has(k));
 if (JSON.stringify(await ordemAtual()) === JSON.stringify(desejada)) {
     console.log('✅ ordem na tela já está certa');
 } else {
     console.log('\nreordenando (sai do grupo e volta, do último pro primeiro)…');
     const outroGrupo = (await api('/fieldGroups/deal')).data.find((g) => g.id !== grupo.id).id;
-    for (const c of [...alvos].reverse()) {
+    for (const c of [...alvos].filter((x) => noGrupo.has(x.key)).reverse()) {
         await api(`/dealFields/${c.id}`, { method: 'PUT', body: JSON.stringify({ group_id: outroGrupo }) });
         await api(`/dealFields/${c.id}`, { method: 'PUT', body: JSON.stringify({ group_id: grupo.id }) });
     }

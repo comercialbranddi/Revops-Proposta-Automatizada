@@ -238,6 +238,12 @@ function kvGrid(pares) {
     return `<div class="card grid2">${cells}</div>`;
 }
 
+// Produtos que dependem de marca registrada no INPI. Brand Bidding NÃO entra:
+// a atuação se apoia em concorrência desleal e uso indevido de marca, que não
+// exigem registro — e há clientes de BB sem ele. Buy Box Protection também
+// não: disputa Buy Box, não marca.
+const EXIGE_INPI = ['GD', 'VM'];
+
 // ─── Cláusulas ──────────────────────────────────────────────────────
 
 function clausulaIdentificacao(ctx) {
@@ -324,10 +330,17 @@ function clausulaEscopo(ctx) {
       ${sla.map((l) => `<div class="sla"><span class="e">${esc(l.entregavel)}</span><span>${esc(l.periodicidade)}</span><span>${esc(l.canal)}</span></div>`).join('')}
     </div>`;
 
-    // Requisito: nota legal (§) — pré-condição contratual. Fica de fora em
-    // proposta só de BBP: o requisito é registro de MARCA no INPI, e BBP puro
-    // disputa Buy Box, não marca — o modelo antigo dele não pedia isso.
-    const req = codes.some((c) => c !== 'BBP')
+    // Requisito: nota legal (§) — pré-condição contratual.
+    //
+    // A regra era "todo produto MENOS BBP", e isso pegava o Brand Bidding
+    // junto. Errado: registro no INPI NÃO é obrigatório pra BB — a Branddi tem
+    // clientes de BB sem marca registrada (comercial, 27/08/2026). Exigir na
+    // proposta criava uma pré-condição contratual que a operação não pratica.
+    //
+    // Agora a lista é POSITIVA: só quem realmente depende de marca registrada.
+    // Dizer "quem não é BBP" escondia a regra atrás de uma negação, e foi por
+    // isso que o BB entrou sem ninguém notar.
+    const req = codes.some((c) => EXIGE_INPI.includes(c))
         ? `<div class="note"><span class="note-ic">§</span><p><strong>${esc(t.requisito)}.</strong> ${esc(t.requisitoValor)}</p></div>`
         : '';
 
@@ -440,7 +453,7 @@ function clausulaInvestimento(ctx) {
         const desc = bundle ? (o.descricao || '') : t.avulsoDesc;
         const eco = o.soma > o.preco + 0.01 ? t.economiaDe(brl(o.soma - o.preco)) : '';
         return `<div class="pcard${rec ? ' rec' : ''}">
-          <div class="pcard-top"><span class="ptag${bundle ? ' pcombo' : ''}">${esc(tag)}</span>${rec ? `<span class="badge-rec">${esc(t.recomendado)}</span>` : ''}</div>
+          <div class="pcard-top"><span class="ptag">${esc(tag)}</span>${rec ? `<span class="badge-rec">${esc(t.recomendado)}</span>` : ''}</div>
           <h4 class="pname">${esc(nome)}</h4>
           ${desc ? `<p class="pdesc">${esc(desc)}</p>` : ''}
           ${precoGrande(o.preco, t)}
@@ -469,9 +482,10 @@ function clausulaCondicoes(ctx) {
 
 function clausulaAceite(ctx) {
     const { codes, meta, t, insumos } = ctx;
-    // O comprovante do INPI só é insumo quando a proposta trata de marca —
-    // BBP puro disputa Buy Box, não marca, e o modelo antigo dele não pedia.
-    const insumoINPI = codes.some((c) => c !== 'BBP') ? [t.insumoINPI] : [];
+    // Mesma lista do requisito: pedir o comprovante de um registro que a
+    // proposta não exige seria travar o aceite por um documento que o cliente
+    // pode não ter.
+    const insumoINPI = codes.some((c) => EXIGE_INPI.includes(c)) ? [t.insumoINPI] : [];
     const lista = [...codes.map((c) => insumos[c]).filter(Boolean), ...insumoINPI].join('; ');
     const etapas = [
         [t.etapaAceite, t.respContratante, t.prazoAte(meta.validade)],
@@ -852,8 +866,11 @@ border-bottom:1px solid var(--line-2);align-items:baseline;font-size:.88rem;colo
 .i-canais{display:block;margin-top:.28rem;font-size:.76rem;line-height:1.45;color:var(--muted);font-weight:400}
 
 /* Cards de pacote */
-.minihead{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);
-font-weight:700;margin:.4rem 0 -.2rem}
+/* O título da seção é a palavra que anuncia a opção recomendada — vinha em
+   0.62rem, mono, corpo de rodapé. Vai no corpo dos títulos de cláusula, com
+   entrelinha pra respirar do bloco de cima. */
+.minihead{font-size:1.75rem;letter-spacing:.02em;color:var(--cyan);
+font-weight:800;margin:1.4rem 0 .6rem}
 .pacotes{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem}
 /* container-type: o preço grande se dimensiona pela largura DESTE card (cqi),
    não pela raiz — é o que impede o número de furar a borda quando entram 3 ou
@@ -867,8 +884,6 @@ container-type:inline-size}
 .pcard.rec .ptag{color:var(--cyan)}
 /* O rótulo do combo é a única coisa da seção que precisa ser vista de longe:
    é a opção que a proposta recomenda, no meio de cartões avulsos iguais. */
-.pcombo{font-size:1.95rem;letter-spacing:.1em;line-height:1.05;color:var(--cyan);font-weight:800;
-  display:block;width:100%;margin-bottom:.15rem}
 .badge-rec{font-family:var(--mono);font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
 color:var(--success);border:1px solid rgba(34,197,94,.4);border-radius:var(--radius-pill);padding:.2rem .6rem}
 .pname{font-size:1.15rem;font-weight:700;color:var(--text);letter-spacing:-.01em}

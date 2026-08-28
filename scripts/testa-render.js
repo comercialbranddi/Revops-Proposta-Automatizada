@@ -112,24 +112,27 @@ const heroDeCombo = (codes) => (h) => {
 };
 
 /**
- * O cartão do combo é o que salta na seção de preços.
+ * Quem anuncia o combo é o TÍTULO da seção, não o cartão.
  *
- * Ele saía com o mesmo peso dos avulsos — "OPÇÃO 1 · PACOTE" em 0.6rem, do lado
- * de quatro cartões iguais —, sendo a opção que a proposta recomenda. Agora leva
- * a palavra em corpo grande (classe `pcombo`); o avulso segue com o rótulo
- * pequeno, que é o contraste que faz o combo ser visto.
+ * Primeira tentativa foi pôr "COMBO" em corpo grande dentro do cartão. Ficou
+ * ruim e não era o pedido: a palavra competia com o nome dos serviços, que é o
+ * que o cliente precisa ler ali. O que tem que saltar é a legenda que abre a
+ * seção — ela vinha em 0.62rem, mono, do tamanho de rodapé.
  *
- * Confere também que "pacote" não voltou no rótulo: o time chama de combo, e
- * misturar os dois nomes na mesma seção confunde quem lê.
+ * Confere também que "pacote" não voltou: o time chama de combo, e misturar os
+ * dois nomes na mesma seção confunde quem lê.
  */
 const comboEmDestaque = (h) => {
-    const tags = [...h.matchAll(/<span class="ptag([^"]*)">([^<]*)</g)]
-        .map((m) => ({ grande: m[1].includes('pcombo'), txt: m[2] }));
-    const combos = tags.filter((x) => x.grande);
-    if (!combos.length) return 'nenhum cartão de combo em destaque';
-    if (combos.some((x) => !/^Combo/.test(x.txt))) return `rótulo do combo não diz "Combo": ${combos.map((x) => x.txt)}`;
-    if (tags.some((x) => !x.grande && x.grande)) return 'avulso ficou em destaque';
-    if (/PACOTE|Pacote/.test(h.match(/<div class="pacotes">[\s\S]*?<\/div>/)?.[0] || '')) return 'seção de preços ainda diz "pacote"';
+    const titulo = (h.match(/<p class="minihead">([^<]*)<\/p>/) || [])[1] || '';
+    if (!/^Combo$/i.test(titulo.trim())) return `título da seção não é a palavra "Combo": "${titulo}"`;
+    // O tamanho vive no CSS; o que dá pra afirmar em Node é que ele não é mais
+    // o corpo de rodapé de antes.
+    const regra = (h.match(/\.minihead\{[^}]*\}/) || [''])[0];
+    const tam = Number((regra.match(/font-size:([\d.]+)rem/) || [])[1] || 0);
+    if (!(tam >= 1.5)) return `título do combo ainda pequeno (font-size ${tam}rem)`;
+    if (/class="ptag pcombo"/.test(h)) return 'cartão voltou a levar a palavra em corpo grande';
+    const secao = (h.match(/<div class="pacotes">[\s\S]*?<\/div>/) || [''])[0];
+    if (/PACOTE|Pacote/.test(secao)) return 'seção de preços ainda diz "pacote"';
     return true;
 };
 
@@ -285,7 +288,11 @@ const CASOS = [
         // Um pacote que cobre tudo e sai mais barato vira comparação lado a lado:
         // cada serviço avulso (R$ 8.900) e o pacote (R$ 15.000) marcado como
         // recomendado, com a economia. A tabela não repete o total combinado.
-        checa: [semPlaceholder, contem('Opções de combo'), contem('Recomendado'),
+        // BB+VM: o VM depende de marca registrada, então o requisito VOLTA. É o
+        // outro lado da regra — sem este caso, apagar o requisito por engano
+        // passaria despercebido.
+        checa: [semPlaceholder, contem('>Combo<'), contem('Recomendado'),
+            contem('registro no INPI'),
             contem('R$ 8.900,00'), contem('R$ 15.000,00'), contem('economia de R$ 2.800,00'),
             naoContem('Subtotal'), naoContem('condição combinada'),
             comboEmDestaque],
@@ -432,9 +439,13 @@ const CASOS_NOVOS = [
         nome: 'o que saiu do modelo não volta',
         args: {},
         spec: spec(['BBP', 'BB']),
-        // cláusula legal removida a pedido; requisito do INPI ficou, virou escopo
+        // cláusula legal removida a pedido; o requisito do INPI ficou, virou escopo
         checa: [naoContem('Lei 9.279'), naoContem('Fundamentação legal'),
-            contem('registro no INPI'),
+            // BB e BBP NÃO exigem registro no INPI. A regra era "todo produto
+            // menos BBP" e pegava o Brand Bidding junto — a Branddi tem
+            // clientes de BB sem marca registrada, e a proposta criava uma
+            // pré-condição que a operação não pratica (comercial, 27/08/2026).
+            naoContem('registro no INPI'), naoContem('comprovante de registro da marca'),
             // a linha "Suporte" do BBP descrevia o COMO da entrega
             naoContem('cruzamento com bases'), naoContem('apoio à atuação comercial junto aos canais'),
             // revisão contra os docs (24/08/2026): "D+7" e "renovação automática"

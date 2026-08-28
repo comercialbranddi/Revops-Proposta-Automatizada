@@ -4,6 +4,7 @@ import { pdGet, pdPut, pdPost } from '../services/pipedrive.js';
 import {
     SALES_PIPELINE_ID,
     ENVIO_PROPOSTA_STAGE_ID,
+    ETAPAS_COM_LINK_FORM,
     isProposalAutomationEnabledForDeal,
     PROPOSAL_ADMIN_TOKEN,
     PROPOSAL_WEBHOOK_SECRET,
@@ -76,9 +77,12 @@ router.post('/webhook/deal', (req, res) => {
         const prevStageId = payload?.previous?.stage_id;
 
         if (!dealId || pipelineId !== SALES_PIPELINE_ID) return;
-        if (stageId !== ENVIO_PROPOSTA_STAGE_ID) return;
+        // Duas etapas entregam o link do formulário; só uma delas gera o
+        // documento do fluxo antigo. Sair aqui cedo demais era o que deixava o
+        // card que pula direto pra "Proposta enviada" sem link nenhum.
+        if (!ETAPAS_COM_LINK_FORM.includes(stageId)) return;
 
-        const isEntry = prevStageId !== ENVIO_PROPOSTA_STAGE_ID;
+        const isEntry = prevStageId !== stageId;
 
         // A nota com o link do formulário sai ANTES e POR FORA da trava de
         // piloto: o time vai validar o modelo novo usando de verdade, e a trava
@@ -89,7 +93,12 @@ router.post('/webhook/deal', (req, res) => {
             await postarNotaDoFormulario(dealId);
         }
 
-        // ─── Daqui pra baixo é o fluxo antigo, inalterado ───────────────
+        // ─── Daqui pra baixo é o fluxo antigo, só na etapa de sempre ────
+        // Gerar em "Proposta enviada" criaria proposta nova pra um card cuja
+        // proposta já foi ao cliente — e ainda sobrescreveria o "Link
+        // Proposta" que ele está usando.
+        if (stageId !== ENVIO_PROPOSTA_STAGE_ID) return;
+
         if (!isProposalAutomationEnabledForDeal(dealId)) {
             log.info(`Deal #${dealId} em Envio de proposta — automação desligada/fora do piloto`);
             return;
