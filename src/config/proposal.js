@@ -1,3 +1,8 @@
+// A marca de comparação vem do conteúdo, e não é redigitada aqui: é o valor
+// que o formulário grava e o renderizador lê, e duas cópias da mesma string
+// quebram calado (o produto some da comparação sem erro nenhum).
+import { MODALIDADE_COMPARAR } from '../content/blocos.js';
+
 /**
  * Config da Proposta Automatizada — produtos, templates, campos do Pipedrive,
  * flags. Ver handoff 27/07/2026 (memory da Jessica) pro histórico da decisão.
@@ -867,6 +872,7 @@ export function catalogoDoFormulario(idioma = IDIOMA_PADRAO) {
             .map(([code, ids]) => [code, ids.map((id) => ({ id, label: rotulo(id) }))])),
         modalidades: MODALIDADE_POR_PRODUTO,
         modalidadePadrao: MODALIDADE_PADRAO,
+        modalidadeComparar: MODALIDADE_COMPARAR,
         quantidades: QUANTIDADE_POR_PRODUTO,
         maxFaixas: MAX_FAIXAS,
         // `disponivel: false` chega na tela como opção desabilitada, em vez de
