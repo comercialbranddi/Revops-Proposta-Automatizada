@@ -141,6 +141,16 @@ export const TEXTOS = {
 
         modalidadeDe: (produto) => `Modalidade · ${produto}`,
         semModalidade: 'Monitoria e inteligência',
+
+        // ─── Comparação de modalidades ──────────────────────────────
+        // Quando a proposta apresenta as DUAS modalidades e o cliente
+        // escolhe. A comparação é do CONTRATO inteiro, não produto a
+        // produto — ver a nota em render-proposta.js.
+        modalidadeOu: (a, b) => `${a} ou ${b}`,
+        soEm: (mod) => `só em ${mod}`,
+        opcoesModalidade: 'Modalidade',
+        opcoesModalidadeNota: 'As duas modalidades cobrem o mesmo escopo de monitoramento. A diferença está na atuação: com ela, a Branddi notifica o infrator e protocola a denúncia; sem ela, a Contratante recebe o dossiê completo e conduz a medida que julgar cabível.',
+        mesmoValorNasDuas: 'mesmo valor nas duas',
         idiomaRelatorios: 'Idioma dos relatórios',
         idiomaRelatoriosValor: 'Português',
 
@@ -304,6 +314,13 @@ export const TEXTOS = {
 
         modalidadeDe: (produto) => `Mode · ${produto}`,
         semModalidade: 'Monitoring and intelligence',
+
+        // Ver a nota no bloco em português.
+        modalidadeOu: (a, b) => `${a} or ${b}`,
+        soEm: (mod) => `${mod} only`,
+        opcoesModalidade: 'Service level',
+        opcoesModalidadeNota: 'Both service levels cover the same monitoring scope. The difference is enforcement: with it, Branddi notifies the infringer and files the complaint; without it, the Client receives the complete evidence file and takes the action it deems appropriate.',
+        mesmoValorNasDuas: 'same price in both',
         idiomaRelatorios: 'Reporting language',
         idiomaRelatoriosValor: 'English',
 
@@ -453,6 +470,13 @@ export const TEXTOS = {
 
         modalidadeDe: (produto) => `Modalidad · ${produto}`,
         semModalidade: 'Monitoreo e inteligencia',
+
+        // Ver a nota no bloco em português.
+        modalidadeOu: (a, b) => `${a} o ${b}`,
+        soEm: (mod) => `solo en ${mod}`,
+        opcoesModalidade: 'Modalidad',
+        opcoesModalidadeNota: 'Ambas modalidades cubren el mismo alcance de monitoreo. La diferencia está en la actuación: con ella, Branddi notifica al infractor y presenta la denuncia; sin ella, la Contratante recibe el expediente completo y adopta la medida que considere pertinente.',
+        mesmoValorNasDuas: 'mismo valor en ambas',
         idiomaRelatorios: 'Idioma de los informes',
         idiomaRelatoriosValor: 'Español',
 

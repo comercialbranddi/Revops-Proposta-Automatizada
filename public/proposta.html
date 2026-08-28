@@ -75,6 +75,7 @@
 
   .faixas{border:1px dashed var(--rule);border-radius:3px;padding:.7rem;display:flex;flex-direction:column;gap:.6rem}
   .faixa{display:grid;grid-template-columns:1.8rem 1fr 1fr auto;gap:.5rem;align-items:center}
+  .faixas.cmp .faixa{grid-template-columns:1.8rem 1fr 1fr 1fr auto}
   .faixa .n{font-family:var(--mono);font-size:.7rem;color:var(--dim)}
   .faixahead{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);
     font-size:.63rem;letter-spacing:.11em;text-transform:uppercase;color:var(--dim);font-weight:700}
@@ -175,8 +176,17 @@ function textareaAuto(props = {}) {
 const brl = n => (n == null || n === '') ? '—'
   : Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
-const estado = { marcas: '', idioma: 'pt', produtos: new Set(), porProduto: {}, pacotes: [], observacoes: '', obsProposta: '', condicoes: {} };
-const vazio = (code) => ({ modalidade: CFG.catalogo.modalidades[code] ? CFG.catalogo.modalidadePadrao : null, canais: new Set(), canaisOutros: [], quantidade: '', preco: '', faixas: [], sobConsulta: false });
+const estado = { marcas: '', idioma: 'pt', produtos: new Set(), porProduto: {}, pacotes: [], compararModalidades: false, observacoes: '', obsProposta: '', condicoes: {} };
+// `preco` é sempre o valor de Monitoria + Atuação — é o que ele quer dizer nas
+// propostas já gravadas, e a planilha de specs é append-only: mudar o sentido
+// da chave faria toda revisão antiga sair com outro preço. A Monitoria pura
+// mora em `precoMonitoria`, que só existe quando as duas vão lado a lado.
+const vazio = (code) => ({ modalidade: CFG.catalogo.modalidades[code] ? CFG.catalogo.modalidadePadrao : null, canais: new Set(), canaisOutros: [], quantidade: '', preco: '', precoMonitoria: '', faixas: [], sobConsulta: false });
+const temModalidade = (code) => !!CFG.catalogo.modalidades[code];
+// Comparar só faz sentido se algum serviço do deal TIVER modalidade: ligado o
+// aviso e depois trocado o escopo pra só BBP, a proposta voltaria a ter uma
+// coluna de preço sozinha e dois cards idênticos.
+const comparando = () => estado.compararModalidades && [...estado.produtos].some(temModalidade);
 
 // ─── Login ──────────────────────────────────────────────────────────
 // O script do Google entra com `async defer`, então pode chegar DEPOIS deste
@@ -278,6 +288,7 @@ function aplicarSeed() {
     } else if (Number(a.pacote) > 0) {
       estado.pacotes = [{ produtos: new Set(a.produtos || []), extras: [], preco: a.pacote, rotulo: '' }];
     }
+    estado.compararModalidades = a.compararModalidades === true;
     estado.observacoes = a.observacoes || '';
     estado.obsProposta = a.obsProposta || '';
     estado.condicoes = Object.assign({}, a.condicoes || {});
@@ -287,6 +298,10 @@ function aplicarSeed() {
         canais: new Set(p.canais || []),
         canaisOutros: Array.isArray(p.canaisOutros) ? p.canaisOutros.slice() : [],
         quantidade: p.quantidade == null ? '' : p.quantidade,
+        // Revisão anterior à comparação não tem a chave. Object.assign copia o
+        // `undefined` por cima do '' do molde e o input nasce sem valor.
+        precoMonitoria: p.precoMonitoria == null ? '' : p.precoMonitoria,
+        faixas: (p.faixas || []).map((x) => ({ qtd: x.qtd, preco: x.preco, precoMonitoria: x.precoMonitoria == null ? '' : x.precoMonitoria })),
       });
     });
     return;
@@ -325,7 +340,10 @@ function render() {
 
   app.append(cardEscopo());
   CFG.catalogo.produtos.filter(p => estado.produtos.has(p.code)).forEach(p => app.append(cardProduto(p)));
-  if (estado.produtos.size) app.append(cardPacote());
+  // Comparar modalidades e montar combo são duas comparações concorrentes no
+  // mesmo documento (qual modalidade × qual combinação): quatro cards e duas
+  // decisões de uma vez. O cartão some, e o spec não grava pacote.
+  if (estado.produtos.size && !comparando()) app.append(cardPacote());
   app.append(cardCondicoes());
   atualizarPendencias();
 }
@@ -378,6 +396,18 @@ function cardEscopo() {
   });
   b.append(el('label', { className: 'f' }, 'Serviços contratados', chips));
 
+  // Uma proposta, duas ofertas. Ligado, o documento sai com as duas modalidades
+  // lado a lado — mesma tabela com duas colunas de preço, os dois cards, e o
+  // cliente escolhe. Desligado, cada serviço sai na modalidade marcada no
+  // cartão dele, como sempre foi.
+  if ([...estado.produtos].some(temModalidade)) {
+    const cmp = el('input', { type: 'checkbox', checked: estado.compararModalidades });
+    cmp.onchange = () => { estado.compararModalidades = cmp.checked; render(); };
+    b.append(el('label', { className: 'f' }, 'Modalidades',
+      el('div', { className: 'chips' }, el('label', { className: 'chip' }, cmp, 'Apresentar as duas lado a lado')),
+      el('span', { className: 'hint' }, 'O cliente recebe UMA proposta com Monitoria e Monitoria + Atuação, cada uma com seu preço, e escolhe. Cada serviço passa a ter dois valores. As opções de pacote saem de cena: duas escolhas ao mesmo tempo confundem mais do que vendem.')));
+  }
+
   c.append(b);
   return c;
 }
@@ -392,7 +422,10 @@ function cardProduto(p) {
   // inteligência. Mostrar a escolha ali sugeriria uma diferença que o
   // documento não tem.
   const mods = CFG.catalogo.modalidades[p.code];
-  if (mods) {
+  if (mods && comparando()) {
+    b.append(el('div', { className: 'hint' },
+      'As duas modalidades vão na proposta lado a lado — não há o que escolher aqui. Preencha os dois preços abaixo.'));
+  } else if (mods) {
     const mod = el('div', { className: 'chips' });
     mods.forEach(m => {
       const inp = el('input', { type: 'radio', name: 'mod-' + p.code, checked: st.modalidade === m });
@@ -431,9 +464,15 @@ function cardProduto(p) {
     q.oninput = () => { st.quantidade = q.value; atualizarPendencias(); };
     row.append(el('label', { className: 'f' }, qtdCfg.rotulo + ' (' + qtdCfg.unidade + ')', q));
   }
+  const cmpMod = !!mods && comparando();
   const pr = el('input', { type: 'number', min: '0', step: '100', value: st.preco });
   pr.oninput = () => { st.preco = pr.value; atualizarPendencias(); };
-  row.append(el('label', { className: 'f' }, 'Preço mensal (R$)', pr));
+  row.append(el('label', { className: 'f' }, cmpMod ? 'Monitoria + Atuação (R$)' : 'Preço mensal (R$)', pr));
+  if (cmpMod) {
+    const pm = el('input', { type: 'number', min: '0', step: '100', value: st.precoMonitoria });
+    pm.oninput = () => { st.precoMonitoria = pm.value; atualizarPendencias(); };
+    row.append(el('label', { className: 'f' }, 'Só Monitoria (R$)', pm));
+  }
   b.append(row);
 
   if (soAppStore) b.append(el('div', { className: 'hint' },
@@ -470,11 +509,17 @@ function campoOutro(st) {
 function escada(code, st, qtdCfg) {
   const max = CFG.catalogo.maxFaixas[code] - 1; // a faixa 1 são a quantidade e o preço acima
   const box = el('div', { className: 'faixas' });
+  // A escada existe nas duas modalidades: a faixa de 5 marketplaces tem um
+  // preço com atuação e outro sem. Uma escada só, com dois valores por
+  // degrau — duas escadas independentes deixariam montar faixas diferentes
+  // em cada modalidade, e a tabela do documento tem uma linha por degrau.
+  const cmpFaixa = comparando() && temModalidade(code);
+  box.classList.toggle('cmp', cmpFaixa);
 
   const add = el('button', { className: 'mini', type: 'button', textContent: '+ faixa' });
   add.disabled = st.faixas.length >= max;
   add.onclick = () => {
-    st.faixas.push({ qtd: '', preco: '' });
+    st.faixas.push({ qtd: '', preco: '', precoMonitoria: '' });
     FOCO = { code, i: st.faixas.length - 1 };
     render();
   };
@@ -489,13 +534,18 @@ function escada(code, st, qtdCfg) {
   const linhas = [];
   st.faixas.forEach((f, i) => {
     const q = el('input', { type: 'number', min: '1', value: f.qtd, placeholder: 'quantidade' });
-    const pv = el('input', { type: 'number', min: '0', step: '100', value: f.preco, placeholder: 'preço' });
+    const pv = el('input', { type: 'number', min: '0', step: '100', value: f.preco, placeholder: cmpFaixa ? 'monitoria + atuação' : 'preço' });
     q.oninput = () => { f.qtd = q.value; atualizarPendencias(); };
     pv.oninput = () => { f.preco = pv.value; atualizarPendencias(); };
+    let pm = null;
+    if (cmpFaixa) {
+      pm = el('input', { type: 'number', min: '0', step: '100', value: f.precoMonitoria == null ? '' : f.precoMonitoria, placeholder: 'só monitoria' });
+      pm.oninput = () => { f.precoMonitoria = pm.value; atualizarPendencias(); };
+    }
     const rm = el('button', { className: 'mini', type: 'button', textContent: '×', title: 'remover faixa' });
     rm.onclick = () => { st.faixas.splice(i, 1); render(); };
-    box.append(el('div', { className: 'faixa' }, el('span', { className: 'n' }, (i + 2) + 'ª'), q, pv, rm));
-    linhas.push({ q, pv });
+    box.append(el('div', { className: 'faixa' }, el('span', { className: 'n' }, (i + 2) + 'ª'), q, pv, pm, rm));
+    linhas.push({ q, pv, pm });
     // Volta do render() que acabou de criar esta faixa.
     if (FOCO && FOCO.code === code && FOCO.i === i) { FOCO = null; setTimeout(() => q.focus(), 0); }
   });
@@ -506,12 +556,15 @@ function escada(code, st, qtdCfg) {
   const noEnter = (input, acao) => {
     input.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); acao(); } };
   };
-  linhas.forEach(({ q, pv }, i) => {
+  linhas.forEach(({ q, pv, pm }, i) => {
     noEnter(q, () => pv.focus());
-    noEnter(pv, () => {
+    // Com os dois preços, o Enter no primeiro vai pro segundo — e é o segundo
+    // que fecha o degrau e cria o próximo.
+    if (pm) noEnter(pv, () => pm.focus());
+    noEnter(pm || pv, () => {
       if (linhas[i + 1]) return linhas[i + 1].q.focus();
       if (st.faixas.length >= max) return pv.blur();
-      st.faixas.push({ qtd: '', preco: '' });
+      st.faixas.push({ qtd: '', preco: '', precoMonitoria: '' });
       FOCO = { code, i: st.faixas.length - 1 };
       render();
     });
@@ -703,13 +756,16 @@ function pendencias() {
     const st = estado.porProduto[code];
     const q = CFG.catalogo.quantidades[code];
     const soAppStore = code === 'BB' && st.canais.size === 1 && st.canais.has(CFG.catalogo.canalAppStore);
-    if (!(Number(st.preco) > 0)) p.push('Preço ' + code);
+    const cmpMod = comparando() && temModalidade(code);
+    if (!(Number(st.preco) > 0)) p.push((cmpMod ? 'Preço com atuação ' : 'Preço ') + code);
+    if (cmpMod && !(Number(st.precoMonitoria) > 0)) p.push('Preço só monitoria ' + code);
     if (q && !soAppStore && !(Number(st.quantidade) > 0)) p.push(q.rotulo + ' ' + code);
     // Faixa pela metade é o erro provável: põe a quantidade e esquece o preço.
     // Gerar assim produziria uma linha sem valor no documento.
     st.faixas.forEach((f, i) => {
       if (!(Number(f.qtd) > 0)) p.push(code + ' faixa ' + (i + 2) + ' — quantidade');
-      if (!(Number(f.preco) > 0)) p.push(code + ' faixa ' + (i + 2) + ' — preço');
+      if (!(Number(f.preco) > 0)) p.push(code + ' faixa ' + (i + 2) + (cmpMod ? ' — preço com atuação' : ' — preço'));
+      if (cmpMod && !(Number(f.precoMonitoria) > 0)) p.push(code + ' faixa ' + (i + 2) + ' — preço só monitoria');
     });
   }
   // Opção de pacote pela metade: preço sem conteúdo, ou conteúdo sem preço.
@@ -740,6 +796,14 @@ function avisos() {
     else if (pac === soma) a.push(nome + ' tem o mesmo valor da soma — sem desconto, não é pacote.');
     else if (pac < soma * 0.5) a.push(nome + ' dá ' + Math.round((1 - pac / soma) * 100) + '% de desconto. Confira antes de salvar.');
   });
+  if (comparando()) {
+    for (const code of estado.produtos) {
+      if (!temModalidade(code)) continue;
+      const st = estado.porProduto[code];
+      const m = Number(st.precoMonitoria), a2 = Number(st.preco);
+      if (m > 0 && a2 > 0 && m >= a2) a.push(code + ': a Monitoria (' + brl(m) + ') está igual ou acima da Monitoria + Atuação (' + brl(a2) + ').');
+    }
+  }
   for (const code of estado.produtos) {
     if (!estado.porProduto[code].canais.size) a.push('Sem canal marcado em ' + code + ' — a linha não sai no documento.');
   }
@@ -780,19 +844,24 @@ $('#salvar').onclick = async () => {
         canaisOutros: s.canaisOutros.slice(),
         quantidade: s.quantidade === '' ? null : Number(s.quantidade),
         preco: Number(s.preco),
-        faixas: s.faixas.map(f => ({ qtd: Number(f.qtd), preco: Number(f.preco) })),
+        // Só grava o segundo preço quando ele significa alguma coisa: fora da
+        // comparação a chave ficaria com um número que o documento ignora, e
+        // a planilha de specs não se reescreve.
+        precoMonitoria: comparando() && temModalidade(c) ? Number(s.precoMonitoria) : null,
+        faixas: s.faixas.map(f => ({ qtd: Number(f.qtd), preco: Number(f.preco), precoMonitoria: comparando() && temModalidade(c) ? Number(f.precoMonitoria) : null })),
         sobConsulta: !!s.sobConsulta,
       }];
     })),
     // Trava anti-stale (cinturão e suspensório): não grava pacote que referencie
     // produto fora dos serviços do deal — evita salvar combo antigo (ex.: Golpes)
     // que não faz mais parte da proposta.
-    pacotes: estado.pacotes
+    pacotes: comparando() ? [] : estado.pacotes
       .filter((o) => [...o.produtos].every((c) => estado.produtos.has(c)))
       .map((o) => ({
         produtos: [...o.produtos], extras: o.extras.slice(),
         preco: Number(o.preco), rotulo: o.rotulo.trim() || null,
       })),
+    compararModalidades: comparando(),
     observacoes: estado.observacoes,
     obsProposta: estado.obsProposta,
     // Só o que foi negociado. Chave ausente = condição padrão da Branddi.
