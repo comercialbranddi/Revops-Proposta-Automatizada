@@ -49,6 +49,23 @@ export function linhasDaModalidade(linhas, modalidade) {
     return linhas.filter((l) => !l.so || l.so === chave);
 }
 
+/**
+ * As linhas das DUAS modalidades, na ordem original, cada uma sabendo de qual
+ * ela é exclusiva (`soEm`) — ou `null` quando vale nas duas.
+ *
+ * Serve à proposta que apresenta as duas modalidades lado a lado: em vez de
+ * ESCOLHER um conjunto, o documento mostra a união e marca o que só existe de
+ * cada lado. Não há dado novo aqui — o `so` de cada linha já foi escrito
+ * exatamente para essa distinção, nos três idiomas.
+ */
+export function linhasComparadas(linhas) {
+    return (linhas || []).map((l) => ({
+        ...l,
+        soEm: l.so === 'ambos' ? MODALIDADE_AMBOS
+            : (l.so === 'monitoria' ? MODALIDADE_MONITORIA : null),
+    }));
+}
+
 /** A prosa do produto na modalidade pedida. Produto sem modalidade usa `unica`. */
 export function prosaDoBloco(blocos, code, modalidade) {
     const b = blocos[code];

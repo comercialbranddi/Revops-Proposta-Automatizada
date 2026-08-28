@@ -601,6 +601,97 @@ const CASOS_NOVOS = [
         spec: spec(['BB']),
         checa: [contem('family=Inter'), contem('"Inter"'), contem('JetBrains+Mono')],
     },
+
+    // ── Duas modalidades lado a lado ────────────────────────────────
+    // Uma proposta só, com Monitoria e Monitoria + Atuação: mesma tabela com
+    // duas colunas de preço e dois cards. O que dá errado calado aqui é o
+    // preço — o documento mostrar o mesmo número nas duas colunas, ou vender
+    // o mais caro como se fosse o piso.
+    {
+        nome: 'comparação: a tabela traz as duas colunas, com os dois preços',
+        args: {},
+        spec: spec(['BB'], { compararModalidades: true }, { BB: { preco: 8900, precoMonitoria: 6400 } }),
+        checa: [
+            contem('itable cmp'),
+            contem('R$ 8.900'), contem('R$ 6.400'),
+            // Duas colunas de valor no cabeçalho, uma por modalidade.
+            contem('<span class="i-val">Monitoria</span>'),
+            contem('<span class="i-val">Monitoria + Atuação</span>'),
+        ],
+    },
+    {
+        nome: 'comparação: dois cards, e o Recomendado é o Monitoria + Atuação',
+        args: {},
+        spec: spec(['BB'], { compararModalidades: true }, { BB: { preco: 8900, precoMonitoria: 6400 } }),
+        checa: [
+            conta('<div class="pcard"', 1),
+            conta('<div class="pcard rec"', 1),
+            conta('<span class="badge-rec"', 1),
+            // O selo mora no card da direita, o completo. Se ele migrar pro mais
+            // barato — que é o que a regra genérica de pacote faria —, a proposta
+            // passa a recomendar a oferta menor sem ninguém ter decidido isso.
+            (h) => {
+                const i = h.indexOf('<div class="pcard rec"');
+                if (i < 0) return 'nenhum card marcado como recomendado';
+                // O primeiro nome depois da abertura do card é o nome DELE.
+                const n = h.indexOf('<h4 class="pname">', i);
+                const nome = h.slice(n + 18, h.indexOf('</h4>', n));
+                return nome === 'Monitoria + Atuação'
+                    || `o selo Recomendado está no card "${nome}"`;
+            },
+        ],
+    },
+    {
+        nome: 'comparação: o valor da identificação é o piso, não o teto',
+        args: {},
+        spec: spec(['BB'], { compararModalidades: true }, { BB: { preco: 8900, precoMonitoria: 6400 } }),
+        checa: [contem('a partir de R$ 6.400')],
+    },
+    {
+        nome: 'comparação: a abordagem sai nas duas modalidades',
+        args: {},
+        spec: spec(['BB'], { compararModalidades: true }, { BB: { preco: 8900, precoMonitoria: 6400 } }),
+        checa: [
+            conta('<span class="prosa-mod">', 2),
+            // O subtítulo da cláusula 3 deixa de cravar uma modalidade.
+            contem('Monitoria ou Monitoria + Atuação'),
+        ],
+    },
+    {
+        nome: 'comparação: produto sem modalidade repete o valor e explica',
+        args: {},
+        spec: spec(['BBP'], { compararModalidades: true }, { BBP: { preco: 4500, precoMonitoria: null } }),
+        checa: [conta('R$ 4.500', 5), contem('mesmo valor nas duas')],
+    },
+    {
+        nome: 'comparação: faixa da escada tem preço por modalidade',
+        args: {},
+        spec: spec(['BB'], { compararModalidades: true }, { BB: {
+            preco: 8900, precoMonitoria: 6400,
+            faixas: [{ qtd: 10, preco: 14900, precoMonitoria: 9900 }],
+        } }),
+        checa: [contem('R$ 14.900'), contem('R$ 9.900'), contem('R$ 6.400')],
+    },
+    // Trava de compatibilidade: a planilha de specs é append-only e toda
+    // proposta gravada antes disso não tem a chave. Sem a comparação ligada, o
+    // documento tem que sair exatamente como saía — uma coluna de preço, sem
+    // selo de modalidade na tabela, e `preco` continuando a significar
+    // Monitoria + Atuação.
+    {
+        nome: 'sem a chave, a proposta sai como antes (uma coluna só)',
+        args: {},
+        spec: spec(['BB'], {}, { BB: { preco: 8900 } }),
+        checa: [
+            naoContem('itable cmp'), naoContem('<span class="prosa-mod">'),
+            contem('R$ 8.900'), naoContem('a partir de'),
+        ],
+    },
+    {
+        nome: 'precoMonitoria gravado mas comparação desligada é ignorado',
+        args: {},
+        spec: spec(['BB'], {}, { BB: { preco: 8900, precoMonitoria: 6400 } }),
+        checa: [contem('R$ 8.900'), naoContem('R$ 6.400')],
+    },
 ];
 
 const CASOS_OBS = [

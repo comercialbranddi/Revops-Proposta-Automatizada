@@ -147,6 +147,53 @@ somar aqui é que, com o formulário, ninguém mais procura esses campos no card
 eles existem para o gerador ler e para o reporting contar. Modalidade segue por
 produto o mesmo padrão que preço, canais e quantidade já seguem.
 
+### 5.2 Preço por modalidade — decidido em 28/08/2026: **uma proposta, duas opções**
+
+A modalidade já mudava o TEXTO do documento; não mudava o PREÇO. Como as duas
+entregas têm custo diferente, faltava vender isso.
+
+A escolha foi entre dois desenhos:
+
+- **Duas propostas.** O closer decide a modalidade e o cliente recebe um
+  documento só. Simples de implementar, mas transfere a decisão comercial pro
+  closer e some com a oferta maior.
+- **Uma proposta, as duas lado a lado** — o que foi feito. O cliente recebe UM
+  documento com Monitoria e Monitoria + Atuação, cada uma com o seu preço, e
+  escolhe.
+
+Como fica no documento, com a comparação ligada:
+
+- A tabela de investimento ganha uma quarta coluna:
+  `Item · Escopo · Monitoria · Monitoria + Atuação`. A escada de faixas tem um
+  preço por degrau em cada modalidade — uma escada só, dois valores por linha.
+- Produto sem modalidade (BBP) repete o valor nas duas colunas, com a nota
+  "mesmo valor nas duas". Duas colunas com o mesmo número e sem explicação
+  parecem erro de digitação.
+- Dois cards no lugar dos cards de pacote. **O "Recomendado" é o Monitoria +
+  Atuação**, e não o mais barato como na regra genérica de pacote: aqui a
+  oferta completa é a que a proposta vende.
+- A cláusula de abordagem imprime as DUAS prosas, cada uma com o rótulo da
+  modalidade; o quadro de especificações e o SLA viram a união das duas listas,
+  com um selo nas linhas que só existem numa delas.
+- Todo lugar que mostra UM número (identificação, aceite) passa a mostrar o
+  piso, com "a partir de": o total da Monitoria.
+
+**Pacote e comparação não convivem.** Combo e modalidade são duas comparações
+concorrentes no mesmo documento — quatro cards, duas decisões de uma vez. Com a
+comparação ligada, o cartão de opções de pacote sai do formulário e o spec não
+grava pacote.
+
+**Compatibilidade.** `preco` continua significando Monitoria + Atuação, sempre.
+A Monitoria pura mora em `precoMonitoria`, gravado só quando a comparação está
+ligada. A planilha de specs é append-only (§8): mudar o sentido de `preco` faria
+toda revisão antiga sair com outro preço. Há teste travando isso — spec sem a
+chave `compararModalidades` renderiza exatamente como antes.
+
+**Aceite.** O aceite não pergunta a modalidade. Com as duas na proposta, o valor
+registrado no card é o piso (Monitoria) e a nota avisa em negrito que a
+modalidade precisa ser confirmada. Registrar a soma de `preco` poria no negócio
+um número maior do que o cliente pode ter aceitado.
+
 ---
 
 ## 6. Fora de escopo desta parte

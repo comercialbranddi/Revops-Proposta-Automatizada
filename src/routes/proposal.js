@@ -260,7 +260,19 @@ router.post('/aceite/:slug', async (req, res) => {
         if (!reg) return res.status(404).json({ error: 'proposta não encontrada' });
 
         const spec = reg.spec || {};
-        const soma = (spec.produtos || []).reduce((t, c) => t + (Number(spec.porProduto?.[c]?.preco) || 0), 0);
+        // Proposta que oferece as duas modalidades tem DOIS valores, e o aceite
+        // não pergunta qual. Registrar a soma de `preco` (Monitoria + Atuação)
+        // poria no card um número maior do que o cliente pode ter aceitado; o
+        // piso é o que a própria proposta exibe ("a partir de"), então é ele que
+        // vai — e o aviso no card diz que a modalidade ainda precisa ser
+        // confirmada com o cliente.
+        const duasModalidades = spec.compararModalidades === true;
+        const precoDe = (c) => {
+            const p = spec.porProduto?.[c] || {};
+            const m = duasModalidades ? p.precoMonitoria : null;
+            return (m == null || m === '') ? (Number(p.preco) || 0) : (Number(m) || 0);
+        };
+        const soma = (spec.produtos || []).reduce((t, c) => t + precoDe(c), 0);
         const valor = Number(spec.pacote) > 0 ? Number(spec.pacote) : soma;
 
         const { novo, aceite } = await registrarAceite(slug, reg.deal_id, { nome, email, cargo, valor });
@@ -278,6 +290,9 @@ router.post('/aceite/:slug', async (req, res) => {
                     '<p><b>✅ PROPOSTA ACEITA PELO CLIENTE</b></p>',
                     `<p><b>${nome}</b>${cargo ? ` — ${cargo}` : ''}<br>${email}</p>`,
                     `<p>Valor aceito: <b>${reais}/mês</b><br>Em: ${quando}</p>`,
+                    duasModalidades
+                        ? '<p><b>⚠ Confirme a modalidade.</b> A proposta trazia Monitoria e Monitoria + Atuação lado a lado. O valor acima é o da Monitoria — se o cliente escolheu com atuação, corrija o valor do negócio.</p>'
+                        : '',
                     `<p><a href="${url}">${url}</a></p>`,
                     '<p><i>Aceite comercial declarado na página da proposta. Não é assinatura eletrônica certificada.</i></p>',
                 ].join(''),

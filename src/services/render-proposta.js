@@ -25,7 +25,7 @@
  * (português, valor canônico do formulário/planilha; só a exibição traduz).
  */
 import {
-    catalogoDoIdioma, linhasDaModalidade, prosaDoBloco, contratoTemAtuacao,
+    catalogoDoIdioma, linhasDaModalidade, linhasComparadas, prosaDoBloco, contratoTemAtuacao,
     modalidadeNoIdioma, MODALIDADE_AMBOS, MODALIDADE_MONITORIA,
 } from '../content/blocos.js';
 import { logo, marca } from '../content/logo.js';
@@ -203,6 +203,47 @@ function modalidadeDo(blocos, code, p) {
 }
 
 /**
+ * A proposta apresenta as DUAS modalidades lado a lado, para o cliente
+ * escolher? (28/08/2026.)
+ *
+ * A flag é do CONTRATO, não do produto. Comparar produto a produto daria 2^n
+ * versões do mesmo documento, e não é o que a venda quer: o cliente escolhe
+ * entre duas versões do contrato inteiro — uma com atuação da Branddi, outra
+ * só com monitoria — cada uma com seu preço.
+ */
+function comparandoModalidades(spec) {
+    return spec?.compararModalidades === true;
+}
+
+/** As duas modalidades na ordem do documento: a mais completa por último. */
+const MODALIDADES_COMPARADAS = [MODALIDADE_MONITORIA, MODALIDADE_AMBOS];
+
+/**
+ * O preço de um item (produto ou faixa da escada) numa modalidade.
+ *
+ * `preco` continua sendo o de **Monitoria + Atuação** — era o único que existia
+ * até 28/08/2026, e preservar esse significado é o que faz spec antigo, já
+ * congelado na planilha, renderizar exatamente como no dia em que foi gerado.
+ * `precoMonitoria` é o da monitoria pura.
+ *
+ * Ausente, cai no `preco`. É o certo para BBP, que não tem modalidade (quem
+ * atua ali é o cliente): o valor é mesmo o mesmo nas duas colunas, e repetir o
+ * número é mais honesto que deixar a célula vazia, o que pareceria que o
+ * produto sai do escopo numa das opções.
+ */
+function precoNaModalidade(item, modalidade) {
+    const base = Number(item?.preco) || 0;
+    if (modalidade !== MODALIDADE_MONITORIA) return base;
+    const m = item?.precoMonitoria;
+    return (m == null || m === '') ? base : (Number(m) || 0);
+}
+
+/** O total do contrato numa modalidade. */
+function totalNaModalidade(spec, codes, modalidade) {
+    return codes.reduce((acc, c) => acc + precoNaModalidade(spec?.porProduto?.[c], modalidade), 0);
+}
+
+/**
  * Condição negociada vence a padrão. O formulário manda em `spec.condicoes` só
  * o que o closer alterou; o que não vier segue sendo a condição padrão da
  * Branddi — evita que um esquecimento no formulário apague uma cláusula.
@@ -248,7 +289,10 @@ const EXIGE_INPI = ['GD', 'VM'];
 
 function clausulaIdentificacao(ctx) {
     const { deal, spec, meta, codes, t, blocos } = ctx;
-    const valor = ctx.opcoes.length > 1 ? t.aPartirDe(brl(ctx.total)) : brl(ctx.total);
+    // Comparando as modalidades o valor também é um piso: o quadro traz o
+    // total da Monitoria, e a Monitoria + Atuação custa mais.
+    const faixaDePreco = ctx.opcoes.length > 1 || comparandoModalidades(spec);
+    const valor = faixaDePreco ? t.aPartirDe(brl(ctx.total)) : brl(ctx.total);
     return kvGrid([
         // Sem "Destinatário": o nome da pessoa saiu em 27/08/2026. A proposta é
         // um documento entre EMPRESAS — quem assina pode não ser quem recebeu o
@@ -286,26 +330,48 @@ function clausulaAbordagem(ctx) {
     // Um produto: o título/modalidade já estão no subtítulo da seção (3.1 — …),
     // então o bloco não repete o h3. Vários: cada produto ganha seu 3.x.
     const solo = codes.length === 1;
+    const comparando = comparandoModalidades(spec);
     const blocosHtml = codes.map((code, i) => {
         const b = blocos[code];
         const p = spec.porProduto[code] || {};
         const mod = modalidadeDo(blocos, code, p);
-        const modLabel = mod ? modalidadeNoIdioma(mod, idioma) : t.semModalidade;
-        const linhas = linhasDaModalidade(b.especificacoes, mod)
-            .map((l) => [l.rotulo, valorLinha(l.valor, p, idioma)])
-            .filter(([, v]) => v != null);
-        const rows = linhas.map(([r, v]) =>
-            `<div class="spec"><span class="specl">${esc(r)}</span><span class="specv">${rich(v)}</span></div>`).join('');
+        // Produto sem modalidade (BBP) não entra na comparação: não há o que
+        // comparar, e rotulá-lo "Monitoria ou Monitoria + Atuação" prometeria
+        // uma escolha que o documento não oferece ali.
+        const compara = comparando && b.temModalidade;
+        const modLabel = compara
+            ? t.modalidadeOu(modalidadeNoIdioma(MODALIDADE_MONITORIA, idioma), modalidadeNoIdioma(MODALIDADE_AMBOS, idioma))
+            : (mod ? modalidadeNoIdioma(mod, idioma) : t.semModalidade);
+        // Comparando, a tabela de especificações sai na UNIÃO das duas
+        // modalidades, com selo no que é exclusivo de uma — em vez de escolher
+        // um dos dois conjuntos. É para isso que cada linha carrega `so`.
+        const linhas = (compara ? linhasComparadas(b.especificacoes) : linhasDaModalidade(b.especificacoes, mod))
+            .map((l) => ({ rotulo: l.rotulo, valor: valorLinha(l.valor, p, idioma), soEm: l.soEm || null }))
+            .filter((l) => l.valor != null);
+        const rows = linhas.map((l) => {
+            const selo = l.soEm
+                ? `<span class="somod">${esc(t.soEm(modalidadeNoIdioma(l.soEm, idioma)))}</span>`
+                : '';
+            return `<div class="spec"><span class="specl">${esc(l.rotulo)}</span><span class="specv">${rich(l.valor)}${selo}</span></div>`;
+        }).join('');
+        // A prosa é texto comercial com peso jurídico — a diferença entre as
+        // modalidades não pode ficar subentendida. Comparando, saem as duas
+        // versões, cada uma sob o nome da sua modalidade.
+        const prosa = compara
+            ? MODALIDADES_COMPARADAS.map((m) =>
+                `<p class="prosa-p"><span class="prosa-mod">${esc(modalidadeNoIdioma(m, idioma))}</span>${rich(prosaDoBloco(blocos, code, m))}</p>`).join('')
+            : `<p class="prosa-p">${rich(prosaDoBloco(blocos, code, mod))}</p>`;
         const h3 = solo ? '' :
             `<h3><span class="idx">3.${i + 1}</span> ${esc(b.titulo)} <span class="mode">${esc(modLabel)}</span></h3>`;
         return `<div class="bloco">${h3}
-      <p class="prosa-p">${rich(prosaDoBloco(blocos, code, mod))}</p>
+      ${prosa}
       <div class="card spectable">${rows}</div></div>`;
     }).join('');
     // Loop da Branddi SÓ na atuação — copy aprovada (modelo). Em monitoria a
     // Branddi não notifica nem remove, e não há loop aprovado pra essa
-    // modalidade, então a faixa não sai (não inventar processo).
-    const ribbon = contratoTemAtuacao(spec.porProduto)
+    // modalidade, então a faixa não sai (não inventar processo). Comparando, a
+    // atuação está em oferta numa das opções, então o loop entra.
+    const ribbon = (comparando || contratoTemAtuacao(spec.porProduto))
         ? `<div class="loop">${t.loop.map((s) => `<span class="loop-step">${esc(s)}</span>`).join('')}</div>`
         : '';
     return blocosHtml + ribbon;
@@ -317,17 +383,28 @@ function clausulaAbordagem(ctx) {
  * entregável), o idioma dos relatórios, o requisito e a observação do lead.
  */
 function clausulaEscopo(ctx) {
-    const { codes, spec, t, blocos, slaGeral } = ctx;
+    const { codes, spec, t, blocos, slaGeral, idioma } = ctx;
+    const comparando = comparandoModalidades(spec);
     const modoContrato = contratoTemAtuacao(spec.porProduto) ? MODALIDADE_AMBOS : MODALIDADE_MONITORIA;
     const vistos = new Set();
-    const sla = [
-        ...codes.flatMap((c) => linhasDaModalidade(blocos[c].sla, modalidadeDo(blocos, c, spec.porProduto[c]))),
-        ...linhasDaModalidade(slaGeral, modoContrato),
-    ].filter((l) => (vistos.has(l.entregavel) ? false : vistos.add(l.entregavel)));
+    // Comparando, o SLA sai na união das duas modalidades com selo no que é
+    // exclusivo — mesma regra da tabela de especificações. Filtrar por uma
+    // modalidade aqui esconderia do cliente o que ele ganha ao escolher a
+    // outra, que é justamente a decisão que a proposta está pedindo.
+    const sla = (comparando
+        ? [...codes.flatMap((c) => linhasComparadas(blocos[c].sla)), ...linhasComparadas(slaGeral)]
+        : [
+            ...codes.flatMap((c) => linhasDaModalidade(blocos[c].sla, modalidadeDo(blocos, c, spec.porProduto[c]))),
+            ...linhasDaModalidade(slaGeral, modoContrato),
+        ]
+    ).filter((l) => (vistos.has(l.entregavel) ? false : vistos.add(l.entregavel)));
 
     const slaCard = `<div class="card slatable">
       <div class="sla sla-head"><span>${esc(t.thEntregavel)}</span><span>${esc(t.thPeriodicidade)}</span><span>${esc(t.thCanal)}</span></div>
-      ${sla.map((l) => `<div class="sla"><span class="e">${esc(l.entregavel)}</span><span>${esc(l.periodicidade)}</span><span>${esc(l.canal)}</span></div>`).join('')}
+      ${sla.map((l) => {
+        const selo = l.soEm ? `<span class="somod">${esc(t.soEm(modalidadeNoIdioma(l.soEm, idioma)))}</span>` : '';
+        return `<div class="sla"><span class="e">${esc(l.entregavel)}${selo}</span><span>${esc(l.periodicidade)}</span><span>${esc(l.canal)}</span></div>`;
+    }).join('')}
     </div>`;
 
     // Requisito: nota legal (§) — pré-condição contratual.
@@ -356,14 +433,20 @@ function clausulaEscopo(ctx) {
 
 function clausulaInvestimento(ctx) {
     const { codes, spec, soma, t, blocos, idioma } = ctx;
+    const comparando = comparandoModalidades(spec);
 
     // Tabela item a item (com escada de faixas quando houver). Cada produto sai
     // dentro de um .igroup: é o grupo que dá o respiro no fim do produto e anda
     // inteiro na quebra de página. Sem ele, a última faixa de um produto ficava
     // à mesma distância do produto seguinte que das próprias faixas dele — e
     // "Até 200 SKUs" parecia pertencer a Golpes Digitais.
-    const itrow = (item, escopo, preco) => `<div class="itrow"><span class="i-item">${item}</span>
-      <span class="i-esc">${escopo}</span><span class="i-val">${brl(preco)}</span></div>`;
+    //
+    // Comparando as modalidades, a mesma linha ganha DUAS colunas de valor em
+    // vez de uma. É a forma mais compacta de mostrar as duas ofertas sem
+    // duplicar a tabela inteira — e mantém item e escopo, idênticos nas duas,
+    // escritos uma vez só.
+    const itrow = (item, escopo, ...precos) => `<div class="itrow"><span class="i-item">${item}</span>
+      <span class="i-esc">${escopo}</span>${precos.map((p) => `<span class="i-val">${brl(p)}</span>`).join('')}</div>`;
 
     const linhas = codes.map((c) => {
         const p = spec.porProduto[c] || {};
@@ -380,36 +463,64 @@ function clausulaInvestimento(ctx) {
         // Antes de 27/08/2026 sumiam de todo produto com escada: o escopo
         // composto só era montado no ramo sem faixas.
         const canais = canaisTexto(p, idioma);
-        const item = `<strong>${esc(blocos[c].titulo)}</strong>${canais ? `<span class="i-canais">${esc(canais)}</span>` : ''}`;
+        // Produto sem modalidade dentro de uma comparação repete o valor nas
+        // duas colunas. A nota diz por quê — duas colunas com o mesmo número e
+        // sem explicação parecem erro de digitação.
+        const mesmoNasDuas = comparando && !blocos[c].temModalidade
+            ? `<span class="i-canais">${esc(t.mesmoValorNasDuas)}</span>` : '';
+        const item = `<strong>${esc(blocos[c].titulo)}</strong>${canais ? `<span class="i-canais">${esc(canais)}</span>` : ''}${mesmoNasDuas}`;
 
-        const faixas = (p.faixas?.length ? [{ qtd: p.quantidade, preco: p.preco }, ...p.faixas] : [])
+        // Cada faixa carrega os dois preços: a escada existe nas duas
+        // modalidades, com valores próprios.
+        const faixas = (p.faixas?.length ? [{ qtd: p.quantidade, preco: p.preco, precoMonitoria: p.precoMonitoria }, ...p.faixas] : [])
             .filter((f) => Number(f.qtd) > 0 && Number(f.preco) > 0)
             .sort((a, b) => a.qtd - b.qtd);
+        const valores = (linha) => comparando
+            ? MODALIDADES_COMPARADAS.map((m) => precoNaModalidade(linha, m))
+            : [Number(linha?.preco) || 0];
         // Escada sem nenhuma faixa válida cai na linha única, com o preço do
         // produto: pior que a escada faltar é o produto sumir calado da tabela.
         const linhasDoProduto = faixas.length
-            ? faixas.map((f, i) => itrow(i === 0 ? item : '', escopoDe(f.qtd), f.preco)).join('')
-            : itrow(item, qtdTxt, p.preco);
+            ? faixas.map((f, i) => itrow(i === 0 ? item : '', escopoDe(f.qtd), ...valores(f))).join('')
+            : itrow(item, qtdTxt, ...valores(p));
         return `<div class="igroup">${linhasDoProduto}</div>`;
     }).join('');
 
     const { opcoes } = ctx;
     const precoDe = (c) => Number(spec.porProduto?.[c]?.preco) || 0;
 
-    // Quando mostrar os cards de comparação (cada serviço avulso × o pacote):
+    // Quando mostrar os cards de comparação:
+    //   • a proposta compara as duas modalidades, ou
     //   • o closer montou 2+ opções, ou
     //   • há UMA opção, ela é um pacote (2+ itens) e sai mais barata que a soma.
-    // No 2º caso os avulsos não existem como opção salva — são sintetizados do
+    // No 3º caso os avulsos não existem como opção salva — são sintetizados do
     // preço de cada produto, pra o lead ver "cada um custa tanto, e o pacote
     // compensa". É o formato lado a lado do modelo antigo (Golpes).
     const opt = opcoes[0];
     const pacoteUnicoComDesconto = opcoes.length === 1
         && (opt.produtos.length + opt.extras.length) > 1
         && opt.preco < opt.soma - 0.01;
-    const mostrarCards = opcoes.length > 1 || pacoteUnicoComDesconto;
+    const mostrarCards = comparando || opcoes.length > 1 || pacoteUnicoComDesconto;
 
     let cartoes = [];
-    if (opcoes.length > 1) {
+    if (comparando) {
+        // Um card por modalidade, com o total do contrato em cada. Substitui os
+        // cards de pacote de propósito: duas comparações no mesmo lugar (qual
+        // modalidade × qual combo) pedem duas decisões de uma vez, e o
+        // formulário já impede montar combo com a comparação ligada.
+        //
+        // O recomendado é Monitoria + Atuação, e não o mais barato como no
+        // resto desta função: aqui a opção completa é a que a proposta vende.
+        cartoes = MODALIDADES_COMPARADAS.map((m) => {
+            const preco = totalNaModalidade(spec, codes, m);
+            return {
+                produtos: codes, extras: [], preco, soma: preco,
+                tag: t.opcoesModalidade, desc: '',
+                rotulo: modalidadeNoIdioma(m, idioma),
+                recomendado: m === MODALIDADE_AMBOS,
+            };
+        });
+    } else if (opcoes.length > 1) {
         // A mais barata é a recomendada. Ordem decrescente pra ela ficar à direita.
         const minP = Math.min(...opcoes.map((o) => o.preco));
         cartoes = [...opcoes].sort((a, b) => b.preco - a.preco)
@@ -428,15 +539,20 @@ function clausulaInvestimento(ctx) {
     const fecho = mostrarCards ? ''
         : `<div class="itrow total"><span class="i-item">${esc(t.total)}</span><span></span><span class="i-val">${brl(opcoes.length === 1 ? opt.preco : soma)}</span></div>`;
 
-    const tabela = `<div class="card itable">
-      <div class="itrow ihead"><span>${esc(t.thItem)}</span><span>${esc(t.thEscopo)}</span><span class="i-val">${esc(t.thMensal)}</span></div>
+    // Cabeçalho: comparando, as duas últimas colunas são as modalidades, em vez
+    // do "Mensal" único.
+    const cabecalhoValores = comparando
+        ? MODALIDADES_COMPARADAS.map((m) => `<span class="i-val">${esc(modalidadeNoIdioma(m, idioma))}</span>`).join('')
+        : `<span class="i-val">${esc(t.thMensal)}</span>`;
+    const tabela = `<div class="card itable${comparando ? ' cmp' : ''}">
+      <div class="itrow ihead"><span>${esc(t.thItem)}</span><span>${esc(t.thEscopo)}</span>${cabecalhoValores}</div>
       ${linhas}${fecho}</div>`;
 
     let bundleN = 0;
     // Quantos combos existem decide se eles precisam de número. Com um só,
     // "COMBO 1" só acrescenta ruído ao rótulo que a gente quer destacar.
     const totalBundles = cartoes.filter((o) => (o.produtos.length + o.extras.length) > 1).length;
-    const cards = mostrarCards ? `<p class="minihead">${esc(t.opcoesPacote)}</p>
+    const cards = mostrarCards ? `<p class="minihead">${esc(comparando ? t.opcoesModalidade : t.opcoesPacote)}</p>
     <div class="pacotes">${cartoes.map((o) => {
         const rec = !!o.recomendado;
         const bundle = (o.produtos.length + o.extras.length) > 1;
@@ -445,12 +561,13 @@ function clausulaInvestimento(ctx) {
         // GRANDE, porque é a opção que a proposta quer que o cliente escolha e
         // ela estava com o mesmo peso visual do avulso — "OPÇÃO 1 · PACOTE" em
         // 0.6rem, do lado de quatro cartões idênticos. Número só quando há mais
-        // de um combo pra distinguir.
-        const tag = bundle
+        // de um combo pra distinguir. `o.tag`/`o.desc` deixam o card de
+        // modalidade dizer o que ele é sem passar por essa regra.
+        const tag = o.tag || (bundle
             ? (totalBundles > 1 ? `${t.pacoteLabel} ${++bundleN}` : t.pacoteLabel)
-            : t.avulso;
+            : t.avulso);
         const nome = o.rotulo || partes.join(' + ');
-        const desc = bundle ? (o.descricao || '') : t.avulsoDesc;
+        const desc = o.desc !== undefined ? o.desc : (bundle ? (o.descricao || '') : t.avulsoDesc);
         const eco = o.soma > o.preco + 0.01 ? t.economiaDe(brl(o.soma - o.preco)) : '';
         return `<div class="pcard${rec ? ' rec' : ''}">
           <div class="pcard-top"><span class="ptag">${esc(tag)}</span>${rec ? `<span class="badge-rec">${esc(t.recomendado)}</span>` : ''}</div>
@@ -459,7 +576,7 @@ function clausulaInvestimento(ctx) {
           ${precoGrande(o.preco, t)}
           ${eco ? `<span class="badge-eco">● ${esc(eco)}</span>` : ''}</div>`;
     }).join('')}</div>
-    <div class="note"><span class="note-ic">i</span><p>${esc(t.opcoesNota)}</p></div>` : '';
+    <div class="note"><span class="note-ic">i</span><p>${esc(comparando ? t.opcoesModalidadeNota : t.opcoesNota)}</p></div>` : '';
 
     // Setup e impostos, dois cards pequenos lado a lado.
     const extras = `<div class="grid2 gap">
@@ -553,12 +670,18 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
 
     const validadeDias = validadeEmDias(spec);
     const validade = new Date(emitidaEm.getTime() + validadeDias * 86400000);
-    const soma = codes.reduce((acc, c) => acc + (Number(spec.porProduto[c]?.preco) || 0), 0);
+    // Com a comparação ligada, a soma e o total são os da Monitoria — a
+    // modalidade mais barata. Tudo que exibe UM número (identificação, aceite)
+    // passa a mostrar o piso, e não o teto: quem lê decide qual quer.
+    const comparaModalidades = comparandoModalidades(spec);
+    const soma = comparaModalidades
+        ? totalNaModalidade(spec, codes, MODALIDADE_MONITORIA)
+        : codes.reduce((acc, c) => acc + (Number(spec.porProduto[c]?.preco) || 0), 0);
     // Nomes dos produtos do catálogo que NÃO estão nesta proposta — pra a trava
     // de pacote tirar qualquer resquício deles (produto, frente ou rótulo).
     const nomesForaDoDeal = Object.keys(blocos).filter((c) => !codes.includes(c)).map((c) => blocos[c].titulo.toLowerCase());
     const opcoes = opcoesDePacote(spec, codes, nomesForaDoDeal);
-    const total = opcoes.length ? opcoes[0].preco : soma;
+    const total = comparaModalidades ? soma : (opcoes.length ? opcoes[0].preco : soma);
     // Sem número de proposta: saiu em 27/08/2026, a pedido da Jessica. Era o id
     // do card do Pipedrive com um prefixo — número interno nosso, que não diz
     // nada pro cliente e ainda expõe quantos negócios a base tem.
@@ -585,7 +708,10 @@ export function renderProposta({ deal, spec, emitidaEm = new Date(), slug = null
         if (i === 2 && codes.length === 1) {
             const c = codes[0];
             const mod = modalidadeDo(blocos, c, spec.porProduto[c]);
-            return `3.1 — ${blocos[c].titulo} · ${mod ? modalidadeNoIdioma(mod, idioma) : t.semModalidade}`;
+            const rot = comparaModalidades && blocos[c].temModalidade
+                ? t.modalidadeOu(modalidadeNoIdioma(MODALIDADE_MONITORIA, idioma), modalidadeNoIdioma(MODALIDADE_AMBOS, idioma))
+                : (mod ? modalidadeNoIdioma(mod, idioma) : t.semModalidade);
+            return `3.1 — ${blocos[c].titulo} · ${rot}`;
         }
         return t.clausulasSub?.[i];
     };
@@ -864,6 +990,30 @@ border-bottom:1px solid var(--line-2);align-items:baseline;font-size:.88rem;colo
 .igroup .itrow+.itrow{padding-top:.12rem}
 /* Os canais monitorados, sob o nome do produto e uma vez só. */
 .i-canais{display:block;margin-top:.28rem;font-size:.76rem;line-height:1.45;color:var(--muted);font-weight:400}
+/* Comparando as duas modalidades a tabela tem quatro colunas: item, escopo e
+   um valor por modalidade. O escopo encolhe (1.4fr -> 1fr) porque é a coluna
+   com folga; espremer o nome do produto quebraria "Brand Bidding" em duas
+   linhas em toda linha da escada. A coluna da direita — Monitoria + Atuação,
+   a recomendada — fica com o peso do texto normal; a da Monitoria, apagada,
+   pra a hierarquia da tabela bater com a do card marcado. */
+.itable.cmp .itrow{grid-template-columns:1fr 1fr auto auto;gap:.9rem}
+/* A primeira das DUAS colunas de valor — nth-of-type conta entre os spans
+   irmãos, e antes delas vêm item e escopo; contar de trás é o que isola a
+   coluna da Monitoria em toda linha, cabeçalho incluído. */
+.itable.cmp .i-val:nth-last-of-type(2){color:var(--muted);font-weight:400}
+.itable.cmp .i-val{min-width:5.4rem}
+/* Selo de linha que só existe numa das modalidades — no quadro de
+   especificações e no SLA, onde as duas listas viram uma união. */
+.somod{display:inline-block;margin-left:.5rem;padding:.05rem .4rem;border-radius:3px;
+background:rgba(10,207,222,.1);border:1px solid rgba(10,207,222,.28);
+font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;
+color:var(--cyan);white-space:nowrap;vertical-align:.08em}
+/* Rótulo da modalidade à frente do parágrafo, quando a abordagem sai nas duas.
+   Fica na mesma linha do texto de propósito: são dois parágrafos curtos e um
+   subtítulo em bloco pra cada faria a cláusula parecer ter duas seções. */
+.prosa-mod{display:inline-block;margin-right:.45rem;font-family:var(--mono);font-size:.68rem;
+letter-spacing:.06em;text-transform:uppercase;color:var(--cyan);font-weight:600}
+.prosa-p+.prosa-p{margin-top:.55rem}
 
 /* Cards de pacote */
 /* O título da seção é a palavra que anuncia a opção recomendada — vinha em
