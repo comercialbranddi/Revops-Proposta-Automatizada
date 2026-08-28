@@ -305,8 +305,16 @@ function sechead(n, titulo, sub) {
 
 /** Grade rótulo/valor em glass card (Identificação, Condições). */
 function kvGrid(pares) {
-    const cells = pares.filter(Boolean).map(([r, v, cyan]) =>
-        `<div class="kv"><span class="kvl">${esc(r)}</span><span class="kvv${cyan ? ' cyan' : ''}">${rich(v)}</span></div>`).join('');
+    const itens = pares.filter(Boolean);
+    const cells = itens.map(([r, v, cyan], i) => {
+        // Em número ímpar de linhas, a última ocupa as duas colunas. Sem isso
+        // ela fica numa metade só e a outra sobra vazia, com as bordas da grade
+        // desenhando uma célula que não existe — era o print de 28/08, com a
+        // "Validade da proposta" ao lado de um retângulo em branco. Tanto
+        // Identificação (7) quanto Condições (5) caem nisso.
+        const larga = i === itens.length - 1 && itens.length % 2 === 1 ? ' larga' : '';
+        return `<div class="kv${larga}"><span class="kvl">${esc(r)}</span><span class="kvv${cyan ? ' cyan' : ''}">${rich(v)}</span></div>`;
+    }).join('');
     return `<div class="card grid2">${cells}</div>`;
 }
 
@@ -549,8 +557,10 @@ function clausulaInvestimento(ctx) {
         // modalidade × qual combo) pedem duas decisões de uma vez, e o
         // formulário já impede montar combo com a comparação ligada.
         //
-        // O recomendado é Monitoria + Atuação, e não o mais barato como no
-        // resto desta função: aqui a opção completa é a que a proposta vende.
+        // Nenhum dos dois vem marcado como recomendado. A regra genérica desta
+        // função marca o mais barato, o que aqui empurraria a oferta menor; e
+        // marcar a completa faz a proposta escolher no lugar do cliente, que é
+        // justamente o que a comparação existe pra devolver pra ele.
         //
         // Os cards são do CONTRATO mesmo quando só um serviço está em
         // comparação: é o total que o cliente paga em cada escolha, com os
@@ -562,7 +572,7 @@ function clausulaInvestimento(ctx) {
                 produtos: codes, extras: [], preco, soma: preco,
                 tag: t.opcoesModalidade, desc: '',
                 rotulo: modalidadeNoIdioma(m, idioma),
-                recomendado: m === MODALIDADE_AMBOS,
+                recomendado: false,
             };
         });
     } else if (opcoes.length > 1) {
@@ -958,6 +968,8 @@ font-family:var(--mono);font-weight:700;font-size:.95rem}
 .kv{padding:.95rem 1.15rem;border-bottom:1px solid var(--line-2);border-right:1px solid var(--line-2)}
 .grid2 .kv:nth-child(2n){border-right:0}
 .grid2 .kv:nth-last-child(-n+1){border-bottom:0}
+/* Última linha ímpar: ocupa a largura toda em vez de deixar meia grade vazia. */
+.grid2 .kv.larga{grid-column:1/-1;border-right:0}
 .kvl{display:block;font-family:var(--mono);font-size:.6rem;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)}
 .kvv{display:block;margin-top:.35rem;font-size:.95rem;color:var(--text);line-height:1.4}
 .kvv.cyan{color:var(--cyan);font-weight:500}
@@ -1151,7 +1163,24 @@ body{font-size:10.5pt;background-image:radial-gradient(circle at 50% 0%,#004C54 
 .watermark{opacity:.5}
 /* Coluna central de ~168mm numa A4 de 210mm => ~21mm de margem de cada lado,
    contido e central como o modelo. O padding vertical dá o respiro de topo/base. */
-.pad{max-width:168mm;margin:0 auto;padding:0;gap:0}
+/* A faixa que o rodapé fixo ocupa no pé de CADA folha. Ele é position:fixed:
+   o Chrome o repete em toda página, mas ele não ocupa espaço no fluxo — sem
+   esta reserva o conteúdo corre por baixo dele. Era o print de 28/08, com dois
+   itens da linha do tempo saindo por trás do logo. Não dá pra resolver com
+   margem de @page: com qualquer margem o Chrome deixa a faixa na cor do
+   navegador e o full-bleed petrol se perde (ver @page acima).
+
+   Mora no .pad, e não na cláusula: com box-decoration-break:clone o padding se
+   repete no fim de cada FRAGMENTO, e o .pad fragmenta uma vez por folha — uma
+   reserva por página. Na cláusula ela se repetiria por cláusula, abrindo um
+   buraco no meio da folha a cada troca de seção.
+
+   O valor é a altura medida do rodapé (14,2mm em 28/08) mais folga. Quem mexer
+   no rodapé mexe aqui junto: a bateria de layout compara os dois e reprova se
+   a reserva ficar menor que ele. */
+:root{--reserva-rodape:16mm}
+.pad{max-width:168mm;margin:0 auto;padding:0 0 var(--reserva-rodape);gap:0;
+-webkit-box-decoration-break:clone;box-decoration-break:clone}
 /* Fragmentação confiável só existe em fluxo de BLOCO: dentro de flex o Chrome
    corta card no meio da linha mesmo com break-inside:avoid (era o "vazando em
    cima" — tabela fatiada, resto colado no topo da folha seguinte). No papel,
