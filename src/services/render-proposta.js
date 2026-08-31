@@ -482,6 +482,16 @@ function clausulaInvestimento(ctx) {
     const itrow = (item, escopo, ...precos) => `<div class="itrow"><span class="i-item">${item}</span>
       <span class="i-esc">${escopo}</span>${precos.map((p) => `<span class="i-val">${brl(p)}</span>`).join('')}</div>`;
 
+    // Produto com 2+ faixas não tem um "valor contratado" — são opções pro
+    // cliente escolher pela quantidade que precisar, não um total fechado.
+    // Sem essa marca, o fecho da tabela somava a primeira faixa (a mais barata)
+    // e chamava isso de "Valor contratado", como se o negócio já tivesse sido
+    // fechado naquele valor — foi o que confundiu a Caroline em 31/08/2026: a
+    // tabela mostrava "Até 3 palavras R$ 9.900" e "Até 10 palavras R$ 19.900",
+    // e embaixo "Valor contratado R$ 9.900", como se o cliente já tivesse
+    // escolhido a faixa menor.
+    let temEscadaMultipla = false;
+
     const linhas = codes.map((c) => {
         const p = spec.porProduto[c] || {};
         // A unidade acompanha o número de CADA faixa: "Até 1 marketplace",
@@ -514,6 +524,7 @@ function clausulaInvestimento(ctx) {
         const faixas = (p.faixas?.length ? [{ qtd: p.quantidade, preco: p.preco, precoMonitoria: p.precoMonitoria }, ...p.faixas] : [])
             .filter((f) => Number(f.qtd) > 0 && Number(f.preco) > 0)
             .sort((a, b) => a.qtd - b.qtd);
+        if (faixas.length > 1) temEscadaMultipla = true;
         const cmp = comparaProduto(spec, blocos, c);
         const valores = (linha) => !comparando
             ? [Number(linha?.preco) || 0]
@@ -579,9 +590,10 @@ function clausulaInvestimento(ctx) {
         cartoes = [...avulsos, { ...opt, recomendado: true }];
     }
 
-    // Fecho da tabela: total só quando NÃO há cards — com cards, a comparação já
-    // conta o preço fechado, e repetir na tabela duplica a mensagem.
-    const fecho = mostrarCards ? ''
+    // Fecho da tabela: total só quando NÃO há cards e NÃO há escada com 2+
+    // faixas — nos dois casos o valor final depende de uma escolha do
+    // cliente (qual card, qual faixa), e não existe ainda um "contratado".
+    const fecho = (mostrarCards || temEscadaMultipla) ? ''
         : `<div class="itrow total"><span class="i-item">${esc(t.total)}</span><span></span><span class="i-val">${brl(opcoes.length === 1 ? opt.preco : soma)}</span></div>`;
 
     // Cabeçalho: comparando, as duas últimas colunas são as modalidades, em vez
