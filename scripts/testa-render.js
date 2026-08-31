@@ -235,6 +235,21 @@ const CASOS = [
             conta('<div class="igroup">', 1)],
     },
     {
+        // 31/08/2026: a Caroline viu "Até 3 palavras R$ 9.900" e "Até 10
+        // palavras R$ 19.900" na tabela, e embaixo "Valor contratado
+        // R$ 9.900" — como se o negócio já tivesse fechado na faixa mais
+        // barata. Com 2+ faixas não existe UM valor contratado: quem decide
+        // é o cliente, pela quantidade que precisar.
+        nome: 'escada com 2+ faixas não mostra "Valor contratado"',
+        spec: spec(['BB'], {}, { BB: { quantidade: 3, preco: 9900, faixas: [{ qtd: 10, preco: 19900 }] } }),
+        checa: [semPlaceholder, contem('Até 3 palavras'), contem('Até 10 palavras'), naoContem('Valor contratado')],
+    },
+    {
+        nome: 'produto sem escada continua mostrando o total',
+        spec: spec(['BB']),
+        checa: [semPlaceholder, contem('Valor contratado')],
+    },
+    {
         // Até 27/08/2026 os canais só saíam nos produtos SEM escada: o escopo
         // composto era montado e descartado no ramo das faixas. Quem comprava
         // Brand Bidding com escada não via em que canais era monitorado.
