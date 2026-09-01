@@ -351,6 +351,44 @@ const CASOS = [
         checa: [semPlaceholder, naoContem('Subtotal'), contem('R$ 17.800,00')],
     },
     {
+        // 01/09/2026: a Caroline queria vender "2 dos 3 serviços por R$X" sem
+        // dizer QUAIS dois — o cliente escolhe depois. Card genérico, sem selo
+        // de economia (não existe soma conhecida pra comparar), sem o formato
+        // "produto + produto" do modo normal — e a tabela de itens de cima
+        // continua íntegra: cada serviço com o preço individual dele (decisão
+        // confirmada com a Jessica: só o card muda, a tabela não).
+        nome: 'opção de pacote por quantidade — card genérico, sem economia',
+        // Preço redondo (múltiplo de 100): o card usa `precoGrande`/`brlCurto`,
+        // que tira o ",00" — diferente da linha de item (`brl` cheio), que
+        // continua com ",00". "R$ 12.900" (sem centavos) é o que sai no card.
+        spec: spec(['BB', 'BBP', 'GD'], { pacotes: [{ tipo: 'qtd', qtd: 2, preco: 12900, produtos: [], extras: [] }] }),
+        checa: [semPlaceholder, contem('2 serviços'), contem('R$ 12.900'),
+            naoContem('economia de'), naoContem('Brand Bidding + '),
+            naoContem('Valor contratado'),
+            contem('R$ 8.900,00'), contem('Brand Bidding'), contem('Buy Box Protection'), contem('Golpes Digitais')],
+    },
+    {
+        nome: 'opção por quantidade misturada com opção por produtos — os dois cards saem',
+        spec: spec(['BB', 'BBP', 'GD'], { pacotes: [
+            { tipo: 'qtd', qtd: 2, preco: 9900, produtos: [], extras: [] },
+            { tipo: 'produtos', produtos: ['BB', 'BBP'], extras: [], preco: 13900, rotulo: '' },
+        ] }),
+        checa: [semPlaceholder, contem('2 serviços'), contem('R$ 9.900'),
+            contem('Brand Bidding + Buy Box Protection'), contem('R$ 13.900')],
+    },
+    {
+        // qtd: 1 ainda é uma opção do menu (combo), não o preço avulso de um
+        // produto específico — cobre a decisão de tag.
+        nome: 'opção por quantidade com qtd:1 continua marcada como combo',
+        spec: spec(['BB', 'BBP'], { pacotes: [{ tipo: 'qtd', qtd: 1, preco: 8900, produtos: [], extras: [] }] }),
+        checa: [semPlaceholder, contem('>Combo<'), naoContem('>Avulso<')],
+    },
+    {
+        nome: 'opção por quantidade com rótulo — usa o rótulo, não o genérico',
+        spec: spec(['BB', 'BBP', 'GD'], { pacotes: [{ tipo: 'qtd', qtd: 2, preco: 12900, produtos: [], extras: [], rotulo: 'Combo Essencial' }] }),
+        checa: [semPlaceholder, contem('Combo Essencial'), naoContem('2 serviços')],
+    },
+    {
         nome: 'várias marcas — todas aparecem',
         spec: spec(['BB'], { marcas: ['Elsys', 'Elsys Home', 'Elsys Pro'] }),
         checa: [semPlaceholder, contem('Elsys, Elsys Home, Elsys Pro')],

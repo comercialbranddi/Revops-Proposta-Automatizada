@@ -177,8 +177,10 @@ function opcoesDePacote(spec, codes, nomesForaDoDeal = []) {
         })
         // 4) Pacote é combinação: precisa de pelo menos DOIS itens (produto/frente),
         //    igual à regra do formulário. Um item só (o que sobra quando a frente
-        //    resquício sai) não é pacote — não vira card.
-        .filter((o) => Number(o.preco) > 0 && (o.produtos.length + o.extras.length) >= 2)
+        //    resquício sai) não é pacote — não vira card. Opção `qtd` foge dessa
+        //    regra de propósito: não tem produtos/frentes pra contar, o "combo" é
+        //    só o número — ver a nota em `clausulaInvestimento`.
+        .filter((o) => Number(o.preco) > 0 && ((o.produtos.length + o.extras.length) >= 2 || (o.tipo === 'qtd' && Number(o.qtd) >= 1)))
         .sort((a, b) => a.preco - b.preco);
 }
 
@@ -563,7 +565,11 @@ function clausulaInvestimento(ctx) {
     // Quando mostrar os cards de comparação:
     //   • a proposta compara as duas modalidades, ou
     //   • o closer montou 2+ opções, ou
-    //   • há UMA opção, ela é um pacote (2+ itens) e sai mais barata que a soma.
+    //   • há UMA opção, ela é um pacote (2+ itens) e sai mais barata que a soma, ou
+    //   • há UMA opção por quantidade (01/09/2026) — ela SEMPRE vira card: sem
+    //     isso, uma opção "qtd" sozinha caía direto no fecho como "Valor
+    //     contratado", sem nenhum sinal de que é uma escolha do cliente, não
+    //     um preço fechado.
     // No 3º caso os avulsos não existem como opção salva — são sintetizados do
     // preço de cada produto, pra o lead ver "cada um custa tanto, e o pacote
     // compensa". É o formato lado a lado do modelo antigo (Golpes).
@@ -571,7 +577,8 @@ function clausulaInvestimento(ctx) {
     const pacoteUnicoComDesconto = opcoes.length === 1
         && (opt.produtos.length + opt.extras.length) > 1
         && opt.preco < opt.soma - 0.01;
-    const mostrarCards = comparando || opcoes.length > 1 || pacoteUnicoComDesconto;
+    const opcaoUnicaPorQtd = opcoes.length === 1 && opt.tipo === 'qtd';
+    const mostrarCards = comparando || opcoes.length > 1 || pacoteUnicoComDesconto || opcaoUnicaPorQtd;
 
     let cartoes = [];
     if (comparando) {
@@ -608,6 +615,10 @@ function clausulaInvestimento(ctx) {
             rotulo: '', recomendado: false,
         }));
         cartoes = [...avulsos, { ...opt, recomendado: true }];
+    } else if (opcaoUnicaPorQtd) {
+        // Nada pra comparar ao lado — não existe um "preço de cada serviço"
+        // aqui pra sintetizar avulso (é isso que a opção `qtd` evita dizer).
+        cartoes = [{ ...opt, recomendado: true }];
     }
 
     // Fecho da tabela: total só quando NÃO há cards e NÃO há escada com 2+
@@ -628,11 +639,15 @@ function clausulaInvestimento(ctx) {
     let bundleN = 0;
     // Quantos combos existem decide se eles precisam de número. Com um só,
     // "COMBO 1" só acrescenta ruído ao rótulo que a gente quer destacar.
-    const totalBundles = cartoes.filter((o) => (o.produtos.length + o.extras.length) > 1).length;
+    // Opção `qtd` (01/09/2026) sempre conta como combo — não tem produtos pra
+    // somar, mas é uma opção do menu do mesmo jeito, não o preço avulso de UM
+    // serviço específico.
+    const ehBundle = (o) => o.tipo === 'qtd' || (o.produtos.length + o.extras.length) > 1;
+    const totalBundles = cartoes.filter(ehBundle).length;
     const cards = mostrarCards ? `<p class="minihead">${esc(comparando ? t.opcoesModalidade : t.opcoesPacote)}</p>
     <div class="pacotes">${cartoes.map((o) => {
         const rec = !!o.recomendado;
-        const bundle = (o.produtos.length + o.extras.length) > 1;
+        const bundle = ehBundle(o);
         const partes = [...o.produtos.map((c) => blocos[c].titulo), ...o.extras];
         // Avulso leva o rótulo pequeno de sempre. O combo leva a palavra
         // GRANDE, porque é a opção que a proposta quer que o cliente escolha e
@@ -643,7 +658,10 @@ function clausulaInvestimento(ctx) {
         const tag = o.tag || (bundle
             ? (totalBundles > 1 ? `${t.pacoteLabel} ${++bundleN}` : t.pacoteLabel)
             : t.avulso);
-        const nome = o.rotulo || partes.join(' + ');
+        // Opção `qtd`: o closer não diz quais serviços entram (pedido da
+        // Caroline, 01/09/2026) — sem rótulo próprio, o nome é genérico
+        // ("2 serviços"), nunca a lista de produtos (que nem existe aqui).
+        const nome = o.rotulo || (o.tipo === 'qtd' ? t.qtdServicos(Number(o.qtd)) : partes.join(' + '));
         const desc = o.desc !== undefined ? o.desc : (bundle ? (o.descricao || '') : t.avulsoDesc);
         const eco = o.soma > o.preco + 0.01 ? t.economiaDe(brl(o.soma - o.preco)) : '';
         return `<div class="pcard${rec ? ' rec' : ''}">
