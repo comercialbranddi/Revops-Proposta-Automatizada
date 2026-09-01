@@ -587,9 +587,6 @@ function clausulaInvestimento(ctx) {
         // modalidade × qual combo) pedem duas decisões de uma vez, e o
         // formulário já impede montar combo com a comparação ligada.
         //
-        // O recomendado é Monitoria + Atuação, e não o mais barato como no
-        // resto desta função: aqui a opção completa é a que a proposta vende.
-        //
         // Os cards são do CONTRATO mesmo quando só um serviço está em
         // comparação: é o total que o cliente paga em cada escolha, com os
         // serviços fixos somados igual dos dois lados. Um card por serviço
@@ -600,25 +597,22 @@ function clausulaInvestimento(ctx) {
                 produtos: codes, extras: [], preco, soma: preco,
                 tag: t.opcoesModalidade, desc: '',
                 rotulo: modalidadeNoIdioma(m, idioma),
-                recomendado: m === MODALIDADE_AMBOS,
             };
         });
     } else if (opcoes.length > 1) {
-        // A mais barata é a recomendada. Ordem decrescente pra ela ficar à direita.
-        const minP = Math.min(...opcoes.map((o) => o.preco));
-        cartoes = [...opcoes].sort((a, b) => b.preco - a.preco)
-            .map((o) => ({ ...o, recomendado: o.preco === minP }));
+        // Ordem decrescente: a mais barata fica à direita.
+        cartoes = [...opcoes].sort((a, b) => b.preco - a.preco);
     } else if (pacoteUnicoComDesconto) {
-        // Um card por serviço (avulso, preço próprio) + o pacote à direita, marcado.
+        // Um card por serviço (avulso, preço próprio) + o pacote à direita.
         const avulsos = opt.produtos.map((c) => ({
             produtos: [c], extras: [], preco: precoDe(c), soma: precoDe(c),
-            rotulo: '', recomendado: false,
+            rotulo: '',
         }));
-        cartoes = [...avulsos, { ...opt, recomendado: true }];
+        cartoes = [...avulsos, opt];
     } else if (opcaoUnicaPorQtd) {
         // Nada pra comparar ao lado — não existe um "preço de cada serviço"
         // aqui pra sintetizar avulso (é isso que a opção `qtd` evita dizer).
-        cartoes = [{ ...opt, recomendado: true }];
+        cartoes = [opt];
     }
 
     // Fecho da tabela: total só quando NÃO há cards e NÃO há escada com 2+
@@ -646,7 +640,6 @@ function clausulaInvestimento(ctx) {
     const totalBundles = cartoes.filter(ehBundle).length;
     const cards = mostrarCards ? `<p class="minihead">${esc(comparando ? t.opcoesModalidade : t.opcoesPacote)}</p>
     <div class="pacotes">${cartoes.map((o) => {
-        const rec = !!o.recomendado;
         const bundle = ehBundle(o);
         const partes = [...o.produtos.map((c) => blocos[c].titulo), ...o.extras];
         // Avulso leva o rótulo pequeno de sempre. O combo leva a palavra
@@ -664,8 +657,8 @@ function clausulaInvestimento(ctx) {
         const nome = o.rotulo || (o.tipo === 'qtd' ? t.qtdServicos(Number(o.qtd)) : partes.join(' + '));
         const desc = o.desc !== undefined ? o.desc : (bundle ? (o.descricao || '') : t.avulsoDesc);
         const eco = o.soma > o.preco + 0.01 ? t.economiaDe(brl(o.soma - o.preco)) : '';
-        return `<div class="pcard${rec ? ' rec' : ''}">
-          <div class="pcard-top"><span class="ptag">${esc(tag)}</span>${rec ? `<span class="badge-rec">${esc(t.recomendado)}</span>` : ''}</div>
+        return `<div class="pcard">
+          <div class="pcard-top"><span class="ptag">${esc(tag)}</span></div>
           <h4 class="pname">${esc(nome)}</h4>
           ${desc ? `<p class="pdesc">${esc(desc)}</p>` : ''}
           ${precoGrande(o.preco, t)}
@@ -1128,14 +1121,8 @@ font-weight:800;margin:1.4rem 0 .6rem}
 .pcard{background:var(--card-bg);border:1px solid var(--line);border-radius:var(--radius);padding:1.3rem 1.3rem 1.4rem;
 display:flex;flex-direction:column;gap:.55rem;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
 container-type:inline-size}
-.pcard.rec{border-color:rgba(10,207,222,.55)}
 .pcard-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap}
 .ptag{font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
-.pcard.rec .ptag{color:var(--cyan)}
-/* O rótulo do combo é a única coisa da seção que precisa ser vista de longe:
-   é a opção que a proposta recomenda, no meio de cartões avulsos iguais. */
-.badge-rec{font-family:var(--mono);font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
-color:var(--success);border:1px solid rgba(34,197,94,.4);border-radius:var(--radius-pill);padding:.2rem .6rem}
 .pname{font-size:1.15rem;font-weight:700;color:var(--text);letter-spacing:-.01em}
 .pdesc{font-size:.82rem;line-height:1.5;color:var(--muted)}
 /* O tamanho vive AQUI (não no .pv) e as partes seguem em em, pra centavos e

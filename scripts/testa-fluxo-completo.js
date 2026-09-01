@@ -53,7 +53,6 @@ const CASOS = [
             // Pacote único mais barato que a soma vira comparação lado a lado:
             // cards avulso × pacote, com a economia (17.800 − 15.800 = 2.000).
             h.includes('economia de R$ 2.000,00') || 'faltou a economia do pacote',
-            h.includes('Recomendado') || 'faltou o selo de recomendado no pacote',
             h.includes('Monitoria e inteligência') || 'BBP devia sair como monitoria e inteligência',
         ],
     },

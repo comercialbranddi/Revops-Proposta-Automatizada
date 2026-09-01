@@ -78,7 +78,6 @@ export const TEXTOS = {
         loop: ['Detectar', 'Classificar', 'Notificar', 'Remover'],
         // Cards de pacote na cláusula de Investimento.
         avulso: 'Avulso',
-        recomendado: 'Recomendado',
         pacoteLabel: 'Combo',
         avulsoDesc: 'Serviço contratado separadamente, pelo valor individual.',
         // Subtítulo (hero) da capa e nota-insight do Objetivo: SÓ por produto que
@@ -280,7 +279,6 @@ export const TEXTOS = {
         loop: ['Detect', 'Classify', 'Notify', 'Remove'],
         loopMonitoria: ['Detect', 'Classify', 'Document', 'Deliver'],
         avulso: 'Standalone',
-        recomendado: 'Recommended',
         pacoteLabel: 'Bundle',
         avulsoDesc: 'Service contracted separately, at its individual price.',
         // Só Brand Bidding, como no português. BBP, GD e VM tinham chamada aqui
@@ -440,7 +438,6 @@ export const TEXTOS = {
         loop: ['Detectar', 'Clasificar', 'Notificar', 'Eliminar'],
         loopMonitoria: ['Detectar', 'Clasificar', 'Documentar', 'Entregar'],
         avulso: 'Individual',
-        recomendado: 'Recomendado',
         pacoteLabel: 'Paquete',
         avulsoDesc: 'Servicio contratado por separado, a su valor individual.',
         // Só Brand Bidding, como no português — ver a nota no bloco em inglês.
