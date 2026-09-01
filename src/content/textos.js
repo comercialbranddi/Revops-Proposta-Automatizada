@@ -178,6 +178,10 @@ export const TEXTOS = {
         aPartirDe: (v) => `a partir de ${v}`,
         economiaDe: (v) => `economia de ${v}/mês`,
         semDesconto: 'sem desconto',
+        // Nome de card de "opção por quantidade" (01/09/2026): a Caroline
+        // queria oferecer "2 de 4 serviços por R$X" sem dizer QUAIS dois —
+        // o cliente escolhe depois. Sem rótulo próprio, é isto que aparece.
+        qtdServicos: (n) => (n === 1 ? '1 serviço' : `${n} serviços`),
         opcoesNota: 'Escolha uma das opções acima. Os serviços também podem ser contratados separadamente, pelos valores individuais.',
         pacoteN: (n) => `Opção ${n}`,
         subtotal: 'Subtotal — itens contratados separadamente',
@@ -346,6 +350,7 @@ export const TEXTOS = {
         aPartirDe: (v) => `from ${v}`,
         economiaDe: (v) => `saving of ${v}/month`,
         semDesconto: 'no discount',
+        qtdServicos: (n) => (n === 1 ? '1 service' : `${n} services`),
         opcoesNota: 'Choose one of the options above. The services may also be contracted separately, at their individual prices.',
         pacoteN: (n) => `Option ${n}`,
         subtotal: 'Subtotal — items contracted separately',
@@ -502,6 +507,7 @@ export const TEXTOS = {
         aPartirDe: (v) => `desde ${v}`,
         economiaDe: (v) => `ahorro de ${v}/mes`,
         semDesconto: 'sin descuento',
+        qtdServicos: (n) => (n === 1 ? '1 servicio' : `${n} servicios`),
         opcoesNota: 'Elija una de las opciones anteriores. Los servicios también pueden contratarse por separado, a sus valores individuales.',
         pacoteN: (n) => `Opción ${n}`,
         subtotal: 'Subtotal — ítems contratados por separado',

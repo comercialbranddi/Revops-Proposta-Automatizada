@@ -290,9 +290,10 @@ function aplicarSeed() {
         .map((o) => ({
           produtos: new Set(o.produtos || []), extras: (o.extras || []).slice(),
           preco: o.preco == null ? '' : o.preco, rotulo: o.rotulo || '',
+          tipo: o.tipo === 'qtd' ? 'qtd' : 'produtos', qtd: o.qtd == null ? '' : o.qtd,
         }));
     } else if (Number(a.pacote) > 0) {
-      estado.pacotes = [{ produtos: new Set(a.produtos || []), extras: [], preco: a.pacote, rotulo: '' }];
+      estado.pacotes = [{ produtos: new Set(a.produtos || []), extras: [], preco: a.pacote, rotulo: '', tipo: 'produtos', qtd: '' }];
     }
 
     estado.observacoes = a.observacoes || '';
@@ -692,6 +693,37 @@ function cardPacote() {
     cab.append(rot, rm);
     box.append(cab);
 
+    // Dois jeitos de montar a opção. Pedido da Caroline, 01/09/2026: às vezes
+    // ela quer vender "2 dos 4 serviços por R$X" sem dizer QUAIS dois — o
+    // cliente escolhe depois. "Especificar quais serviços" continua sendo o
+    // padrão, do jeito que sempre foi.
+    const modo = el('div', { className: 'chips' });
+    const nomeRadio = 'modo-pacote-' + i;
+    const optProdutos = el('input', { type: 'radio', name: nomeRadio, checked: o.tipo !== 'qtd' });
+    optProdutos.onchange = () => { if (optProdutos.checked) { o.tipo = 'produtos'; render(); } };
+    const optQtd = el('input', { type: 'radio', name: nomeRadio, checked: o.tipo === 'qtd' });
+    optQtd.onchange = () => { if (optQtd.checked) { o.tipo = 'qtd'; render(); } };
+    modo.append(
+      el('label', { className: 'chip' }, optProdutos, 'Especificar quais serviços'),
+      el('label', { className: 'chip' }, optQtd, 'Só a quantidade'));
+    box.append(el('label', { className: 'f' }, 'Como montar esta opção', modo));
+
+    if (o.tipo === 'qtd') {
+      const qtdMax = Math.max(estado.produtos.size, 1);
+      const qi = el('input', { type: 'number', min: '1', max: String(qtdMax), step: '1', value: o.qtd });
+      qi.oninput = () => { o.qtd = qi.value; atualizarPendencias(); };
+      box.append(el('label', { className: 'f' }, 'Quantidade de serviços', qi,
+        el('span', { className: 'hint' },
+          'O documento mostra "N serviços · R$ preço", sem dizer quais — o cliente escolhe depois. De 1 a ' + qtdMax + '.')));
+
+      const pr = el('input', { type: 'number', min: '0', step: '100', value: o.preco });
+      pr.oninput = () => { o.preco = pr.value; atualizarPendencias(); };
+      box.append(el('label', { className: 'f' }, 'Preço do pacote (R$)', pr));
+
+      b.append(box);
+      return;
+    }
+
     // o que entra: produtos desta proposta
     const chips = el('div', { className: 'chips' });
     CFG.catalogo.produtos.filter((pr) => estado.produtos.has(pr.code)).forEach((pr) => {
@@ -739,7 +771,7 @@ function cardPacote() {
   add.onclick = () => {
     // Nasce com todos os produtos marcados: é a combinação mais provável, e
     // desmarcar é menos trabalho que marcar de novo.
-    estado.pacotes.push({ produtos: new Set(estado.produtos), extras: [], preco: '', rotulo: '' });
+    estado.pacotes.push({ produtos: new Set(estado.produtos), extras: [], preco: '', rotulo: '', tipo: 'produtos', qtd: '' });
     render();
   };
   b.append(add);
@@ -786,8 +818,16 @@ function pendencias() {
   estado.pacotes.forEach((o, i) => {
     const nome = o.rotulo || ('opção ' + (i + 1));
     if (!(Number(o.preco) > 0)) p.push('Preço da ' + nome);
-    // Pacote de um item só é o preço do próprio serviço — não é pacote.
-    if (o.produtos.size + o.extras.length < 2) p.push(nome + ' precisa de pelo menos dois itens');
+    if (o.tipo === 'qtd') {
+      // "Só a quantidade": não tem produtos/frentes pra contar — o que
+      // precisa fazer sentido é o número, contra o total de serviços da
+      // proposta (não dá pra oferecer "3 de 2").
+      const n = Number(o.qtd);
+      if (!(n >= 1) || n > Math.max(estado.produtos.size, 1)) p.push(nome + ' — quantidade inválida');
+    } else if (o.produtos.size + o.extras.length < 2) {
+      // Pacote de um item só é o preço do próprio serviço — não é pacote.
+      p.push(nome + ' precisa de pelo menos dois itens');
+    }
   });
   return p;
 }
@@ -802,6 +842,7 @@ function pendencias() {
 function avisos() {
   const a = [];
   estado.pacotes.forEach((o, i) => {
+    if (o.tipo === 'qtd') return;    // sem produtos aqui — nada pra comparar soma
     const nome = o.rotulo || ('Opção ' + (i + 1));
     const soma = [...o.produtos].reduce((t, c) => t + (Number(estado.porProduto[c]?.preco) || 0), 0);
     const pac = Number(o.preco);
@@ -883,10 +924,9 @@ $('#salvar').onclick = async () => {
     // que não faz mais parte da proposta.
     pacotes: comparando() ? [] : estado.pacotes
       .filter((o) => [...o.produtos].every((c) => estado.produtos.has(c)))
-      .map((o) => ({
-        produtos: [...o.produtos], extras: o.extras.slice(),
-        preco: Number(o.preco), rotulo: o.rotulo.trim() || null,
-      })),
+      .map((o) => (o.tipo === 'qtd'
+        ? { tipo: 'qtd', qtd: Number(o.qtd), produtos: [], extras: [], preco: Number(o.preco), rotulo: o.rotulo.trim() || null }
+        : { tipo: 'produtos', produtos: [...o.produtos], extras: o.extras.slice(), preco: Number(o.preco), rotulo: o.rotulo.trim() || null })),
     observacoes: estado.observacoes,
     obsProposta: estado.obsProposta,
     // Só o que foi negociado. Chave ausente = condição padrão da Branddi.
