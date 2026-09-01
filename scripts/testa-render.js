@@ -250,6 +250,34 @@ const CASOS = [
         checa: [semPlaceholder, contem('Valor contratado')],
     },
     {
+        // 01/09/2026: a Caroline queria vender BB sozinho com desconto (de
+        // R$ 5.900 por R$ 4.000), sem montar um pacote de 2+ itens só pra
+        // isso — o construtor de pacote exige pelo menos dois itens de
+        // propósito (não é desconto de produto único). "Preço de tabela"
+        // cobre esse caso: risca o valor cheio na própria linha do produto.
+        nome: 'preço de tabela risca o valor cheio e mostra a economia',
+        spec: spec(['BB'], {}, { BB: { preco: 4000, precoTabela: 5900 } }),
+        checa: [semPlaceholder, contem('R$ 5.900,00'), contem('R$ 4.000,00'),
+            contem('class="i-de"'), contem('economia de R$ 1.900,00'),
+            // O fecho usa o preço NEGOCIADO — o de tabela é só decorativo.
+            contem('Valor contratado'), contem('R$ 4.000,00')],
+    },
+    {
+        nome: 'preço de tabela menor ou igual ao negociado não risca nada',
+        spec: spec(['BB'], {}, { BB: { preco: 8900, precoTabela: 8900 } }),
+        checa: [semPlaceholder, naoContem('class="i-de"'), naoContem('economia de')],
+    },
+    {
+        nome: 'preço de tabela com escada de 2+ faixas é ignorado',
+        spec: spec(['BB'], {}, { BB: { quantidade: 3, preco: 4000, precoTabela: 5900, faixas: [{ qtd: 10, preco: 8000 }] } }),
+        checa: [semPlaceholder, naoContem('class="i-de"'), contem('Até 3 palavras'), contem('Até 10 palavras')],
+    },
+    {
+        nome: 'preço de tabela comparando modalidades é ignorado',
+        spec: spec(['BB'], {}, { BB: { modalidade: MODALIDADE_COMPARAR, preco: 8900, precoMonitoria: 6400, precoTabela: 12000 } }),
+        checa: [semPlaceholder, naoContem('class="i-de"')],
+    },
+    {
         // Até 27/08/2026 os canais só saíam nos produtos SEM escada: o escopo
         // composto era montado e descartado no ramo das faixas. Quem comprava
         // Brand Bidding com escada não via em que canais era monitorado.

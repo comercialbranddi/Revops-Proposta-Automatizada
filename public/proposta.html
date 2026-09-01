@@ -181,7 +181,7 @@ const estado = { marcas: '', idioma: 'pt', produtos: new Set(), porProduto: {}, 
 // propostas já gravadas, e a planilha de specs é append-only: mudar o sentido
 // da chave faria toda revisão antiga sair com outro preço. A Monitoria pura
 // mora em `precoMonitoria`, que só existe quando as duas vão lado a lado.
-const vazio = (code) => ({ modalidade: CFG.catalogo.modalidades[code] ? CFG.catalogo.modalidadePadrao : null, canais: new Set(), canaisOutros: [], quantidade: '', preco: '', precoMonitoria: '', faixas: [], sobConsulta: false });
+const vazio = (code) => ({ modalidade: CFG.catalogo.modalidades[code] ? CFG.catalogo.modalidadePadrao : null, canais: new Set(), canaisOutros: [], quantidade: '', preco: '', precoMonitoria: '', precoTabela: '', faixas: [], sobConsulta: false });
 const temModalidade = (code) => !!CFG.catalogo.modalidades[code];
 // "As duas" é a terceira opção do MESMO controle de modalidade — decisão do
 // serviço, não do contrato: dá pra pôr Brand Bidding nas duas frentes, pra o
@@ -307,6 +307,7 @@ function aplicarSeed() {
         // Revisão anterior à comparação não tem a chave. Object.assign copia o
         // `undefined` por cima do '' do molde e o input nasce sem valor.
         precoMonitoria: p.precoMonitoria == null ? '' : p.precoMonitoria,
+        precoTabela: p.precoTabela == null ? '' : p.precoTabela,
         // A primeira versão gravava a comparação no contrato inteiro. Reabrir
         // uma dessas traz cada serviço com modalidade já marcado como "As duas",
         // que é o que aquela proposta de fato oferecia.
@@ -475,6 +476,18 @@ function cardProduto(p) {
     row.append(el('label', { className: 'f' }, 'Só Monitoria (R$)', pm));
   }
   b.append(row);
+
+  // Preço de tabela: só faz sentido pra um valor único negociado — com escada
+  // (2+ faixas) ou comparando modalidade já são 2+ preços na mesma linha, e um
+  // "de/por" ali não sabe de qual valor riscar. `avisos()` explica quando o
+  // closer preenche mesmo assim e o valor acaba ignorado no documento.
+  if (!cmpMod && !st.faixas.length) {
+    const pt = el('input', { type: 'number', min: '0', step: '100', value: st.precoTabela });
+    pt.oninput = () => { st.precoTabela = pt.value; atualizarPendencias(); };
+    b.append(el('label', { className: 'f' }, 'Preço de tabela (R$, opcional)', pt,
+      el('span', { className: 'hint' },
+        'Preencha só se este valor saiu de um preço cheio pra um negociado — a proposta mostra os dois, com o desconto em destaque. Em branco, sai só o preço normal.')));
+  }
 
   if (soAppStore) b.append(el('div', { className: 'hint' },
     'Só App Store: a proposta sai sem a linha de palavras-chave e com o canal no título, como nas duas que o time já enviou.'));
@@ -800,6 +813,17 @@ function avisos() {
   for (const code of estado.produtos) {
     const st = estado.porProduto[code];
     if (!st.canais.size) a.push('Sem canal marcado em ' + code + ' — a linha não sai no documento.');
+    // Preço de tabela só vira riscado em produto sem escada e sem comparação —
+    // preenchido fora dessas condições, o valor fica salvo mas some do
+    // documento, e é fácil não perceber.
+    const pt = Number(st.precoTabela);
+    if (pt > 0) {
+      if (comparaProduto(code) || st.faixas.length) {
+        a.push('Preço de tabela de ' + code + ' é ignorado — produto com faixas ou comparação de modalidade não mostra riscado.');
+      } else if (pt <= Number(st.preco)) {
+        a.push('Preço de tabela de ' + code + ' (' + brl(pt) + ') é menor ou igual ao negociado (' + brl(Number(st.preco)) + ') — não vai aparecer riscado.');
+      }
+    }
     // Monitoria custando mais que Monitoria + Atuação é dedo trocado, não
     // desconto: os dois campos ficam lado a lado e são preenchidos em sequência.
     if (!comparaProduto(code)) continue;
@@ -849,6 +873,7 @@ $('#salvar').onclick = async () => {
         // comparação a chave ficaria com um número que o documento ignora, e
         // a planilha de specs não se reescreve.
         precoMonitoria: comparaProduto(c) ? Number(s.precoMonitoria) : null,
+        precoTabela: s.precoTabela === '' ? null : Number(s.precoTabela),
         faixas: s.faixas.map(f => ({ qtd: Number(f.qtd), preco: Number(f.preco), precoMonitoria: comparaProduto(c) ? Number(f.precoMonitoria) : null })),
         sobConsulta: !!s.sobConsulta,
       }];
