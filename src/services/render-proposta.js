@@ -481,6 +481,11 @@ function clausulaInvestimento(ctx) {
     // escritos uma vez só.
     const itrow = (item, escopo, ...precos) => `<div class="itrow"><span class="i-item">${item}</span>
       <span class="i-esc">${escopo}</span>${precos.map((p) => `<span class="i-val">${brl(p)}</span>`).join('')}</div>`;
+    // Variante pro "preço de tabela" (de/por): a célula de valor não é UM
+    // número formatado por `brl()` como as outras, é riscado + negociado —
+    // por isso não passa pelo mapeamento de `itrow`.
+    const itrowComDesconto = (item, escopo, tab, neg) => `<div class="itrow"><span class="i-item">${item}</span>
+      <span class="i-esc">${escopo}</span><span class="i-val desconto"><span class="i-de">${brl(tab)}</span>${brl(neg)}</span></div>`;
 
     // Produto com 2+ faixas não tem um "valor contratado" — são opções pro
     // cliente escolher pela quantidade que precisar, não um total fechado.
@@ -529,11 +534,26 @@ function clausulaInvestimento(ctx) {
         const valores = (linha) => !comparando
             ? [Number(linha?.preco) || 0]
             : MODALIDADES_COMPARADAS.map((m) => (cmp ? precoNaModalidade(linha, m) : (Number(linha?.preco) || 0)));
+
+        // Preço de tabela ("de/por") só existe pra um valor único negociado —
+        // com 2+ faixas ou comparando modalidade já são 2+ preços na mesma
+        // linha, e não há UM valor pra riscar. Pedido da Caroline em
+        // 01/09/2026: ela queria oferecer um produto SÓ (BB) com desconto, sem
+        // precisar montar um pacote de 2+ itens pra isso.
+        const tabela = Number(p.precoTabela) || 0;
+        const negociado = Number(p.preco) || 0;
+        const temDesconto = !comparando && faixas.length <= 1 && !cmp && tabela > negociado + 0.01;
+        const itemComEco = temDesconto
+            ? `${item}<span class="i-canais eco">● ${esc(t.economiaDe(brl(tabela - negociado)))}</span>`
+            : item;
+
         // Escada sem nenhuma faixa válida cai na linha única, com o preço do
         // produto: pior que a escada faltar é o produto sumir calado da tabela.
         const linhasDoProduto = faixas.length
             ? faixas.map((f, i) => itrow(i === 0 ? item : '', escopoDe(f.qtd), ...valores(f))).join('')
-            : itrow(item, qtdTxt, ...valores(p));
+            : temDesconto
+                ? itrowComDesconto(itemComEco, qtdTxt, tabela, negociado)
+                : itrow(item, qtdTxt, ...valores(p));
         return `<div class="igroup">${linhasDoProduto}</div>`;
     }).join('');
 
@@ -1047,6 +1067,11 @@ border-bottom:1px solid var(--line-2);align-items:baseline;font-size:.88rem;colo
 .igroup .itrow+.itrow{padding-top:.12rem}
 /* Os canais monitorados, sob o nome do produto e uma vez só. */
 .i-canais{display:block;margin-top:.28rem;font-size:.76rem;line-height:1.45;color:var(--muted);font-weight:400}
+.i-canais.eco{color:var(--success)}
+/* Preço de tabela ("de/por"): riscado pequeno acima do negociado, na mesma
+   célula de valor — sem abrir coluna nova. */
+.i-val.desconto{display:flex;flex-direction:column;align-items:flex-end;gap:.05rem}
+.i-de{font-size:.72rem;font-weight:400;color:var(--muted);text-decoration:line-through}
 /* Comparando as duas modalidades a tabela tem quatro colunas: item, escopo e
    um valor por modalidade. O escopo encolhe (1.4fr -> 1fr) porque é a coluna
    com folga; espremer o nome do produto quebraria "Brand Bidding" em duas

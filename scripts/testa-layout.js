@@ -74,6 +74,13 @@ const CASOS = [
         spec: base({ pacote: 18000 }),
     },
     {
+        // Preço de tabela ("de/por"): a célula de valor ganha uma 2ª linha, o
+        // riscado, na coluna mais apertada da tabela — pior caso com 6 dígitos
+        // nos dois valores, "R$ 145.900,00" riscado sobre "R$ 99.900,00".
+        nome: 'preço de tabela — riscado de 6 dígitos na célula de valor',
+        spec: base({ porProduto: { ...base().porProduto, BB: prod('BB', { preco: 99900, precoTabela: 145900 }) } }),
+    },
+    {
         // Frente de texto livre no rótulo: o nome do card fica comprido.
         nome: 'pacote com frente digitada e rótulo longo',
         spec: base({ pacotes: [
