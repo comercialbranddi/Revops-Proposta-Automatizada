@@ -329,12 +329,12 @@ const CASOS = [
         nome: 'pacote único com desconto — cards avulso × pacote',
         spec: spec(['BB', 'VM'], { pacote: 15000 }),
         // Um pacote que cobre tudo e sai mais barato vira comparação lado a lado:
-        // cada serviço avulso (R$ 8.900) e o pacote (R$ 15.000) marcado como
-        // recomendado, com a economia. A tabela não repete o total combinado.
-        // BB+VM: o VM depende de marca registrada, então o requisito VOLTA. É o
-        // outro lado da regra — sem este caso, apagar o requisito por engano
+        // cada serviço avulso (R$ 8.900) e o pacote (R$ 15.000), com a
+        // economia. A tabela não repete o total combinado. BB+VM: o VM
+        // depende de marca registrada, então o requisito VOLTA. É o outro
+        // lado da regra — sem este caso, apagar o requisito por engano
         // passaria despercebido.
-        checa: [semPlaceholder, contem('>Combo<'), contem('Recomendado'),
+        checa: [semPlaceholder, contem('>Combo<'),
             contem('registro no INPI'),
             contem('R$ 8.900,00'), contem('R$ 15.000,00'), contem('economia de R$ 2.800,00'),
             naoContem('Subtotal'), naoContem('condição combinada'),
@@ -374,7 +374,8 @@ const CASOS = [
             { tipo: 'produtos', produtos: ['BB', 'BBP'], extras: [], preco: 13900, rotulo: '' },
         ] }),
         checa: [semPlaceholder, contem('2 serviços'), contem('R$ 9.900'),
-            contem('Brand Bidding + Buy Box Protection'), contem('R$ 13.900')],
+            contem('Brand Bidding + Buy Box Protection'), contem('R$ 13.900'),
+            naoContem('badge-rec'), naoContem('Recomendado')],
     },
     {
         // qtd: 1 ainda é uma opção do menu (combo), não o preço avulso de um
@@ -701,25 +702,15 @@ const CASOS_NOVOS = [
         ],
     },
     {
-        nome: 'comparação: dois cards, e o Recomendado é o Monitoria + Atuação',
+        // O selo "Recomendado" saiu em 01/09/2026 (pedido explícito): nenhum
+        // card, em nenhum cenário, deve mais carregá-lo — nem a comparação de
+        // modalidades, nem o combo com desconto, nem as opções de pacote.
+        nome: 'comparação: dois cards, sem selo de recomendado',
         args: {},
         spec: spec(['BB'], {}, { BB: { modalidade: MODALIDADE_COMPARAR, preco: 8900, precoMonitoria: 6400 } }),
         checa: [
-            conta('<div class="pcard"', 1),
-            conta('<div class="pcard rec"', 1),
-            conta('<span class="badge-rec"', 1),
-            // O selo mora no card da direita, o completo. Se ele migrar pro mais
-            // barato — que é o que a regra genérica de pacote faria —, a proposta
-            // passa a recomendar a oferta menor sem ninguém ter decidido isso.
-            (h) => {
-                const i = h.indexOf('<div class="pcard rec"');
-                if (i < 0) return 'nenhum card marcado como recomendado';
-                // O primeiro nome depois da abertura do card é o nome DELE.
-                const n = h.indexOf('<h4 class="pname">', i);
-                const nome = h.slice(n + 18, h.indexOf('</h4>', n));
-                return nome === 'Monitoria + Atuação'
-                    || `o selo Recomendado está no card "${nome}"`;
-            },
+            conta('<div class="pcard"', 2),
+            naoContem('badge-rec'), naoContem('Recomendado'), naoContem('Recommended'),
         ],
     },
     {

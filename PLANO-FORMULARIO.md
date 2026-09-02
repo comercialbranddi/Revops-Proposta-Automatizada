@@ -189,9 +189,8 @@ Como fica no documento, com pelo menos um serviço marcado:
 - Serviço fixo repete o valor nas duas colunas, com a nota "só em <modalidade>";
   serviço sem modalidade (BBP) repete com "mesmo valor nas duas". Duas colunas
   com o mesmo número e sem explicação parecem erro de digitação.
-- Dois cards no lugar dos cards de pacote. **O "Recomendado" é o Monitoria +
-  Atuação**, e não o mais barato como na regra genérica de pacote: aqui a
-  oferta completa é a que a proposta vende.
+- Dois cards no lugar dos cards de pacote, um por modalidade. Sem selo de
+  "Recomendado" — saiu em 01/09/2026, de todo card, em todo cenário.
 - A cláusula de abordagem imprime as duas prosas SÓ do serviço marcado, cada
   uma com o rótulo da modalidade; o quadro de especificações e o SLA dele viram
   a união das duas listas, com um selo nas linhas que só existem numa delas.
