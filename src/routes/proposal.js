@@ -26,7 +26,7 @@ import { renderProposta } from '../services/render-proposta.js';
 import { configurada as sessaoConfigurada } from '../lib/sessao.js';
 import { findOrCreateFolder, uploadParaDrive } from '../services/google-docs-client.js';
 import { closeProposalActivity } from '../services/proposal-activity.js';
-import { postarNotaDoFormulario } from '../services/proposal-form-note.js';
+import { postarNotaDoFormulario, gravarLinkDoFormulario } from '../services/proposal-form-note.js';
 import { getContextLogger } from '../lib/logger.js';
 import { afterResponse } from '../lib/after-response.js';
 
@@ -77,9 +77,22 @@ router.post('/webhook/deal', (req, res) => {
         const prevStageId = payload?.previous?.stage_id;
 
         if (!dealId || pipelineId !== SALES_PIPELINE_ID) return;
-        // Duas etapas entregam o link do formulário; só uma delas gera o
+
+        // Campo do link do formulário: TODO card do pipe de vendas, em
+        // qualquer fase, ganha o campo assim que ainda não tiver — sem nota,
+        // sem atividade. Pedido de 02/09/2026: o closer não deveria precisar
+        // mover o card só pra ter o link à mão. `payload.current` já traz o
+        // valor atual do campo — sem isso, escrever de novo a cada update
+        // seria uma chamada à API por evento, à toa. Fora da trava de
+        // piloto e ANTES do filtro de etapa abaixo, de propósito: isso vale
+        // pra toda fase, não só "Proposta enviada".
+        if (!payload.current[PROPOSAL_DEAL_FIELDS.FORM_PROPOSTA]) {
+            await gravarLinkDoFormulario(dealId);
+        }
+
+        // Duas etapas entregam a NOTA do formulário; só uma delas gera o
         // documento do fluxo antigo. Sair aqui cedo demais era o que deixava o
-        // card que pula direto pra "Proposta enviada" sem link nenhum.
+        // card que pula direto pra "Proposta enviada" sem nota nenhuma.
         if (!ETAPAS_COM_LINK_FORM.includes(stageId)) return;
 
         const isEntry = prevStageId !== stageId;

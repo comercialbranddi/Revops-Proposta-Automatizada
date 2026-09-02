@@ -50,6 +50,27 @@ async function jaTemONota(dealId, url) {
 }
 
 /**
+ * Só o campo do link — sem nota, sem checar duplicata (é idempotente: o link
+ * é derivado do id do card e nunca muda). NUNCA lança.
+ *
+ * Usado em dois lugares: aqui embaixo (na entrada de "Proposta enviada",
+ * antes da nota) e no webhook, pra QUALQUER card do pipe de vendas ganhar o
+ * campo assim que entra, em qualquer fase — pedido de 02/09/2026, pra o
+ * closer não precisar mover o card só pra ter o link à mão. Sem nota nem
+ * atividade nesse caminho: essas continuam presas à entrada em "Proposta
+ * enviada", do jeito que já eram.
+ */
+export async function gravarLinkDoFormulario(dealId) {
+    try {
+        await pdPut(`/deals/${dealId}`, { [PROPOSAL_DEAL_FIELDS.FORM_PROPOSTA]: formUrlDoDeal(dealId) });
+        return true;
+    } catch (err) {
+        log.warn(`deal #${dealId}: não consegui gravar o link do formulário no campo — ${err.message}`);
+        return false;
+    }
+}
+
+/**
  * Posta a nota do formulário no card, uma vez só.
  *
  * NUNCA lança: esta nota é conveniência para o time, e uma falha aqui não pode
@@ -59,16 +80,7 @@ async function jaTemONota(dealId, url) {
  */
 export async function postarNotaDoFormulario(dealId) {
     const url = formUrlDoDeal(dealId);
-
-    // O campo, antes da nota. A nota é conveniência do momento da entrada; o
-    // campo é onde o closer volta a procurar dias depois, ao lado do "Link
-    // Proposta". Escrever é idempotente — o link é derivado do id do card e
-    // nunca muda —, então nem precisa checar se já está lá.
-    try {
-        await pdPut(`/deals/${dealId}`, { [PROPOSAL_DEAL_FIELDS.FORM_PROPOSTA]: url });
-    } catch (err) {
-        log.warn(`deal #${dealId}: não consegui gravar o link do formulário no campo — ${err.message}`);
-    }
+    await gravarLinkDoFormulario(dealId);
 
     try {
         if (await jaTemONota(dealId, url)) {
